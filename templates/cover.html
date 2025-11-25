@@ -1,0 +1,219 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TheBoldUnknown Cover Slide</title>
+  
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
+      font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Variables for 1080x1350 layout */
+    :root {
+      --frame-width: 1080px;
+      --frame-height: 1350px;
+      
+      /* Spacing & Sizing */
+      --safe-margin: 80px; 
+      --logo-width: 100px; 
+      
+      /* Typography */
+      --title-size: 96px;
+      --subtitle-size: 36px;
+      --line-height: 1.1;
+    }
+
+    .scale-wrapper {
+      width: var(--frame-width);
+      height: var(--frame-height);
+      transform-origin: center center;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: #05060a;
+      color: #f5f5f5;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(0,0,0,0.8);
+    }
+
+    /* 1. Background Image (Full Bleed) */
+    .bg-layer {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 0;
+    }
+    .bg-layer img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      /* Optional: subtle zoom animation if this were video, 
+         but for static img we just place it. */
+    }
+
+    /* 2. Cinematic Overlay (Gradient) 
+       Ensures text readability at the bottom/top depending on layout 
+    */
+    .overlay-layer {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 1;
+      /* Dark fade from bottom up, slightly dark at top for logo */
+      background: linear-gradient(
+        to bottom, 
+        rgba(0,0,0,0.4) 0%, 
+        rgba(0,0,0,0) 25%, 
+        rgba(0,0,0,0.2) 60%, 
+        rgba(0,0,0,0.9) 100%
+      );
+    }
+
+    /* 3. Content Layer */
+    .content-layer {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      padding: var(--safe-margin);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Top Header: Logo */
+    .header-row {
+      display: flex;
+      justify-content: center; /* Center logo for poster vibe? Or flex-start for brand consistency? */
+      /* Let's go with centered for a strong Cover look, or strictly consistent.
+         TBU Guidelines: "Clean, minimal, cinematic". 
+         I'll place it Top Center for the cover to anchor the brand. */
+      align-items: flex-start;
+      padding-top: 20px;
+    }
+    .logo {
+      width: 120px;
+      height: auto;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+    }
+
+    /* Bottom Content: The Hook */
+    .footer-content {
+      margin-bottom: 60px; /* Lift up from very bottom */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .hook-title {
+      font-weight: 800;
+      font-size: var(--title-size);
+      line-height: var(--line-height);
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      margin: 0 0 24px 0;
+      
+      /* Cinematic text shadow/glow */
+      text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    }
+
+    /* Optional subtitle/tagline if needed */
+    .hook-subtitle {
+      font-weight: 600;
+      font-size: var(--subtitle-size);
+      color: #ccc;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin: 0;
+      opacity: 0.9;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    }
+
+    /* Visual "Swipe" cue or decorative element can go here */
+    .swipe-cue {
+      margin-top: 40px;
+      width: 40px;
+      height: 4px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 2px;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="scale-wrapper">
+    <div class="slide">
+      
+      <!-- Background Image -->
+      <div class="bg-layer">
+        <img src="assets/cover_image.png" alt="Background Art">
+      </div>
+
+      <!-- Gradient Overlay -->
+      <div class="overlay-layer"></div>
+
+      <!-- Main Content -->
+      <div class="content-layer">
+        
+        <!-- Top: Logo -->
+        <div class="header-row">
+          <img src="assets/TBU_Logo4.png" alt="TheBoldUnknown Logo" class="logo">
+        </div>
+
+        <!-- Bottom: Hook Title -->
+        <div class="footer-content">
+          <!-- Example Hook from Brand.txt -->
+          <div class="hook-subtitle">The Unexplained</div>
+          <h1 class="hook-title">
+            Why Does<br>
+            Déjà Vu<br>
+            Feel Real?
+          </h1>
+          <!-- Decorative line -->
+          <div class="swipe-cue"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Scaling Script (Same as editorial2.html) -->
+  <script>
+    function resizeSlide() {
+      const baseWidth = 1080;
+      const baseHeight = 1350;
+      const scale = Math.min(
+        window.innerWidth / baseWidth,
+        window.innerHeight / baseHeight
+      );
+      const wrapper = document.querySelector('.scale-wrapper');
+      if (wrapper) {
+        wrapper.style.transform = `scale(${scale})`;
+      }
+    }
+    window.addEventListener('load', resizeSlide);
+    window.addEventListener('resize', resizeSlide);
+  </script>
+
+</body>
+</html>

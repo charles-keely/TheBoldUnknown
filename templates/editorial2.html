@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TheBoldUnknown Editorial Slide v2</title>
+
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
+      font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Editorial v2 — tuned ratios for 1080x1350 IG portrait
+       - Safe margins: ~W/12 (keeps corners readable and away from crop)
+       - Text measure: ~W/φ (classic comfortable reading width)
+       - Font size: ~W/27 (≈40px at 1080) with 1.45 line-height
+       - Corner sizes: logo > icon > arrow (decreasing by sensible visual steps)
+    */
+    :root {
+      --frame-width: 1080px;
+      --frame-height: 1350px;
+      --phi: 1.618;
+
+      /* Safe area and element sizing */
+      --safe: calc(var(--frame-width) / 12);            /* ≈ 90px */
+      --logo-size: calc(var(--frame-width) / 13.5);     /* ≈ 80px */
+      --icon-size: calc(var(--logo-size) / 1.25);       /* ≈ 64px */
+      --arrow-size: calc(var(--icon-size) / 1.5);       /* ≈ 42px */
+
+      /* Typography and layout */
+      --text-font-size: calc(var(--frame-width) / 27);  /* ≈ 40px */
+      --text-line-height: 1.45;
+      --content-width: calc(var(--frame-width) / var(--phi)); /* ≈ 0.618W */
+      --text-vmargin: calc(var(--frame-height) / 5.8);  /* ≈ 233px breathing room */
+      --paragraph-gap: 0.9em;
+    }
+
+    /* Wrapper we scale to fit the viewport */
+    .scale-wrapper {
+      width: 1080px;
+      height: 1350px;
+      transform-origin: center center;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: #05060a;
+      color: #f5f5f5;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+    }
+
+    .corner {
+      position: absolute;
+      padding: var(--safe);
+      box-sizing: border-box;
+    }
+    .corner-tl { top: 0; left: 0; }
+    .corner-tr { top: 0; right: 0; }
+    .corner-bl { bottom: 0; left: 0; }
+    .corner-br { bottom: 0; right: 0; }
+
+    .corner-logo {
+      width: var(--logo-size);
+      height: var(--logo-size);
+      object-fit: contain;
+    }
+
+    .corner-icon {
+      width: var(--icon-size);
+      height: var(--icon-size);
+      object-fit: contain;
+      /* If source icons are dark-on-transparent, keep them visible on dark bg */
+      filter: brightness(0) invert(1);
+    }
+
+    .page-number {
+      font-size: calc(var(--text-font-size) * 0.45); /* balanced, non-dominant */
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      opacity: 0.75;
+    }
+
+    .swipe-arrow-img {
+      width: var(--arrow-size);
+      height: var(--arrow-size);
+      object-fit: contain;
+      opacity: 0.95;
+      /* If source icons are dark-on-transparent, keep them visible on dark bg */
+      filter: brightness(0) invert(1);
+    }
+
+    .text-column {
+      position: absolute;
+      top: var(--text-vmargin);
+      bottom: var(--text-vmargin);
+      left: 50%;
+      transform: translateX(-50%);
+      width: var(--content-width);
+      display: flex;
+      flex-direction: column;
+      justify-content: center; /* set to flex-start to bias upward */
+      font-size: var(--text-font-size);
+      line-height: var(--text-line-height);
+    }
+    .text-column p {
+      margin: 0 0 var(--paragraph-gap) 0;
+    }
+
+    /* debug overlay for measured char limits */
+    .char-debug {
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      z-index: 9999;
+      font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      color: #ddd;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 8px 10px;
+      backdrop-filter: blur(2px);
+    }
+    .char-debug button {
+      font: inherit;
+      color: #111;
+      background: #ddd;
+      border: none;
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-left: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <!--
+    Notes for n8n/GPT content length
+    - This page computes the maximum total characters that fit in the current
+      layout for:
+        (1) a single paragraph
+        (2) two paragraphs (with the inter-paragraph gap applied)
+    - The values are measured at runtime using the actual rendered Montserrat,
+      current font size, line-height, and column width — not a rough estimate.
+    - See the small debug box in the bottom-left of the screen for results and
+      quick test buttons that fill the slide with exactly that many characters.
+    - Use the 1-paragraph number as a conservative cap for long single blocks.
+      Use the 2-paragraph number for two smaller blocks on one slide.
+    - Current measured caps on this machine/layout (rounded):
+        • 1 paragraph max ≈ 445 characters total
+        • 2 paragraphs combined max ≈ 430 characters total
+      These are practical targets for prompting GPT. If copy varies in word
+      shape (very long words) or you adjust typography, the runtime meter will
+      re-measure automatically.
+  -->
+  <div class="scale-wrapper">
+    <div class="slide">
+      <!-- Logo (TL) -->
+      <div class="corner corner-tl">
+        <img src="assets/TBU_Logo4.png" alt="TheBoldUnknown logo" class="corner-logo">
+      </div>
+
+      <!-- Editorial icon (TR) -->
+      <div class="corner corner-tr">
+        <img src="assets/scroll.png" alt="Editorial icon" class="corner-icon">
+      </div>
+
+      <!-- Page number (BL) -->
+      <div class="corner corner-bl">
+        <span class="page-number">01 / 06</span>
+      </div>
+
+      <!-- Swipe arrow (BR) -->
+      <div class="corner corner-br">
+        <img src="assets/next.png" alt="Swipe right" class="swipe-arrow-img">
+      </div>
+
+      <!-- Main text column -->
+      <div class="text-column">
+        <p>
+          This is dummy editorial text for TheBoldUnknown. Imagine this slide
+          explaining a strange experiment, a declassified file, or a quiet
+          anomaly in human perception. The tone is calm, precise, and cinematic
+          — more like a thoughtful article than a shouty social post.
+        </p>
+        <p>
+          As you read, the pacing should feel slow enough to absorb in one
+          breath, but strong enough to make you want to swipe right for the next
+          layer of the story. When we wire this into n8n, this whole block will
+          be replaced.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- runtime char measurement overlay -->
+  <div id="char-debug" class="char-debug" style="display:none">
+    <span id="char-results">measuring…</span>
+    <button id="test-1p" type="button">Test 1p</button>
+    <button id="test-2p" type="button">Test 2p</button>
+  </div>
+
+  <script>
+    // Realistic sample text: mixed-case with punctuation to approximate editorial copy.
+    function sampleText(len) {
+      const base =
+        'This is sample editorial copy — with Capitals, commas, periods, and names: Ada, Turing, and Curie. ' +
+        'It includes short and long words, quotes “like this,” and dashes — to mirror real writing. ';
+      let s = '';
+      while (s.length < len) s += base;
+      return s.slice(0, len);
+    }
+    function resizeSlide() {
+      const baseWidth = 1080;
+      const baseHeight = 1350;
+      const scale = Math.min(
+        window.innerWidth / baseWidth,
+        window.innerHeight / baseHeight
+      );
+      const wrapper = document.querySelector('.scale-wrapper');
+      if (wrapper) {
+        wrapper.style.transform = `scale(${scale})`;
+      }
+      window.__slideScale = scale;
+    }
+    window.addEventListener('load', resizeSlide);
+    window.addEventListener('resize', resizeSlide);
+
+    // Measure maximum characters that fit without vertical overflow.
+    function measureMaxChars(paragraphCount) {
+      const target = document.querySelector('.text-column');
+      if (!target) return 0;
+      const rect = target.getBoundingClientRect();
+      const scale = window.__slideScale || 1;
+
+      const baseWidth = Math.max(0, rect.width / scale);
+      const baseHeight = Math.max(0, rect.height / scale);
+
+      const probe = document.createElement('div');
+      probe.className = 'text-column';
+      probe.style.position = 'absolute';
+      probe.style.left = '-99999px';
+      probe.style.top = '0';
+      probe.style.width = baseWidth + 'px';
+      probe.style.height = baseHeight + 'px';
+      probe.style.overflow = 'auto';
+      probe.style.visibility = 'hidden';
+      document.body.appendChild(probe);
+
+      function fill(count) {
+        probe.innerHTML = '';
+        if (paragraphCount === 1) {
+          const p = document.createElement('p');
+          p.textContent = sampleText(count);
+          probe.appendChild(p);
+        } else {
+          const p1 = document.createElement('p');
+          const p2 = document.createElement('p');
+          // Split across paragraphs fairly evenly
+          const first = Math.ceil(count * 0.52);
+          p1.textContent = sampleText(first);
+          p2.textContent = sampleText(count - first);
+          probe.appendChild(p1);
+          probe.appendChild(p2);
+        }
+      }
+
+      let lo = 0, hi = 5000, best = 0;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        fill(mid);
+        // allow 1px tolerance for subpixel rounding
+        if (probe.scrollHeight <= probe.clientHeight + 1) {
+          best = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+
+      document.body.removeChild(probe);
+      return best;
+    }
+
+    function updateCharDebug() {
+      const el = document.getElementById('char-debug');
+      const res = document.getElementById('char-results');
+      if (!el || !res) return;
+      const one = measureMaxChars(1);
+      const two = measureMaxChars(2);
+      res.textContent = `Max chars — 1 paragraph: ${one} | 2 paragraphs total: ${two}`;
+      el.style.display = 'block';
+
+      // wire test buttons
+      const btn1 = document.getElementById('test-1p');
+      const btn2 = document.getElementById('test-2p');
+      const target = document.querySelector('.text-column');
+      function gen(len) { return sampleText(len); }
+
+      function setContent1p() {
+        target.innerHTML = '';
+        const p = document.createElement('p');
+        p.textContent = gen(one);
+        target.appendChild(p);
+        window.__contentMode = '1p';
+      }
+
+      function setContent2p() {
+        target.innerHTML = '';
+        const first = Math.ceil(two * 0.52);
+        const p1 = document.createElement('p');
+        const p2 = document.createElement('p');
+        p1.textContent = gen(first);
+        p2.textContent = gen(two - first);
+        target.appendChild(p1);
+        target.appendChild(p2);
+        window.__contentMode = '2p';
+      }
+
+      if (btn1) btn1.onclick = setContent1p;
+      if (btn2) btn2.onclick = setContent2p;
+
+      // Initial preset on first load: ?preset=1p | ?preset=2p | ?preset=live
+      if (!window.__contentMode) {
+        const preset = new URLSearchParams(location.search).get('preset');
+        if (preset === '1p') setContent1p();
+        else if (preset === 'live') { window.__contentMode = 'live'; }
+        else setContent2p(); // default to 2p sample so overlay and content match
+      } else {
+        // Re-apply current mode after resize so content matches overlay values
+        if (window.__contentMode === '1p') setContent1p();
+        if (window.__contentMode === '2p') setContent2p();
+      }
+    }
+
+    function scheduleUpdate() {
+      const run = () => requestAnimationFrame(updateCharDebug);
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(run).catch(run);
+      } else {
+        run();
+      }
+    }
+
+    window.addEventListener('load', scheduleUpdate);
+    window.addEventListener('resize', scheduleUpdate);
+    if (document.fonts && document.fonts.addEventListener) {
+      // If the font swaps in after initial paint, remeasure with the real metrics
+      document.fonts.addEventListener('loadingdone', scheduleUpdate);
+    }
+  </script>
+</body>
+</html>
+
+

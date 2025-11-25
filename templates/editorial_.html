@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TheBoldUnknown Editorial Slide</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #000000;
+    }
+
+    :root {
+      --frame-width: 1080px;
+      --frame-height: 1350px;
+      --phi: 1.618;
+
+      --safe: calc(var(--frame-width) / 12);
+
+      /* Logo + icon + arrow sizing */
+      --logo-size: calc(var(--frame-width) / 11.5);      /* masthead */
+      --icon-size: calc(var(--logo-size) / 2.4);        /* slightly larger than before */
+      --arrow-size: calc(var(--icon-size) / 1);        /* just under icon size */
+
+      /* Type + layout */
+      --text-font-size: calc(var(--frame-width) / 27);
+      --text-line-height: 1.45;
+      --content-width: calc(var(--frame-width) / var(--phi));
+      --text-vmargin: calc(var(--frame-height) / 5.5);
+      --paragraph-gap: 0.9em;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: #05060a;
+      color: #f5f5f5;
+      overflow: hidden;
+    }
+
+    .corner {
+      position: absolute;
+      padding: var(--safe);
+      box-sizing: border-box;
+    }
+
+    .corner-tl { top: 0; left: 0; }
+
+    /* Vertically center TR icon to TL logo’s center line (within same safe padding) */
+    .corner-tr {
+      right: 0;
+      top: calc((var(--logo-size) - var(--icon-size)) / 2);
+    }
+
+    .corner-bl { bottom: 0; left: 0; }
+    .corner-br { bottom: 0; right: 0; }
+
+    .corner-logo {
+      width: var(--logo-size);
+      height: var(--logo-size);
+      object-fit: contain;
+      /* soft halo for dark exports */
+      filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.06));
+    }
+
+    .corner-icon {
+      width: var(--icon-size);
+      height: var(--icon-size);
+      object-fit: contain;
+      filter:
+        brightness(0) invert(1)
+        drop-shadow(0 0 16px rgba(255, 255, 255, 0.08));
+    }
+
+    .page-number {
+      font-size: calc(var(--text-font-size) * 0.45);
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      opacity: 0.68;
+    }
+
+    .swipe-arrow-img {
+      width: var(--arrow-size);
+      height: var(--arrow-size);
+      object-fit: contain;
+      opacity: 0.96;
+      filter:
+        brightness(0) invert(1)
+        drop-shadow(0 0 14px rgba(255, 255, 255, 0.06));
+    }
+
+    .text-column {
+      position: absolute;
+      top: var(--text-vmargin);
+      bottom: var(--text-vmargin);
+      left: 50%;
+      transform: translateX(-50%);
+      width: var(--content-width);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      font-size: var(--text-font-size);
+      line-height: var(--text-line-height);
+    }
+
+    .text-column p {
+      margin: 0 0 var(--paragraph-gap) 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="slide">
+    <div class="corner corner-tl">
+      <img
+        src="https://raw.githubusercontent.com/charles-keely/TheBoldUnknown/main/img/TBU_Logo5.png"
+        alt="TheBoldUnknown logo"
+        class="corner-logo"
+      />
+    </div>
+
+    <div class="corner corner-tr">
+      <img
+        src="https://raw.githubusercontent.com/charles-keely/TheBoldUnknown/main/img/scroll.png"
+        alt="Editorial icon"
+        class="corner-icon"
+      />
+    </div>
+
+    <div class="corner corner-bl">
+      <span class="page-number">%%PAGE_NUMBER%%</span>
+    </div>
+
+    <div class="corner corner-br">
+      <img
+        src="https://raw.githubusercontent.com/charles-keely/TheBoldUnknown/main/img/next.png"
+        alt="Swipe right"
+        class="swipe-arrow-img"
+      />
+    </div>
+
+    <div class="text-column">
+      %%BODY_HTML%%
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TheBoldUnknown Cover v2</title>
+  
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
+      font-family: "Montserrat", sans-serif;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* 1080x1350 Configuration */
+    :root {
+      --frame-width: 1080px;
+      --frame-height: 1350px;
+      --margin: 70px;
+      --ui-color: rgba(255, 255, 255, 0.9);
+      --dim-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .scale-wrapper {
+      width: var(--frame-width);
+      height: var(--frame-height);
+      transform-origin: center center;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: #05060a;
+      color: #fff;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(0,0,0,0.8);
+    }
+
+    /* 1. Background Image */
+    .bg-image {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      object-fit: cover;
+      opacity: 0.9; /* Slight dim to help text pop */
+    }
+
+    /* 2. Vignette / Glitch Overlay (Static) */
+    .vignette {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.8) 100%);
+      z-index: 1;
+      mix-blend-mode: multiply;
+    }
+
+    /* 2b. Bottom Gradient for Text Readability */
+    .bottom-gradient {
+      position: absolute;
+      bottom: 0; left: 0; width: 100%; height: 55%;
+      background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.95) 100%);
+      z-index: 2;
+      pointer-events: none;
+    }
+    
+    /* 3. UI Layer */
+    .ui-layer {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      padding: var(--margin);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* --- Header --- */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-top: 1px solid rgba(255,255,255,0.3);
+      padding-top: 20px;
+    }
+
+    .logo {
+      width: 90px;
+      height: auto;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+
+    .meta-data {
+      text-align: right;
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      line-height: 1.4;
+      color: var(--dim-color);
+      text-transform: uppercase;
+    }
+    .meta-highlight {
+      color: #fff;
+      font-weight: 600;
+    }
+
+    /* --- Center Content --- */
+    .center-stage {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end; /* Push to lower half */
+      align-items: center; /* Center alignment for strong cover impact */
+      text-align: center;
+      margin-bottom: 20px; /* Space above footer */
+      padding-bottom: 0;
+    }
+
+    /* .topic-label removed */
+
+    .main-title {
+      font-weight: 800;
+      font-size: 100px; /* Huge text */
+      line-height: 0.95;
+      text-transform: uppercase;
+      letter-spacing: -0.03em;
+      text-shadow: 0 10px 40px rgba(0,0,0,0.7);
+    }
+
+    /* "Glitch" effect or emphasis on key words could go here */
+    .highlight {
+      color: #fff; /* Could be accent color if brand has one */
+      position: relative;
+      display: inline-block;
+    }
+    
+    /* Decoration lines around title */
+    .title-deco {
+      width: 2px;
+      height: 120px;
+      background: linear-gradient(to bottom, transparent, #fff, transparent);
+      margin: 0 40px;
+      opacity: 0.5;
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+    }
+
+    /* --- Footer --- */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 1px solid rgba(255,255,255,0.3);
+      padding-bottom: 20px;
+    }
+
+    .footer-left {
+      font-size: 16px;
+      letter-spacing: 0.1em;
+      color: var(--dim-color);
+      text-transform: uppercase;
+    }
+
+    .arrow-container {
+      /* Floating arrow animation */
+      animation: floatRight 2s ease-in-out infinite;
+    }
+    .swipe-arrow {
+      width: 50px;
+      height: auto;
+      filter: brightness(0) invert(1);
+      opacity: 0.9;
+    }
+
+    @keyframes floatRight {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(8px); }
+    }
+
+    /* --- Technical Overlay Marks (Corners) --- */
+    .mark {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: rgba(255,255,255,0.4);
+      border-style: solid;
+      pointer-events: none;
+    }
+    .mark-tl { top: 50px; left: 50px; border-width: 2px 0 0 2px; }
+    .mark-tr { top: 50px; right: 50px; border-width: 2px 2px 0 0; }
+    .mark-bl { bottom: 50px; left: 50px; border-width: 0 0 2px 2px; }
+    .mark-br { bottom: 50px; right: 50px; border-width: 0 2px 2px 0; }
+
+  </style>
+</head>
+<body>
+
+  <div class="scale-wrapper">
+    <div class="slide">
+      
+      <!-- Background -->
+      <img src="assets/cover_image.png" alt="Cover" class="bg-image">
+      <div class="vignette"></div>
+      <div class="bottom-gradient"></div>
+
+      <!-- Technical Corner Marks (Interstellar/HUD vibe) -->
+      <div class="mark mark-tl"></div>
+      <div class="mark mark-tr"></div>
+      <div class="mark mark-bl"></div>
+      <div class="mark mark-br"></div>
+
+      <!-- Main UI -->
+      <div class="ui-layer">
+        
+        <!-- Top Row -->
+        <div class="header">
+          <img src="assets/TBU_Logo4.png" alt="TBU" class="logo">
+          <div class="meta-data">
+            <span class="meta-highlight">11.22.25</span><br>
+            Classified<br>
+            Analysis
+          </div>
+        </div>
+
+        <!-- Center Content -->
+        <div class="center-stage">
+          <div class="title-row">
+            <!-- Decorative vertical line -->
+            <div class="title-deco"></div> 
+            
+            <h1 class="main-title">
+              Why Does<br>
+              Déjà Vu<br>
+              Feel Real?
+            </h1>
+
+            <!-- Decorative vertical line -->
+            <div class="title-deco"></div>
+          </div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="footer">
+          <div class="footer-left">
+            01/08<br>
+            SWIPE FOR MORE
+          </div>
+          <div class="arrow-container">
+            <img src="assets/next.png" alt="Next" class="swipe-arrow">
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Standard TBU Scaling Script
+    function resizeSlide() {
+      const baseWidth = 1080;
+      const baseHeight = 1350;
+      const scale = Math.min(
+        window.innerWidth / baseWidth,
+        window.innerHeight / baseHeight
+      );
+      const wrapper = document.querySelector('.scale-wrapper');
+      if (wrapper) {
+        wrapper.style.transform = `scale(${scale})`;
+      }
+    }
+    window.addEventListener('load', resizeSlide);
+    window.addEventListener('resize', resizeSlide);
+  </script>
+
+</body>
+</html>

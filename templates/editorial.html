@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TheBoldUnknown Editorial Slide</title>
+
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
+      font-family: "Montserrat", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Golden-ratio sizing system for 1080x1350 frame */
+    :root {
+      --frame-width: 1080px;
+      --frame-height: 1350px;
+      --phi: 1.618; /* golden ratio */
+
+      /* gutters and element sizes derived from golden ratio powers */
+      --gutter: calc(var(--frame-width) / 11.09); /* ~ W / φ^5 ≈ 97px */
+      --logo-size: calc(var(--frame-width) / 11.09); /* same as gutter */
+      --icon-size: calc(var(--logo-size) / var(--phi)); /* TR editorial icon */
+      --arrow-size: calc(var(--icon-size) / var(--phi)); /* BR next arrow */
+
+      /* text sizing and vertical rhythm */
+      --text-font-size: calc(var(--frame-width) / 30); /* ≈ 36px at 1080px */
+      --text-line-height: 1.4;
+      --text-vmargin: calc(var(--frame-height) / 6.85); /* ≈ H / φ^4 ≈ 197px */
+      --content-width: calc(100% / var(--phi)); /* central column ≈ W / φ */
+    }
+
+    /* Wrapper we scale to fit the viewport */
+    .scale-wrapper {
+      width: 1080px;
+      height: 1350px;
+      transform-origin: center center;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: #05060a;
+      color: #f5f5f5;
+      overflow: hidden;
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.9);
+    }
+
+    .corner {
+      position: absolute;
+      padding: var(--gutter);
+      box-sizing: border-box;
+    }
+
+    .corner-tl { top: 0; left: 0; }
+    .corner-tr { top: 0; right: 0; }
+    .corner-bl { bottom: 0; left: 0; }
+    .corner-br { bottom: 0; right: 0; }
+
+    .corner-logo {
+      width: var(--logo-size);
+      height: var(--logo-size);
+      object-fit: contain;
+    }
+
+    .corner-icon {
+      width: var(--icon-size);
+      height: var(--icon-size);
+      object-fit: contain;
+      /* ensure dark icons remain visible on dark background */
+      filter: brightness(0) invert(1);
+    }
+
+    .page-number {
+      font-size: calc(var(--text-font-size) / 2); /* keeps pagination subtle */
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .swipe-arrow-img {
+      width: var(--arrow-size);
+      height: var(--arrow-size);
+      object-fit: contain;
+      opacity: 0.9;
+      /* ensure dark icons remain visible on dark background */
+      filter: brightness(0) invert(1);
+    }
+
+    .text-column {
+      position: absolute;
+      top: var(--text-vmargin);
+      bottom: var(--text-vmargin);
+      left: 50%;
+      transform: translateX(-50%);
+      width: var(--content-width);
+      display: flex;
+      flex-direction: column;
+      justify-content: center; /* change to flex-start if you want it higher */
+      font-size: var(--text-font-size);
+      line-height: var(--text-line-height);
+    }
+
+    .text-column p {
+      margin: 0 0 32px 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="scale-wrapper">
+    <div class="slide">
+      <!-- Logo (TL) -->
+      <div class="corner corner-tl">
+        <img src="assets/TBU_Logo4.png" alt="TheBoldUnknown logo" class="corner-logo">
+      </div>
+
+      <!-- Editorial icon (TR) -->
+      <div class="corner corner-tr">
+        <img src="assets/scroll.png" alt="Editorial icon" class="corner-icon">
+      </div>
+
+      <!-- Page number (BL) -->
+      <div class="corner corner-bl">
+        <span class="page-number">01 / 06</span>
+      </div>
+
+      <!-- Swipe arrow (BR) -->
+      <div class="corner corner-br">
+        <img src="assets/next.png" alt="Swipe right" class="swipe-arrow-img">
+      </div>
+
+      <!-- Main text column -->
+      <div class="text-column">
+        <p>
+          This is dummy editorial text for TheBoldUnknown. Imagine this slide
+          explaining a strange experiment, a declassified file, or a quiet
+          anomaly in human perception. The tone is calm, precise, and cinematic
+          — more like a thoughtful article than a shouty social post.
+        </p>
+        <p>
+          As you read, the pacing should feel slow enough to absorb in one
+          breath, but strong enough to make you want to swipe right for the next
+          layer of the story. When we wire this into n8n, this whole block will
+          be replaced with AI-generated copy that respects these constraints.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function resizeSlide() {
+      const baseWidth = 1080;
+      const baseHeight = 1350;
+      const scale = Math.min(
+        window.innerWidth / baseWidth,
+        window.innerHeight / baseHeight
+      );
+      const wrapper = document.querySelector('.scale-wrapper');
+      if (wrapper) {
+        wrapper.style.transform = `scale(${scale})`;
+      }
+    }
+
+    window.addEventListener('load', resizeSlide);
+    window.addEventListener('resize', resizeSlide);
+  </script>
+</body>
+</html>

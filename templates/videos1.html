@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TheBoldUnknown Videos v1 (Scientific)</title>
+  
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
+      font-family: "Montserrat", sans-serif;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* 1080x1350 Configuration */
+    :root {
+      --frame-width: 1080px;
+      --frame-height: 1350px;
+      --margin: 70px;
+      
+      /* Typography */
+      --caption-size: 24px;
+      --source-size: 16px;
+      
+      /* Colors */
+      --ui-color: rgba(255, 255, 255, 0.9);
+      --dim-color: rgba(255, 255, 255, 0.5);
+      --border-color: rgba(255,255,255,0.3);
+      --bg-dark: #05060a;
+    }
+
+    .scale-wrapper {
+      width: var(--frame-width);
+      height: var(--frame-height);
+      transform-origin: center center;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: var(--bg-dark);
+      color: #fff;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      padding: var(--margin);
+    }
+
+    /* --- Background Elements --- */
+    .vignette {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.8) 100%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Technical Corner Marks */
+    .mark {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: rgba(255,255,255,0.4);
+      border-style: solid;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .mark-tl { top: 50px; left: 50px; border-width: 2px 0 0 2px; }
+    .mark-tr { top: 50px; right: 50px; border-width: 2px 2px 0 0; }
+    .mark-bl { bottom: 50px; left: 50px; border-width: 0 0 2px 2px; }
+    .mark-br { bottom: 50px; right: 50px; border-width: 0 2px 2px 0; }
+
+    /* --- Layout Layers --- */
+
+    /* Header */
+    .header {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-top: 1px solid var(--border-color);
+      padding-top: 20px;
+      margin-bottom: 30px;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      width: 80px;
+      height: auto;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+
+    .meta-data {
+      text-align: right;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      line-height: 1.4;
+      color: var(--dim-color);
+      text-transform: uppercase;
+    }
+
+    /* Main Content Area */
+    .content-area {
+      position: relative;
+      z-index: 2;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* Ensure content doesn't spill */
+    }
+
+    /* Video Container */
+    .video-frame {
+      flex-grow: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.02);
+      margin-bottom: 25px;
+      overflow: hidden;
+      min-height: 0; /* Critical for flex child scrolling/sizing */
+    }
+
+    /* The Video Placeholder */
+    .display-video {
+      width: 100%;
+      height: 100%;
+      /* 
+         In a real scenario, you'd likely use a <video> tag here.
+         We'll leave it blank or as a container where a video element would scale 
+         to fit (object-fit: contain) just like the photos.
+      */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--dim-color);
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      background: #000;
+    }
+    
+    .display-video video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* Caption Area */
+    .caption-box {
+      flex-shrink: 0;
+      border-left: 2px solid var(--ui-color);
+      padding-left: 20px;
+    }
+
+    .caption-text {
+      font-size: var(--caption-size);
+      line-height: 1.4;
+      color: var(--ui-color);
+      margin: 0 0 10px 0;
+    }
+
+    .source-text {
+      font-size: var(--source-size);
+      color: var(--dim-color);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    /* Footer */
+    .footer {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+      margin-top: 30px;
+      flex-shrink: 0;
+    }
+
+    .page-number {
+      font-size: 16px;
+      letter-spacing: 0.15em;
+      color: var(--dim-color);
+      text-transform: uppercase;
+    }
+
+    .swipe-arrow {
+      width: 30px;
+      height: auto;
+      filter: brightness(0) invert(1);
+      opacity: 0.8;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="scale-wrapper">
+    <div class="slide">
+      
+      <div class="vignette"></div>
+
+      <!-- Corner Marks -->
+      <div class="mark mark-tl"></div>
+      <div class="mark mark-tr"></div>
+      <div class="mark mark-bl"></div>
+      <div class="mark mark-br"></div>
+
+      <!-- Header -->
+      <div class="header">
+        <img src="assets/TBU_Logo4.png" alt="TBU" class="logo">
+        <div class="meta-data">
+          11.22.25<br>
+          DÉJÀ VU
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content-area">
+        
+        <!-- Flexible Video Container -->
+        <div class="video-frame">
+          <!-- Blank container for video insertion -->
+          <div class="display-video">
+            <!-- Video tag would go here, e.g.: -->
+            <!-- <video src="..." controls></video> -->
+          </div>
+        </div>
+
+        <!-- Caption -->
+        <div class="caption-box">
+          <div class="caption-text">
+            Fig 2.1: Temporal anomaly footage retrieved from Sector 7 surveillance cameras.
+          </div>
+          <div class="source-text">
+            Source: Classified Footage
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="page-number">04 / 08</div>
+        <img src="assets/next.png" alt="Next" class="swipe-arrow">
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /* --- SCALING SCRIPT --- */
+    function resizeSlide() {
+      const baseWidth = 1080;
+      const baseHeight = 1350;
+      const scale = Math.min(
+        window.innerWidth / baseWidth,
+        window.innerHeight / baseHeight
+      );
+      const wrapper = document.querySelector('.scale-wrapper');
+      if (wrapper) wrapper.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('load', resizeSlide);
+    window.addEventListener('resize', resizeSlide);
+  </script>
+
+</body>
+</html>
+
