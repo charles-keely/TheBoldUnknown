@@ -1,0 +1,32 @@
+### OS / System files
+.DS_Store
+Thumbs.db
+
+### Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+### Node / JavaScript (safe defaults if you add JS tooling later)
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+dist/
+build/
+
+### Python (in case you add scripts)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+### Environment / secrets
+.env
+.env.*
+
+### Logs
+*.log
+
+
