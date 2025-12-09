@@ -36,8 +36,8 @@ class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     
     # Models
-    OPENAI_MODEL_MINI = "gpt-5-mini"
-    OPENAI_MODEL_MAIN = "gpt-5.1"
+    OPENAI_MODEL_MINI = "gpt-4o-mini"
+    OPENAI_MODEL_MAIN = "gpt-4o"
     OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
     PERPLEXITY_MODEL = "sonar-pro"
 
@@ -49,7 +49,7 @@ class Config:
     BRAND_THRESHOLD = 70         # Stories must score 70+ brand fit to be saved
     
     # Testing / Limits
-    MAX_CANDIDATES = 50         # Set to None for unlimited, or a number to cap ingestion
+    MAX_CANDIDATES = None         # Set to None for unlimited, or a number to cap ingestion
     
     @property
     def DATABASE_URL(self):

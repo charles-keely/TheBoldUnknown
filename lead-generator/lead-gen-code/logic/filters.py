@@ -252,18 +252,10 @@ Below 50: Poor fit. Generic news, celebrity/political content, pure hype, fear-m
 
 ---
 
-NEW_TOPICS:
-Extract 2-3 specific, searchable concepts from this story that could lead to OTHER interesting stories. These should be distinct rabbit holes, not just the story's main topic.
-
-Example: Story about "unexpected whale behavior" → Topics: ["cetacean cultural transmission", "marine mammal sleep anomalies", "interspecies communication research"]
-
----
-
 OUTPUT FORMAT (JSON only):
 {
   "brand_score": <number 0-100>,
-  "reasoning": "<2-3 sentences. Be blunt. What works? What doesn't? Why this score?>",
-  "new_topics": ["<specific searchable concept>", "<specific searchable concept>", "<specific searchable concept>"]
+  "reasoning": "<2-3 sentences. Be blunt. What works? What doesn't? Why this score?>"
 }
 
 Be honest and critical. Most stories should score 50-75. Reserve 90+ for genuinely exceptional brand fits."""
@@ -276,7 +268,7 @@ Summary: {lead['summary']}"""
         
         lead['brand_score'] = analysis.get('brand_score', 0)
         lead['reasoning'] = analysis.get('reasoning', '')
-        lead['new_topics'] = analysis.get('new_topics', [])
+        # lead['new_topics'] removed to prevent echo chambers
         
         return lead
 

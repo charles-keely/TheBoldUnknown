@@ -4,6 +4,7 @@ from services.perplexity import perplexity_service
 from services.llm import llm
 from database import db
 from logic.filters import filters
+from logic.discovery import discovery_engine
 from config import config
 from utils.logger import logger
 import time
@@ -154,7 +155,7 @@ class Workflow:
                 continue
 
             # ============================================
-            # PHASE 7: SAVE & EXPAND
+            # PHASE 7: SAVE
             # ============================================
             lead_id = db.insert_lead(lead)
             saved_count += 1
@@ -163,11 +164,21 @@ class Workflow:
             # Mark URL as processed
             db.mark_url_processed(url)
             
-            # Extract & Save New Discovery Topics
-            new_topics = [{"topic": t, "origin_lead_id": lead_id} for t in lead.get('new_topics', [])]
-            if new_topics:
-                db.insert_discovery_topics(new_topics)
-                logger.info(f"[EXPAND] Added {len(new_topics)} new discovery topics")
+        # ============================================
+        # PHASE 8: REFUEL (Discovery Engine)
+        # ============================================
+        # Check active topics count (rough estimate or just add fresh ones)
+        # For now, we simply inject fresh entropy every run
+        logger.info("Refueling Discovery Engine...")
+        new_topics_list = discovery_engine.generate_fresh_topics(count=3)
+        
+        # Format for DB insert: [{"topic": "...", "origin_lead_id": None}]
+        # origin_lead_id is None because these come from the Void (Entropy), not a specific story
+        discovery_payload = [{"topic": t, "origin_lead_id": None} for t in new_topics_list]
+        
+        if discovery_payload:
+            db.insert_discovery_topics(discovery_payload)
+            logger.info(f"[DISCOVERY] Injected {len(discovery_payload)} fresh entropy topics: {new_topics_list}")
 
         # ============================================
         # SUMMARY
@@ -180,6 +191,7 @@ class Workflow:
         logger.info(f"  After Semantic dedup:  {len(embedding_survivors)}")
         logger.info(f"  After Virality:        {len(virality_survivors)}")
         logger.info(f"  Saved to DB:           {saved_count}")
+        logger.info(f"  Entropy Injected:      {len(new_topics_list)} topics")
         logger.info("=" * 50)
 
 workflow = Workflow()
