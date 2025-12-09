@@ -1,165 +1,185 @@
-import concurrent.futures
-from services.rss import fetch_all_rss
+from typing import List
+from services.rss import rss_service
 from services.perplexity import perplexity_service
-from logic.filters import filter_service
+from services.llm import llm
 from database import db
-from models import LeadCandidate, ProcessingStatus
+from logic.filters import filters
+from config import config
 from utils.logger import logger
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskID
+import time
 
-class WorkflowManager:
-    def save_lead(self, lead: LeadCandidate):
-        """
-        Save the approved lead to the database.
-        """
-        query = """
-        INSERT INTO leads (
-            title, url, summary, embedding, brand_score, virality_score, viral_hook, source_origin, status
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s
-        ) RETURNING id;
-        """
-        params = (
-            lead.title,
-            lead.url,
-            lead.summary,
-            str(lead.embedding), # Store as string for vector type
-            lead.brand_score,
-            lead.virality_score,
-            lead.viral_hook,  # The shareable angle for content creation
-            lead.source_origin,
-            ProcessingStatus.NEW.value
-        )
-        row = db.fetch_one(query, params)
-        return row['id'] if row else None
+class Workflow:
+    def __init__(self):
+        pass
 
-    def mark_processed(self, url: str):
-        query = "INSERT INTO processed_urls (url) VALUES (%s) ON CONFLICT DO NOTHING"
-        db.execute_query(query, (url,))
-
-    def save_discovery_topics(self, topics: list[str], origin_lead_id: str):
-        query = "INSERT INTO discovery_topics (topic, origin_lead_id) VALUES (%s, %s) ON CONFLICT (topic) DO NOTHING"
-        for topic in topics:
-            db.execute_query(query, (topic, origin_lead_id))
-
-    def process_candidate(self, candidate: LeadCandidate) -> bool:
-        """
-        Run a single candidate through the funnel.
-        Returns True if saved, False if filtered/failed.
-        """
-        try:
-            # Stage 1: Dedupe
-            if not filter_service.filter_stage_1_dedupe(candidate):
-                # Even if rejected, we mark URL as processed to avoid reprocessing same URL
-                self.mark_processed(candidate.url) 
-                return False
-
-            # Stage 2: Virality
-            if not filter_service.filter_stage_2_virality(candidate):
-                self.mark_processed(candidate.url)
-                return False
-
-            # Stage 3: Brand
-            if not filter_service.filter_stage_3_brand(candidate):
-                self.mark_processed(candidate.url)
-                return False
-
-            # Success! Save it.
-            logger.info(f"APPROVED LEAD: {candidate.title} (Brand: {candidate.brand_score})")
-            lead_id = self.save_lead(candidate)
-            self.mark_processed(candidate.url)
-            
-            # Fractal Expansion
-            if lead_id and candidate.new_topics:
-                self.save_discovery_topics(candidate.new_topics, lead_id)
-                
-            return True
-
-        except Exception as e:
-            logger.error(f"Error processing candidate {candidate.url}: {e}")
-            return False
-
-    def run_rss_workflow(self, limit: int = None):
-        """
-        Fetch RSS feeds and process in parallel.
-        """
-        # If limit is explicitly provided, use it. 
-        # If None (default), we'll use a safe default of 3 to prevent accidental huge bills, 
-        # unless explicitly asked for '0' (all) which we'd need to handle if we wanted that support.
-        # For now, let's map the CLI 'limit' directly to fetch_all_rss.
-        # Note: If CLI limit is None, fetch_all_rss uses its default (3).
-        # If user provides limit, we pass it.
-        candidates = fetch_all_rss(limit_per_feed=limit) if limit is not None else fetch_all_rss()
-            
-        logger.info(f"Processing {len(candidates)} RSS candidates...")
+    def run(self, source: str = "all"):
+        logger.info(f"Starting workflow run. Source: {source}")
         
-        approved_count = 0
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TextColumn("{task.completed}/{task.total}"),
-        ) as progress:
-            task = progress.add_task("[cyan]Filtering RSS...", total=len(candidates))
-            
-            # Parallel processing
-            with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-                future_to_candidate = {
-                    executor.submit(self.process_candidate, candidate): candidate 
-                    for candidate in candidates
-                }
-                
-                for future in concurrent.futures.as_completed(future_to_candidate):
-                    try:
-                        is_approved = future.result()
-                        if is_approved:
-                            approved_count += 1
-                    except Exception as e:
-                        logger.error(f"Error in process future: {e}")
-                    finally:
-                        progress.advance(task)
-                
-        logger.info(f"RSS Workflow Complete. Approved: {approved_count}/{len(candidates)}")
+        candidates = []
 
-    def run_perplexity_workflow(self, cycles: int = 1):
-        """
-        Run Perplexity discovery cycles.
-        """
-        logger.info(f"Starting {cycles} Perplexity cycles...")
-        
-        total_candidates = 0
-        approved_count = 0
-        
-        for i in range(cycles):
-            logger.info(f"Cycle {i+1}/{cycles}")
-            candidates = perplexity_service.run_cycle()
-            total_candidates += len(candidates)
-            
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                BarColumn(),
-                TextColumn("{task.completed}/{task.total}"),
-            ) as progress:
-                task = progress.add_task(f"[magenta]Filtering Batch {i+1}...", total=len(candidates))
+        # ============================================
+        # PHASE 1: INGESTION
+        # ============================================
+        if source in ["all", "rss"]:
+            logger.info("Fetching RSS feeds...")
+            rss_items = rss_service.fetch_all()
+            candidates.extend(rss_items)
+            logger.info(f"Fetched {len(rss_items)} items from RSS.")
+
+        if source in ["all", "perplexity"]:
+            logger.info("Fetching from Perplexity...")
+            topic_record = db.get_active_discovery_topics()
+            if topic_record:
+                topic_data = topic_record[0]
+                topic = topic_data['topic']
+                topic_id = topic_data['id']
+                logger.info(f"Selected topic: {topic}")
                 
-                # Parallel processing
-                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-                    future_to_candidate = {
-                        executor.submit(self.process_candidate, candidate): candidate 
-                        for candidate in candidates
-                    }
+                query = filters.generate_search_query(topic)
+                logger.info(f"Generated query: {query}")
+                
+                raw_result = perplexity_service.search(query)
+                if raw_result:
+                    normalized = filters.normalize_perplexity_result(raw_result, topic)
+                    candidates.extend(normalized)
+                    logger.info(f"Fetched {len(normalized)} items from Perplexity.")
                     
-                    for future in concurrent.futures.as_completed(future_to_candidate):
-                        try:
-                            is_approved = future.result()
-                            if is_approved:
-                                approved_count += 1
-                        except Exception as e:
-                            logger.error(f"Error in process future: {e}")
-                        finally:
-                            progress.advance(task)
-        
-        logger.info(f"Perplexity Workflow Complete. Approved: {approved_count}/{total_candidates}")
+                    db.update_topic_last_searched(topic_id)
+            else:
+                logger.info("No active discovery topics found.")
 
-workflow = WorkflowManager()
+        # Apply candidate limit if set (for testing)
+        if config.MAX_CANDIDATES and len(candidates) > config.MAX_CANDIDATES:
+            logger.info(f"Limiting candidates from {len(candidates)} to {config.MAX_CANDIDATES} (MAX_CANDIDATES)")
+            candidates = candidates[:config.MAX_CANDIDATES]
+        
+        logger.info(f"Total candidates: {len(candidates)}")
+
+        # ============================================
+        # PHASE 2: URL DEDUPLICATION (First - Free & Instant)
+        # ============================================
+        url_checked = []
+        url_dupes = 0
+        
+        for lead in candidates:
+            url = lead.get('url')
+            if not url:
+                continue
+            if db.check_url_exists(url):
+                url_dupes += 1
+                continue
+            url_checked.append(lead)
+        
+        logger.info(f"After URL dedup: {len(url_checked)} candidates ({url_dupes} duplicates removed)")
+
+        # ============================================
+        # PHASE 3: BATCH GATEKEEPER (Quick Relevance Filter)
+        # ============================================
+        batch_size = config.FILTER_BATCH_SIZE
+        gatekeeper_survivors = []
+
+        for i in range(0, len(url_checked), batch_size):
+            batch = url_checked[i : i + batch_size]
+            logger.info(f"Gatekeeper batch {i//batch_size + 1}/{(len(url_checked)+batch_size-1)//batch_size}")
+            
+            batch_survivors = filters.smart_gatekeeper(batch)
+            gatekeeper_survivors.extend(batch_survivors)
+            logger.info(f"Batch survivor rate: {len(batch_survivors)}/{len(batch)}")
+
+        logger.info(f"After Gatekeeper: {len(gatekeeper_survivors)} candidates")
+
+        # ============================================
+        # PHASE 4: SEMANTIC DEDUPLICATION (Embedding Similarity)
+        # ============================================
+        embedding_survivors = []
+        semantic_dupes = 0
+        
+        for lead in gatekeeper_survivors:
+            title = lead.get('title', 'Unknown')
+            
+            # Generate embedding
+            embedding = llm.get_embedding(f"{lead['title']}\n{lead['summary']}")
+            if not embedding:
+                logger.warning(f"[EMBED] Failed to generate embedding for: {title}")
+                continue
+            
+            lead['embedding'] = embedding
+            
+            # Strict similarity check (0.85 threshold = 85% similar is a dupe)
+            if db.check_similarity(embedding, threshold=config.SIMILARITY_THRESHOLD):
+                logger.info(f"[DEDUP] Semantically similar, skipping: {title}")
+                db.mark_url_processed(lead.get('url'))
+                semantic_dupes += 1
+                continue
+            
+            embedding_survivors.append(lead)
+        
+        logger.info(f"After Semantic dedup: {len(embedding_survivors)} candidates ({semantic_dupes} similar stories removed)")
+
+        # ============================================
+        # PHASE 5: VIRALITY CHECK (Threshold: 80+)
+        # ============================================
+        virality_survivors = []
+        
+        for lead in embedding_survivors:
+            title = lead.get('title', 'Unknown')
+            url = lead.get('url')
+            
+            lead = filters.virality_check(lead)
+            
+            if lead['virality_score'] < config.VIRALITY_THRESHOLD:
+                logger.info(f"[VIRALITY] Rejected ({lead['virality_score']}/100): {title}")
+                db.mark_url_processed(url)
+                continue
+            
+            logger.info(f"[VIRALITY] Passed ({lead['virality_score']}/100): {title}")
+            virality_survivors.append(lead)
+
+        logger.info(f"After Virality check: {len(virality_survivors)} candidates")
+
+        # ============================================
+        # PHASE 6: BRAND CHECK (Threshold: 70+)
+        # ============================================
+        saved_count = 0
+        
+        for lead in virality_survivors:
+            title = lead.get('title', 'Unknown')
+            url = lead.get('url')
+            
+            lead = filters.brand_lens_check(lead)
+            
+            if lead['brand_score'] < config.BRAND_THRESHOLD:
+                logger.info(f"[BRAND] Rejected ({lead['brand_score']}/100): {title}")
+                db.mark_url_processed(url)
+                continue
+
+            # ============================================
+            # PHASE 7: SAVE & EXPAND
+            # ============================================
+            lead_id = db.insert_lead(lead)
+            saved_count += 1
+            logger.info(f"[SAVED] {title} (Virality: {lead['virality_score']}, Brand: {lead['brand_score']})")
+            
+            # Mark URL as processed
+            db.mark_url_processed(url)
+            
+            # Extract & Save New Discovery Topics
+            new_topics = [{"topic": t, "origin_lead_id": lead_id} for t in lead.get('new_topics', [])]
+            if new_topics:
+                db.insert_discovery_topics(new_topics)
+                logger.info(f"[EXPAND] Added {len(new_topics)} new discovery topics")
+
+        # ============================================
+        # SUMMARY
+        # ============================================
+        logger.info("=" * 50)
+        logger.info("WORKFLOW COMPLETE")
+        logger.info(f"  Total ingested:        {len(candidates)}")
+        logger.info(f"  After URL dedup:       {len(url_checked)}")
+        logger.info(f"  After Gatekeeper:      {len(gatekeeper_survivors)}")
+        logger.info(f"  After Semantic dedup:  {len(embedding_survivors)}")
+        logger.info(f"  After Virality:        {len(virality_survivors)}")
+        logger.info(f"  Saved to DB:           {saved_count}")
+        logger.info("=" * 50)
+
+workflow = Workflow()

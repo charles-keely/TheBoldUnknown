@@ -1,25 +1,32 @@
 import re
-from bs4 import BeautifulSoup
+import html
 
-def clean_html(text: str) -> str:
+def clean_text(text: str) -> str:
     """
-    Remove HTML tags and clean up whitespace.
+    Cleans and normalizes text.
+    1. Unescapes HTML entities.
+    2. Removes HTML tags.
+    3. Collapses whitespace.
     """
     if not text:
         return ""
-        
-    # Use BeautifulSoup to strip tags
-    soup = BeautifulSoup(text, "html.parser")
-    text = soup.get_text(separator=" ")
     
-    # Normalize whitespace
+    # Unescape HTML
+    text = html.unescape(text)
+    
+    # Remove HTML tags
+    text = re.sub(r'<[^>]+>', ' ', text)
+    
+    # Collapse whitespace
     text = re.sub(r'\s+', ' ', text).strip()
+    
     return text
 
-def truncate(text: str, max_length: int = 1500) -> str:
+def normalize_url(url: str) -> str:
     """
-    Truncate text to a maximum length.
+    Normalizes a URL by removing tracking parameters etc.
+    For now, we just strip whitespace.
     """
-    if len(text) <= max_length:
-        return text
-    return text[:max_length] + "..."
+    if not url:
+        return ""
+    return url.strip()
