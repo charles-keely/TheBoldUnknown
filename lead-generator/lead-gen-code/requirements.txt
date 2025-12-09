@@ -1,0 +1,10 @@
+typer
+feedparser
+openai
+httpx
+psycopg2-binary
+python-dotenv
+rich
+beautifulsoup4
+tenacity
+pgvector
