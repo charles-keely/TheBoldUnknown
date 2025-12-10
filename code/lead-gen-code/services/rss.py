@@ -8,19 +8,27 @@ import datetime
 
 # This list should ideally be in a config or database
 RSS_FEEDS_MAIN = [
-    # Core Science & Quietly Strange (High Viral Yield Only)
+    # Core Science & Quietly Strange
+    "https://www.quantamagazine.org/feed",
     "https://aeon.co/feed.rss",
     "https://nautil.us/feed",
+    "https://undark.org/feed",
+    "https://daily.jstor.org/feed",
     "https://www.bbc.com/future/feed.rss",
     "https://www.sciencenews.org/feed",
+    "https://www.newscientist.com/subject/space/feed/",
+    "https://www.newscientist.com/subject/physics/feed/",
+    "https://www.newscientist.com/subject/technology/feed/",
+    "https://phys.org/rss-feed/",
 
-    # Mind & Cognition (Narrative-Driven)
+    # Mind & Cognition (High Narrative Yield Only)
     "https://mindhacks.com/feed",
     "https://psyche.co/feed",
 
-    # Space / Earth / Natural Phenomena (Visual + Awe)
+    # Space / Earth / Natural Phenomena
     "http://www.nasa.gov/rss/dyn/image_of_the_day.rss",
     "https://earthsky.org/feed",
+    "https://phys.org/rss-feed/earth-news/",
     "https://phys.org/rss-feed/space-news/",
 
     # Tech, Complex Systems, Emergent Weirdness
@@ -31,6 +39,7 @@ RSS_FEEDS_MAIN = [
     # History / Culture / Documented Oddities
     "https://www.atlasobscura.com/feeds/latest",
     "https://www.smithsonianmag.com/rss/latest_articles/",
+    "https://folklorethursday.com/feed/",
     "https://www.archaeology.org/rss/news.xml",
     "https://www.heritagedaily.com/feed",
     "https://www.ancient-origins.net/rss.xml",  # keep; brand filter stays strict
@@ -41,14 +50,13 @@ RSS_FEEDS_MAIN = [
     "https://skepticalinquirer.org/feed/",
     "https://www.openminds.tv/feed",
 
-    # FOIA, Secrecy & Declassified Docs (Consistently High Interest)
+    # FOIA, Secrecy & Declassified Docs
     "https://www.muckrock.com/news/feeds/",
     "http://feeds.propublica.org/propublica/main",
     "https://unredacted.com/feed/",
     "https://www.bellingcat.com/feed/",
     "https://www.theblackvault.com/documentarchive/feed/",
 ]
-
 
 # Reddit feeds - top posts from the past week
 RSS_FEEDS_REDDIT = [
