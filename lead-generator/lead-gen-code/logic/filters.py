@@ -1,6 +1,7 @@
 from typing import List, Dict, Any
 from services.llm import llm
 from utils.logger import logger
+from config import config
 import json
 
 class Filters:
@@ -193,7 +194,7 @@ Be honest and critical. Most stories should score 50-75. Reserve 85+ for genuine
 
 Summary: {lead['summary']}"""
         
-        analysis = llm.chat_completion_json(system_prompt, user_prompt)
+        analysis = llm.chat_completion_json(system_prompt, user_prompt, model=config.OPENAI_MODEL_MAIN)
         
         lead['virality_score'] = analysis.get('virality_score', 0)
         lead['hook_analysis'] = analysis.get('hook_analysis', '')
@@ -264,7 +265,7 @@ Be honest and critical. Most stories should score 50-75. Reserve 90+ for genuine
 
 Summary: {lead['summary']}"""
         
-        analysis = llm.chat_completion_json(system_prompt, user_prompt)
+        analysis = llm.chat_completion_json(system_prompt, user_prompt, model=config.OPENAI_MODEL_MAIN)
         
         lead['brand_score'] = analysis.get('brand_score', 0)
         lead['reasoning'] = analysis.get('reasoning', '')

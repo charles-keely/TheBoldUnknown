@@ -1,74 +1,95 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor, execute_values
-from config import config
+from tenacity import retry, stop_after_attempt, wait_exponential
+from config import Config
 from utils.logger import logger
-import contextlib
-
-@contextlib.contextmanager
-def get_db_connection():
-    """
-    Context manager for database connections.
-    """
-    conn = None
-    try:
-        conn = psycopg2.connect(config.DATABASE_URL)
-        yield conn
-    except Exception as e:
-        logger.error(f"Database connection failed: {e}")
-        raise
-    finally:
-        if conn:
-            conn.close()
 
 class Database:
     def __init__(self):
-        pass
+        self.conn = None
+
+    def connect(self):
+        if self.conn is None or self.conn.closed:
+            try:
+                self.conn = psycopg2.connect(
+                    host=Config.POSTGRES_HOST,
+                    port=Config.POSTGRES_PORT,
+                    dbname=Config.POSTGRES_DB,
+                    user=Config.POSTGRES_USER,
+                    password=Config.POSTGRES_PASSWORD
+                )
+                logger.info("Connected to database")
+            except Exception as e:
+                logger.warning(f"Database connection failed (will retry if inside logic): {e}")
+                raise
+
+    def get_cursor(self):
+        self.connect()
+        return self.conn.cursor(cursor_factory=RealDictCursor)
+
+    def close(self):
+        if self.conn:
+            self.conn.close()
+            logger.info("Database connection closed")
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    def execute_query(self, query, params=None):
+        try:
+            with self.get_cursor() as cur:
+                cur.execute(query, params)
+                self.conn.commit()
+                return cur
+        except Exception as e:
+            if self.conn:
+                self.conn.rollback()
+            logger.error(f"Query execution failed: {e}")
+            raise
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    def fetch_one(self, query, params=None):
+        try:
+            with self.get_cursor() as cur:
+                cur.execute(query, params)
+                return cur.fetchone()
+        except Exception as e:
+            logger.warning(f"Fetch one failed: {e}")
+            raise
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    def fetch_all(self, query, params=None):
+        try:
+            with self.get_cursor() as cur:
+                cur.execute(query, params)
+                return cur.fetchall()
+        except Exception as e:
+            logger.error(f"Fetch all failed: {e}")
+            raise
+
+    # --- Business Logic Methods ---
 
     def check_url_exists(self, url: str) -> bool:
         query = "SELECT count(*) as count FROM processed_urls WHERE url = %s"
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(query, (url,))
-                result = cur.fetchone()
-                return result[0] > 0
+        result = self.fetch_one(query, (url,))
+        return result['count'] > 0
 
     def mark_url_processed(self, url: str):
         query = "INSERT INTO processed_urls (url) VALUES (%s) ON CONFLICT DO NOTHING"
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(query, (url,))
-            conn.commit()
+        self.execute_query(query, (url,))
 
-    def check_similarity(self, embedding: list[float], threshold: float = 0.90) -> bool:
+    def check_similarity(self, embedding: list[float], threshold: float = 0.85) -> bool:
         """
         Checks if a similar lead exists. 
-        Returns True if a similar lead exists (similarity > threshold), False otherwise.
         """
-        # Note: <-> is Euclidean distance, <=> is Cosine distance.
-        # We want Cosine Similarity. 
-        # cosine_similarity = 1 - cosine_distance
-        # So we want: 1 - (embedding <=> other) > threshold
-        # Which means: (embedding <=> other) < 1 - threshold
-        
-        # However, the pgvector operator <=> returns cosine distance (1 - cosine_similarity).
-        # So if we want similarity > 0.90, we want distance < 0.10.
-        
         distance_threshold = 1 - threshold
-        
         query = """
         SELECT 1 
         FROM leads 
         WHERE embedding <=> %s < %s 
         LIMIT 1
         """
-        # pgvector expects a string representation of the vector like '[1,2,3]'
         embedding_str = str(embedding)
-        
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(query, (embedding_str, distance_threshold))
-                result = cur.fetchone()
-                return result is not None
+        result = self.fetch_one(query, (embedding_str, distance_threshold))
+        return result is not None
 
     def insert_lead(self, lead: dict) -> str:
         query = """
@@ -78,19 +99,20 @@ class Database:
         """
         embedding_str = str(lead['embedding'])
         
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(query, (
-                    lead['title'],
-                    lead['url'],
-                    lead['summary'],
-                    embedding_str,
-                    lead['brand_score'],
-                    lead['virality_score'],
-                    lead['source_origin']
-                ))
-                lead_id = cur.fetchone()[0]
-            conn.commit()
+        # We use execute_query directly to get the ID back
+        # Note: execute_query returns the cursor
+        with self.get_cursor() as cur:
+            cur.execute(query, (
+                lead['title'],
+                lead['url'],
+                lead['summary'],
+                embedding_str,
+                lead['brand_score'],
+                lead['virality_score'],
+                lead['source_origin']
+            ))
+            lead_id = cur.fetchone()['id']
+            self.conn.commit()
             return str(lead_id)
 
     def get_active_discovery_topics(self) -> list[dict]:
@@ -100,10 +122,7 @@ class Database:
         ORDER BY last_searched_at ASC NULLS FIRST 
         LIMIT 1
         """
-        with get_db_connection() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                cur.execute(query)
-                return cur.fetchall()
+        return self.fetch_all(query)
 
     def update_topic_last_searched(self, topic_id: str):
         query = """
@@ -111,10 +130,7 @@ class Database:
         SET last_searched_at = NOW() 
         WHERE id = %s
         """
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(query, (topic_id,))
-            conn.commit()
+        self.execute_query(query, (topic_id,))
 
     def insert_discovery_topics(self, topics: list[dict]):
         """
@@ -130,9 +146,8 @@ class Database:
         """
         values = [(t['topic'], t['origin_lead_id']) for t in topics]
         
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                execute_values(cur, query, values)
-            conn.commit()
+        with self.get_cursor() as cur:
+            execute_values(cur, query, values)
+            self.conn.commit()
 
 db = Database()

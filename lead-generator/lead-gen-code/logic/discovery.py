@@ -10,69 +10,32 @@ class DiscoveryEngine:
 
     def generate_fresh_topics(self, count: int = 5) -> List[str]:
         """
-        Generates fresh, diverse search topics using an evolutionary approach.
-        Instead of static lists, it asks the LLM to hallucinate new, grounded intersections.
+        Generates fresh, BROAD search topics.
+        We want to find clusters of strange stories, not single niche needles.
         """
         
-        # 1. Generate "Wild Intersections" (The Entropy Source)
-        # We ask for weird fields of study that might uncover strange stories.
+        system_prompt = """You are the "Discovery Engine" for TheBoldUnknown.
+Your goal is to generate BROAD SEARCH QUERIES that will surface lists of recent scientific anomalies, strange historical documents, or unexplained phenomena.
+
+STRATEGY:
+- Do NOT generate narrow, specific queries like "weather in 15th century art".
+- DO generate broad "list-generating" queries like "unexplained atmospheric phenomena 2024" or "recent archaeological anomalies in peer reviewed journals".
+- The goal is to cast a wide net into "The Unknown" so Perplexity can find multiple stories.
+
+DOMAINS TO EXPLORE (Pick different ones each time):
+- Physics & Cosmology anomalies
+- Biological & Evolutionary puzzles
+- Archaeology & History (Out of place artifacts)
+- Cognitive Science & Psychology (Counterintuitive findings)
+- Technology & AI Glitches
+- Oceanography & Deep Earth mysteries
+
+Output ONLY a JSON list of strings: ["query 1", "query 2", "query 3"]"""
         
-        system_prompt = """You are the "Entropy Engine" for TheBoldUnknown.
-Your goal is to invent completely new, specific, and slightly weird "search angles" to find stories we would otherwise miss.
-
-BRAND LENS: Grounded, Scientific, Quietly Strange, Cinematic.
-
-TASK:
-Invent 3 "Intersections" — places where two unrelated fields collide to reveal anomalies.
-Examples:
-- "Mycology + Computer Science" (Bio-computing networks)
-- "Art History + Meteorology" (Weather anomalies in ancient paintings)
-- "Oceanography + Acoustics" (Unexplained deep sea sounds)
-- "Archaeology + Genetics" (DNA anomalies in ancient remains)
-
-Return ONLY a JSON list of strings: ["intersection 1", "intersection 2", "intersection 3"]"""
-        
-        user_prompt = "Generate 3 new, wild, but grounded intersections for discovery."
+        user_prompt = "Generate 3 broad, high-potential search queries for finding documented anomalies and strange news."
         
         try:
-            intersections_json = llm.chat_completion_json(system_prompt, user_prompt)
-            # Handle list or dict output
-            if isinstance(intersections_json, list):
-                intersections = intersections_json
-            elif isinstance(intersections_json, dict):
-                intersections = list(intersections_json.values())[0] if intersections_json else []
-            else:
-                intersections = []
-        except Exception as e:
-            logger.error(f"Discovery Engine error (Intersections): {e}")
-            intersections = ["Physics + Anomalies", "Biology + Glitch"] # Fallback
-
-        if not intersections:
-            intersections = ["History + Unexplained", "Space + Mystery"]
-
-        logger.info(f"[DISCOVERY] Generated Intersections: {intersections}")
-
-        # 2. Convert Intersections into Specific Search Topics
-        # Now we ask the LLM to convert these abstract ideas into concrete search terms.
-        
-        topics_system_prompt = """You are the Lead Researcher for TheBoldUnknown.
-Convert these abstract "Intersections" into SPECIFIC, SEARCHABLE TOPICS for Perplexity.
-
-Goal: Find specific, documented anomalies or mysteries.
-Avoid generic terms. Be specific.
-
-Example Input: "Art History + Meteorology"
-Example Output: "historical weather anomalies recorded in renaissance art"
-
-Return ONLY a JSON list of search strings."""
-
-        topics_user_prompt = f"""Convert these intersections into specific search topics:
-{json.dumps(intersections)}
-
-Output JSON: ["topic 1", "topic 2", "topic 3"]"""
-
-        try:
-            topics_response = llm.chat_completion_json(topics_system_prompt, topics_user_prompt)
+            topics_response = llm.chat_completion_json(system_prompt, user_prompt)
              # Handle list or dict output
             if isinstance(topics_response, list):
                 topics = topics_response
@@ -90,9 +53,11 @@ Output JSON: ["topic 1", "topic 2", "topic 3"]"""
                 topics = []
                 
         except Exception as e:
-            logger.error(f"Discovery Engine error (Topics): {e}")
-            return []
+            logger.error(f"Discovery Engine error: {e}")
+            topics = ["recent scientific anomalies 2024", "unexplained archaeological discoveries"]
 
+        logger.info(f"[DISCOVERY] Generated Fresh Topics: {topics}")
+        
         # Enforce limits
         return topics[:count]
 

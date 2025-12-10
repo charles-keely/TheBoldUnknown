@@ -16,10 +16,8 @@ env_path_cwd = Path.cwd() / '.env'
 # Load
 if env_path_parent.exists():
     load_dotenv(dotenv_path=env_path_parent)
-    # print(f"Loaded .env from: {env_path_parent}") 
 elif env_path_cwd.exists():
     load_dotenv(dotenv_path=env_path_cwd)
-    # print(f"Loaded .env from: {env_path_cwd}")
 else:
     print(f"WARNING: Could not find .env file at {env_path_parent} or {env_path_cwd}")
 
@@ -44,8 +42,8 @@ class Config:
     # Application Settings
     RSS_BATCH_SIZE = 1
     FILTER_BATCH_SIZE = 20
-    SIMILARITY_THRESHOLD = 0.80  # 85% similar = duplicate (strict)
-    VIRALITY_THRESHOLD = 80      # Stories must score 80+ virality to proceed
+    SIMILARITY_THRESHOLD = 0.75  # 85% similar = duplicate (strict)
+    VIRALITY_THRESHOLD = 78      # Stories must score 80+ virality to proceed
     BRAND_THRESHOLD = 70         # Stories must score 70+ brand fit to be saved
     
     # Testing / Limits
@@ -58,5 +56,24 @@ class Config:
             return "postgresql://user:pass@localhost:5432/db"
             
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    @classmethod
+    def validate(cls):
+        """
+        Validates that critical configuration is present.
+        Raises ValueError if something is missing.
+        """
+        missing = []
+        if not cls.OPENAI_API_KEY:
+            missing.append("OPENAI_API_KEY")
+        if not cls.PERPLEXITY_API_KEY:
+            missing.append("PERPLEXITY_API_KEY")
+        
+        # Check DB vars
+        if not os.getenv("POSTGRES_HOST"):
+            missing.append("POSTGRES_HOST")
+            
+        if missing:
+            raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
 config = Config()
