@@ -93,8 +93,8 @@ class Database:
 
     def insert_lead(self, lead: dict) -> str:
         query = """
-        INSERT INTO leads (title, url, summary, embedding, brand_score, virality_score, source_origin, status)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, 'new')
+        INSERT INTO leads (title, url, summary, embedding, brand_score, virality_score, source_origin, published_at, status)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'new')
         RETURNING id
         """
         embedding_str = str(lead['embedding'])
@@ -109,7 +109,8 @@ class Database:
                 embedding_str,
                 lead['brand_score'],
                 lead['virality_score'],
-                lead['source_origin']
+                lead['source_origin'],
+                lead.get('published_at')
             ))
             lead_id = cur.fetchone()['id']
             self.conn.commit()

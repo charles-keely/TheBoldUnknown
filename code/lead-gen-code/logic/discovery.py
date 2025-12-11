@@ -3,6 +3,7 @@ from typing import List
 from services.llm import llm
 from utils.logger import logger
 import json
+import datetime
 
 class DiscoveryEngine:
     def __init__(self):
@@ -13,13 +14,14 @@ class DiscoveryEngine:
         Generates fresh, BROAD search topics.
         We want to find clusters of strange stories, not single niche needles.
         """
+        current_year = datetime.datetime.now().year
         
-        system_prompt = """You are the "Discovery Engine" for TheBoldUnknown.
+        system_prompt = f"""You are the "Discovery Engine" for TheBoldUnknown.
 Your goal is to generate BROAD SEARCH QUERIES that will surface lists of recent scientific anomalies, strange historical documents, or unexplained phenomena.
 
 STRATEGY:
 - Do NOT generate narrow, specific queries like "weather in 15th century art".
-- DO generate broad "list-generating" queries like "unexplained atmospheric phenomena 2024" or "recent archaeological anomalies in peer reviewed journals".
+- DO generate broad "list-generating" queries like "unexplained atmospheric phenomena {current_year}" or "recent archaeological anomalies in peer reviewed journals".
 - The goal is to cast a wide net into "The Unknown" so Perplexity can find multiple stories.
 
 DOMAINS TO EXPLORE (Pick different ones each time):
@@ -54,7 +56,7 @@ Output ONLY a JSON list of strings: ["query 1", "query 2", "query 3"]"""
                 
         except Exception as e:
             logger.error(f"Discovery Engine error: {e}")
-            topics = ["recent scientific anomalies 2024", "unexplained archaeological discoveries"]
+            topics = [f"recent scientific anomalies {current_year}", "unexplained archaeological discoveries"]
 
         logger.info(f"[DISCOVERY] Generated Fresh Topics: {topics}")
         
