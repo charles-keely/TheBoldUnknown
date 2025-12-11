@@ -3,7 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Load environment variables
-env_path_parent = Path(__file__).resolve().parent.parent / '.env'
+env_path_parent = Path(__file__).resolve().parent.parent.parent / '.env'
 env_path_cwd = Path.cwd() / '.env'
 
 if env_path_parent.exists():
@@ -21,10 +21,11 @@ class Config:
     
     # API Keys
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
     
     # Models
-    CURATOR_MODEL = "gpt-5.1"  # As requested
-    CURATION_STRATEGY = "collection_date"  # Options: 'collection_date', 'virality', 'composite'
+    RESEARCHER_MODEL = "gpt-4o"
+    PERPLEXITY_MODEL = "sonar-pro"
     
     # Paths
     ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -38,4 +39,3 @@ class Config:
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
 config = Config()
-

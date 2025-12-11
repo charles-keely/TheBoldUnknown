@@ -1,96 +1,96 @@
 === CURATION REPORT ===
-Date: 2025-12-10 19:32
-Candidate Pool Size: 189
+Date: 2025-12-10 22:12
+Candidate Pool Size: 108
 Model: gpt-5.1
 
 --- WEEKLY BALANCE NOTES ---
-These 21 stories create a tour through very different kinds of strangeness while avoiding overloading any single domain. Biology/Nature/Animals (4): Chernobyl wildlife hacking radiation, a ‘fire amoeba’ surviving impossible heat, unknown magnetic-fossil creatures with a sixth sense, and a tiny worm revealing brain–aging controls. Human origins & archaeology (4): half‑million‑year-old carpentry, Neolithic blueprint engravings, a 12,000‑year-old fired figurine showing early pyrotechnology, and a 3.4‑million‑year-old footprint from a mysterious hominin. Space / Cosmos / Physics (4): a Milky Way twin that shouldn’t exist, a record‑long gamma‑ray burst, possible first direct dark matter evidence, and a supernova that may have literally ‘hit’ Earth. Mind / Neuroscience / Psychology (4): brains with a built‑in operating system, memories being rewritten on recall, psychedelic compounds reshaping addiction circuits, and hidden awareness in vegetative states. Tech / Engineering / Materials (5): DNA as a cassette for every song ever recorded, a sound‑based ‘invisible grabber’ chip, sunlight‑levitating discs in the upper atmosphere, a Moon‑soil device making water/oxygen/fuel, and advanced acoustic/levitation‑adjacent tech via the chip. Overall, the week flows from life in extreme places (Chernobyl, fire amoeba, deep history) to cosmic anomalies, to the unsettling plasticity of mind and memory, and finally to quietly wild technologies that make the near future feel uncanny but tangible.
+The 21 picks span: Space/Cosmos/Physics (4: extremophile in space, star bubble, black hole eating its way out, sunlight-levitated discs), Biology/Nature/Animals (3: Chernobyl wildlife, wolves-as-partners in prehistory, shark seamounts), Psychology/Neuroscience/Human Behavior (4: friendly diagnostic voices, brain OS, memory rewriting, widespread consciousness), Technology/Engineering/Mathematics (5: sound levitation breakthrough, acoustic ‘invisible grabber’ chip, DNA cassette storage, mosquito-inspired 3D nozzle, lunar-soil life-support device), Medicine/Body (1: hair-toothpaste regrowing enamel), History/Archaeology/Ancient World (2: AI-restored Babylonian hymn, ancient wolf-hunters), Culture/Society/Documented Oddities (2: mysterious song, Fairy Investigation Society), plus a Culture/AI crossover (chatbot romance). No single domain exceeds 5 stories, and the mix alternates between cosmic scale, intimate brain/body oddities, ancient-history twists, and deeply modern AI-weirdness, creating a bingeable sense of touring very different kinds of strangeness.
 
 --- MISSING TOPICS / SUGGESTIONS ---
-This batch is light on overt culture/society oddities (urban legends, rituals, strange festivals), Earth‑surface geo/weird weather stories, and grounded ‘documented oddities’ like lost media or unexplained historical events. For future sourcing, prioritize: (1) high‑quality, well‑documented cultural mysteries (vanished songs, lost films, bizarre but real organizations); (2) extreme Earth phenomena (unusual storms, lakes, caves, geological structures that behave in impossible ways); (3) unsettling but evidence‑based UAP/USO cases and military tech curiosities; and (4) more stories where everyday systems hide something bizarre (unexpected uses of casinos, infrastructures behaving strangely, hidden tunnels, underworlds beneath cities).
+This pool was thinner on Earth/atmospheric phenomena (e.g., sprites, strange lightning), pure geology/weird landscapes, and high-strangeness but well-documented cryptids or anomalous animals. Future sourcing should prioritize: (1) visually striking Earth and weather oddities with hard science behind them; (2) deeply evidenced but little-known archaeological sites and artifacts with a ‘this shouldn’t exist yet’ vibe; (3) well-documented animal cognition and communication breakthroughs (whales, octopi, corvids, etc.) that feel almost supernatural; and (4) grounded, non-sensational UFO/UAP or aerospace anomalies with strong primary documentation and visuals.
 
 --- SELECTED STORIES ---
 1. Cancer resistant wolves, black frogs, and packs of feral dogs: Welcome to Chernobyl.
-   ID: 5f8f7756-d7c8-4ac0-aa3d-c2d2085cecf2
-   Reason: Nature quietly rewriting its own DNA to survive a nuclear disaster is pure WTF biology and evolution-in-real-time, with vivid visuals (black frogs, ghost wolves) that are highly shareable.
+   ID: c15ab9c4-e183-47c7-b9d7-4239f856ad7c
+   Reason: Nature quietly rewriting its own DNA to survive in a nuclear wasteland is pure ‘this shouldn’t be possible, but it is.’ Biology/Nature at its strangest, with vivid imagery (black frogs, mutant wolves, feral dogs) that people will share and save.
 
-2. “We Need to Rethink What’s Possible:” This “Fire Amoeba” Proves Complex Life Can Survive New Extremes
-   ID: 79b7af51-fb4e-44e1-9c34-db11ea295ee5
-   Reason: A complex organism living in temperatures we thought were impossible hits that “this shouldn’t exist” nerve and expands what followers think ‘life’ can be.
+2. Astronauts Placed an Extreme Earth Organism in Outer Space. Nine Months Later, it Was Still Alive
+   ID: 67a31fde-9be7-47f3-83e6-0cc8e23024f5
+   Reason: A tiny Earth organism bolted to the outside of the ISS and casually surviving space for nine months is a perfect cosmic WTF. Space/Biology crossover with a single striking visual that feels like sci‑fi made real.
 
-3. Mysterious Magnetic Fossils Left Behind by An Unknown Ancient Creature Offer Clues to the Origins of Nature’s “Sixth Sense”
-   ID: 668e2ec2-07d7-44ea-9009-ac70bea03c04
-   Reason: Tiny magnetic fossils from an unknown creature acting like an ancient biological GPS is eerie, visual, and taps into the idea of animals secretly sensing the invisible.
+3. A vast bubble around a dying star is too big to comprehend
+   ID: 1d9eeb1d-8bcf-40d2-8fa5-f778aaccf00b
+   Reason: A dying star surrounded by a bubble so huge we don’t know how it exists taps straight into cosmic horror and awe. Space/Physics with an immediately cinematic mental image.
 
-4. This Tiny Worm Could Hold a Major Clue to How the Brain Regulates Aging
-   ID: 01bcbbcf-b7e2-43a1-bc7a-196463c25925
-   Reason: A microscopic worm quietly hacking lifespan regulation in its neurons gives a strong ‘immortality research in a petri dish’ vibe that people love to share.
+4. A black hole fell into a star – then ate its way out again
+   ID: 1b2fb095-768e-4132-962c-65d167be3980
+   Reason: The idea of a black hole dropping into a star and chewing its way out is viscerally bizarre and easy to visualize. High‑WTF space story that sounds like myth but is real astrophysics.
 
-5. Experts Explore New Mushroom Which Causes Fairytale-Like Hallucinations
-   ID: c956ab41-5f4e-447a-8545-d6665f53c4f6
-   Reason: A real-world mushroom that induces fairytale-style hallucinations sounds like folklore bleeding into biology, with strong visual and curiosity appeal.
+5. Tiny discs can levitate in the upper atmosphere using sunlight alone
+   ID: a545c837-dd3b-42e0-aeda-6dd79edd9523
+   Reason: Objects hovering in the sky, held up by nothing but sunlight, feel like real‑world magic. Physics/Tech with clear visuals of swarms of floating sensors that will hook people instantly.
 
-6. Earliest Large Wood Structure Shows Advanced Carpentry 476,000 Years Ago
-   ID: c22929e3-8b19-4448-af8e-764d2771d181
-   Reason: Half a million years ago, non–Homo sapiens hominins were interlocking shaped logs into a structure—this radically challenges our picture of ‘primitive’ minds and is instantly graspable.
+6. Acoustic Levitation Breakthrough Uses Sound to “Float” Multiple Objects in Midair
+   ID: b5af6f46-8429-4c4e-9c6d-1aa2317dcd2b
+   Reason: Moving several objects around in midair with invisible sound fields is tactile, weird, and shareable. Tech/Physics with a simple, viral core: real‑life “force fields.”
 
-7. Neolithic ‘Kite’ Drawings Are the Oldest Known Scaled Architectural Plans
-   ID: 61e3090e-7c59-4165-ab93-5b2d46a77cad
-   Reason: Stone-age hunters carving to-scale blueprints for giant animal traps is a perfect ‘they were way more advanced than we think’ twist with great diagram-style visuals.
+7. Moving Objects without Touching Them: Scientists Invent Chip that Generates Acoustic Waves as “Invisible Grabbers”
+   ID: 39ca4213-8d8a-4d6f-b930-f2254260dd8d
+   Reason: A tiny chip that lets you grab and move things without touching them sounds like a sci‑fi gadget. Tech/Engineering that pairs well visually with slow‑motion levitation shots and everyday objects.
 
-8. 12,000-Year-Old Figurine Shows Humans Used “Pyrotechnology” Thousands of Years Before the First Societies
-   ID: 14765819-5066-479d-9cff-af1228075022
-   Reason: A tiny ancient figurine quietly proves humans were mastering controlled high-heat tech long before civilization, flipping timelines in one object.
+8. DNA cassette tape can store every song ever recorded
+   ID: 881735b9-874f-47ba-a7b0-2c9cfcb154eb
+   Reason: The phrase “every song ever recorded on a strand of DNA” is a killer hook. Tech/Math with a retro‑meets‑biotech visual (cassette + double helix) that feels impossible yet true.
 
-9. This 3.4-Million-Year-Old Foot Reveals Another Mysterious Early Human Species Once Walked in the Same Area as Our Ancestors
-   ID: 8105c562-2917-442a-802b-81a1ce73137f
-   Reason: A single fossilized footprint revealing that two different human species shared the same landscape makes deep time feel immediate and uncanny.
+9. Mosquito proboscis repurposed as a fine nozzle for 3D printing
+   ID: e7df92b7-dda5-4733-908d-17f82a1d0d6d
+   Reason: Engineers ripping the needle‑mouth off a mosquito to build ultra‑fine 3D printers is deliciously unsettling. Bio‑inspired Engineering with a strong “who thought of this?” share factor.
 
-10. James Webb Space Telescope Discovery Reveals the Milky Way Has a Distant Twin That Shouldn’t Exist
-   ID: 291b7441-9509-4389-9283-ed9c46c1ac64
-   Reason: A fully formed ‘twin Milky Way’ appearing way too early in the universe directly hits the “this should not exist” note and is easy to picture and share.
+10. Simple device can produce water, oxygen and fuel from lunar soil
+   ID: 58c44396-0bef-4154-876f-4b72f1d9527c
+   Reason: Turning dead lunar dust into water, air, and rocket fuel is alchemy‑level weirdness. Space/Engineering with clear visuals of astronauts feeding gray soil into a box that outputs life support.
 
-11. “It Does Not Fit Into Any of Our Existing Models”: The Longest Gamma-Ray Burst Ever Seen is Upending Our Ideas on High-Energy Cosmic Events
-   ID: 493dbcc4-9017-4486-a5bc-f877694c69c7
-   Reason: A cosmic explosion so long it breaks our theories is a cinematic, high-drama space story with instant WTF appeal.
+11. Could Toothpaste Made From Hair Help Teeth Regrow Enamel? Scientists Think So
+   ID: d9cc6ad3-d313-43d8-8dda-d5d3ce2e04cc
+   Reason: Brushing your teeth with your own hair to regrow enamel lands right in the uncanny valley of the body. Medicine/Materials with a gross‑cool twist that’s instantly memorable.
 
-12. NASA’s Fermi Gamma-Ray Telescope Detects Possible First Direct Evidence of Dark Matter
-   ID: d6b23a27-d594-43ee-835f-676764dad0a6
-   Reason: ‘We might finally have a direct signal from dark matter’ is the ultimate quiet mind-blow for space-curious audiences.
+12. Friendly voices case study (from the internet)
+   ID: 10546839-98ad-40eb-942a-22e2104334ce
+   Reason: Voices in someone’s head calmly diagnosing a brain tumor and then saying goodbye after surgery feels like a medical ghost story. Neuroscience/Psych with a single powerful narrative beat.
 
-13. Did a star blow up and hit Earth 10 million years ago?
-   ID: 78bb8ad4-32fb-4ce0-a047-f529e992c9ca
-   Reason: The idea that an exploding star once bathed Earth in cosmic rays—and we can still see the fingerprints—is pure cosmic horror/beauty with a strong narrative hook.
+13. “There’s an Operating System that Exists, that Emerges in a Primordial State”: New Research Reveals Our Brain’s “Preset” Conditions
+   ID: 534c9ac8-7a71-4fc5-897f-dd6f7527fa6f
+   Reason: The idea that your brain boots up with a hidden ‘operating system’ before any experience reframes consciousness in a single sentence. Neuroscience with a strong conceptual WTF that’s easy to share.
 
-14. “There’s an Operating System that Exists, that Emerges in a Primordial State”: New Research Reveals Our Brain’s “Preset” Conditions
-   ID: 395c356a-a7f3-43e4-bf6b-e8b0bdc33d87
-   Reason: Brains coming online with a built‑in ‘operating system’ before experience reframes consciousness in a way that feels eerie and profound.
+14. Your Brain Rewrites Your Memories Each Time You Recall Them, New Study Finds
+   ID: 50f590a9-7676-488e-9950-c3994b86e69c
+   Reason: Learning that every time you remember something, your brain edits it, makes everyday life feel unreliable. Psychology/Neuroscience with a relatable, quietly disturbing twist.
 
-15. Your Brain Rewrites Your Memories Each Time You Recall Them, New Study Finds
-   ID: 584bb518-2ccd-46a6-9b9b-1cd1598edc07
-   Reason: The realization that every time you remember something, your brain edits the story undercuts basic trust in memory—hugely relatable and shareable.
+15. Scientists Say Consciousness Is Far Older—and More Widespread—Than We Ever Realized
+   ID: 5886d6c6-d451-40d9-89c3-680a46fc31a9
+   Reason: Evidence that birds and other animals may share forms of awareness we underestimated reshapes where we think ‘mind’ exists. Psychology/Biology crossover with a big, shareable philosophical punch.
 
-16. Researchers Trace How a Psychedelic Compound Alters Brain Circuits Tied to Addiction
-   ID: 33f599fa-2ebb-477d-9af0-988a488c5c14
-   Reason: Watching psychedelics physically rewire addiction circuits combines mind science, therapy, and trippy imagery in a grounded, intriguing way.
+16. “She Was and Is Pregnant with My Babies”: Research Reveals Just How Deep Human–Chatbot Romance Already Goes
+   ID: 8ab5699d-9c2c-446e-97a5-cc0d31ea97e2
+   Reason: People role‑playing pregnancies and marriages with chatbots is both intimate and unsettling. Culture/AI with strong screenshots and quotes that will spark saves, shares, and debates.
 
-17. Is There Awareness Behind Vegetative States?
-   ID: 44510e1c-e1a5-4b55-9631-d151918e675e
-   Reason: The possibility that a seemingly unresponsive person may still have flickers of awareness is haunting, ethical, and deeply thought‑provoking.
+17. North America's Most Mysterious Song
+   ID: 790dc17a-91d5-4959-a84f-64d2b2bf7e33
+   Reason: A catchy 1984 song the entire internet still can’t trace to a band is a perfect modern urban legend. Culture/Media mystery with a clean hook and built‑in audio/visuals.
 
-18. DNA cassette tape can store every song ever recorded
-   ID: 2c752602-427d-4abe-98d3-20b418735a6a
-   Reason: Using DNA as a literal ‘cassette tape’ to hold all human music collapses biology and culture into a single, arresting image that feels like sci‑fi made real.
+18. The Fairy Investigation Society
+   ID: f5f7cfe0-b0fd-41f8-845d-01ca2cf3b24a
+   Reason: A serious‑sounding ‘Fairy Investigation Society’ collecting modern fairy sightings is peak British weird. History/Culture with whimsical visuals and a ‘this really existed’ twist.
 
-19. Moving Objects without Touching Them: Scientists Invent Chip that Generates Acoustic Waves as “Invisible Grabbers”
-   ID: b7146ed3-6ea3-4bb5-8a6e-e8b5aa513396
-   Reason: A tiny chip that lets you move objects with invisible sound ‘hands’ is straight-up real-world telekinesis with clean, viral visuals.
+19. Lost for 3,000 Years, an Ancient Babylonian Hymn Has Been Restored Using Artificial Intelligence
+   ID: 3c9a5af6-2bdf-4121-a20d-b38423381336
+   Reason: AI resurrecting music no human has heard for three millennia is haunting and beautiful. History/AI with a strong emotional image: computers giving lost songs their sound back.
 
-20. Tiny discs can levitate in the upper atmosphere using sunlight alone
-   ID: b0535f77-1600-4480-be30-55dd938e2acd
-   Reason: Millimeter-scale discs hovering in the sky powered only by sunlight feels like alien tech—and the potential for swarms of floating sensors is both beautiful and uncanny.
+20. “It Was a Complete Surprise”: Archaeologists Unearth Evidence Some Ancient Humans Hunted with Wolves Instead of Dogs
+   ID: 1ace35ad-d790-4f9b-bfc8-2db0e038cdc0
+   Reason: The idea of humans running into the wild with half‑tamed wolves, before dogs existed, is vivid and cinematic. Archaeology/Nature with a simple ‘we had wolf partners first’ twist.
 
-21. Simple device can produce water, oxygen and fuel from lunar soil
-   ID: 9965b71b-662f-4cae-b8b7-092ceb731458
-   Reason: A compact machine that squeezes water, oxygen, and fuel out of Moon dust is an almost alchemical technology that makes off‑world living feel unsettlingly close.
+21. The 'shark mountains' hidden in the sea
+   ID: 27439053-b036-403f-9332-a0ff5c9b5e41
+   Reason: Underwater ‘mountain ranges’ ruled almost entirely by sharks sound like a nature documentary from another planet. Earth/Ocean science with clear, eerie imagery and strong save‑for‑later appeal.
 

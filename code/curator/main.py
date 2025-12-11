@@ -38,6 +38,7 @@ def main():
         # 1. Determine Timeframe
         cutoff_date = db.get_latest_cutoff_date()
         logger.info(f"Looking for stories created after: {cutoff_date}")
+        logger.info(f"Curation Strategy: {config.CURATION_STRATEGY}")
         
         # 2. Fetch Candidates
         candidates = db.fetch_candidates(cutoff_date)
@@ -83,6 +84,12 @@ def main():
         
         logger.info(f"Detailed report written to {output_file.absolute()}")
 
+        # Clean up previous queue if in collection_date mode
+        if config.CURATION_STRATEGY == 'collection_date' and not args.dry_run:
+            cleared = db.clear_queued_stories(cutoff_date)
+            if cleared > 0:
+                logger.info(f"Cleared {cleared} previously queued stories from this timeframe to replace with new selection.")
+
         for story in result.selected_stories:
             logger.info(f"[SELECTED] {story.title} (ID: {story.id})")
             logger.info(f"  Reason: {story.reasoning}")
@@ -91,12 +98,23 @@ def main():
             if not args.dry_run:
                 try:
                     # We mark selected stories as 'approved' so they are ready for production
-                    db.update_lead_status(story.id, 'approved')
-                    logger.info("  -> Marked as APPROVED in DB")
+                    # update_lead_status returns True only if the lead actually exists.
+                    if db.update_lead_status(story.id, 'approved'):
+                        logger.info("  -> Marked as APPROVED in DB")
+
+                        # Queue this approved story for research so the researcher
+                        # knows it needs a research package built.
+                        # We pass along the curator's reasoning as notes.
+                        db.queue_story_for_research(story.id, notes=story.reasoning)
+                        logger.info("  -> Queued for STORY_RESEARCH (status=queued)")
+                    else:
+                        logger.error(f"  -> Lead ID {story.id} not found in DB! Skipping queue.")
                 except Exception as e:
                     logger.error(f"  -> Failed to update DB for {story.id}: {e}")
+                    db.rollback()  # Reset connection so next story can be processed
             else:
                 logger.info("  -> [Dry Run] Would mark as APPROVED in DB")
+                logger.info("  -> [Dry Run] Would queue in STORY_RESEARCH with status=queued")
                 
         logger.info("Curation cycle complete.")
 
