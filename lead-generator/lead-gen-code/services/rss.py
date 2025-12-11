@@ -8,15 +8,27 @@ import datetime
 
 # This list should ideally be in a config or database
 RSS_FEEDS_MAIN = [
-    # Core Science & Quietly Strange (High Viral Yield Only)
+    # Core Science & Quietly Strange — Optimized
+    "https://www.quantamagazine.org/feed",
     "https://aeon.co/feed.rss",
     "https://nautil.us/feed",
     "https://www.bbc.com/future/feed.rss",
-    "https://www.sciencenews.org/feed",
+    "https://www.newscientist.com/subject/space/feed/",
+    "https://www.newscientist.com/subject/technology/feed/",
+    "https://phys.org/rss-feed/",
 
     # Mind & Cognition (Narrative-Driven)
     "https://mindhacks.com/feed",
     "https://psyche.co/feed",
+
+    # Consciousness / Reality Edge
+    "https://nautil.us/tag/consciousness/feed",
+    "https://www.scientificamerican.com/rss/topic/mind-and-brain/",
+    "https://www.edge.org/rss.xml",
+
+    # Behavioral / Social Psychology (Grounded)
+    "https://behavioralscientist.org/feed/",
+    "https://greatergood.berkeley.edu/rss",
 
     # Space / Earth / Natural Phenomena (Visual + Awe)
     "http://www.nasa.gov/rss/dyn/image_of_the_day.rss",
@@ -31,45 +43,66 @@ RSS_FEEDS_MAIN = [
     # History / Culture / Documented Oddities
     "https://www.atlasobscura.com/feeds/latest",
     "https://www.smithsonianmag.com/rss/latest_articles/",
-    "https://www.archaeology.org/rss/news.xml",
-    "https://www.heritagedaily.com/feed",
-    "https://www.ancient-origins.net/rss.xml",  # keep; brand filter stays strict
-    "https://theconversation.com/feeds",
+    "https://www.archaeology.org/feed/",
+    "https://www.ancient-origins.net/rss.xml",  # usable; brand filter stays strict
 
     # Fringe-Adjacent but Evidence-Usable
     "https://thedebrief.org/feed/",
     "https://skepticalinquirer.org/feed/",
     "https://www.openminds.tv/feed",
 
-    # FOIA, Secrecy & Declassified Docs (Consistently High Interest)
+    # FOIA, Secrecy & Investigative Reporting
     "https://www.muckrock.com/news/feeds/",
     "http://feeds.propublica.org/propublica/main",
     "https://unredacted.com/feed/",
     "https://www.bellingcat.com/feed/",
-    "https://www.theblackvault.com/documentarchive/feed/",
+    "https://theintercept.com/feed/?lang=en",
+
+    # Intelligence / Defense / Classified-adjacent (Verified Working)
+    "https://nsarchive.gwu.edu/news/rss.xml",
+    "https://www.courtlistener.com/atom/",
+    "https://www.twz.com/feed/",
+
+    # Forteana / Anomaly Archives (Controlled)
+    "https://www.forteantimes.com/feed/",
 ]
 
 
 # Reddit feeds - top posts from the past week
 RSS_FEEDS_REDDIT = [
-    # Anomalies & High Strangeness (documented / investigative-leaning)
+    # Anomalies & High Strangeness (documented, investigative-leaning)
     "https://www.reddit.com/r/HighStrangeness/top/.rss?t=week",
     "https://www.reddit.com/r/Anomalies/top/.rss?t=week",
     "https://www.reddit.com/r/UnresolvedMysteries/top/.rss?t=week",
 
-    # OSINT, Intelligence, and weird real-world operations
+    # OSINT, Intelligence, and real-world operations
     "https://www.reddit.com/r/OSINT/top/.rss?t=week",
     "https://www.reddit.com/r/Intelligence/top/.rss?t=week",
 
-    # Media / history / digital oddities
+    # Media, history, and digital oddities
     "https://www.reddit.com/r/ObscureMedia/top/.rss?t=week",
     "https://www.reddit.com/r/LostMedia/top/.rss?t=week",
     "https://www.reddit.com/r/InternetMysteries/top/.rss?t=week",
 
-    # UAP / UFO (lead discovery only)
+    # UAP / UFO (lead discovery only, not assumed factual)
     "https://www.reddit.com/r/UFOs/top/.rss?t=week",
     "https://www.reddit.com/r/UAP/top/.rss?t=week",
+
+    # Systems, records, and unexplained-but-grounded mysteries
+    "https://www.reddit.com/r/NonMurderMysteries/top/.rss?t=week",
+    "https://www.reddit.com/r/GlitchInTheMatrix/top/.rss?t=week",
+    "https://www.reddit.com/r/WeirdHistory/top/.rss?t=week",
+
+    # Deep fringe & speculative science (strict filtering applied downstream)
+    "https://www.reddit.com/r/ForteanResearch/top/.rss?t=week",
+    "https://www.reddit.com/r/ParanormalScience/top/.rss?t=week",
+    "https://www.reddit.com/r/ConspiracyNOPOL/top/.rss?t=week",
+    "https://www.reddit.com/r/FringeScience/top/.rss?t=week",
 ]
+
+
+
+
 
 # Combined feeds
 RSS_FEEDS = RSS_FEEDS_MAIN + RSS_FEEDS_REDDIT
@@ -144,12 +177,21 @@ class RSSService:
             if not title or not url:
                 return None
 
+            published_parsed = entry.get('published_parsed')
+            published_at = None
+            if published_parsed:
+                try:
+                    # Convert struct_time to datetime
+                    published_at = datetime.datetime(*published_parsed[:6])
+                except Exception:
+                    pass
+
             return {
                 "title": title,
                 "url": url,
                 "summary": summary,
                 "source_origin": source_origin,
-                "published_at": entry.get('published_parsed')
+                "published_at": published_at
             }
         except Exception as e:
             logger.error(f"Error normalizing RSS entry: {e}")

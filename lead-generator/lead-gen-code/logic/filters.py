@@ -3,6 +3,8 @@ from services.llm import llm
 from utils.logger import logger
 from config import config
 import json
+import datetime
+import re
 
 class Filters:
     def __init__(self):
@@ -12,7 +14,8 @@ class Filters:
         """
         Generates a specific search query for a given topic.
         """
-        system_prompt = """You are an expert researcher for TheBoldUnknown, a publication that explores the hidden strangeness woven through reality.
+        current_year = datetime.datetime.now().year
+        system_prompt = f"""You are an expert researcher for TheBoldUnknown, a publication that explores the hidden strangeness woven through reality.
 
 Your task: Convert the user's topic into a single, highly specific search query optimized for finding recent anomalies, counterintuitive research, or documented phenomena.
 
@@ -23,14 +26,28 @@ Guidelines:
 - The query should uncover surprising details, unexplained patterns, counterintuitive findings, or strange bureaucratic/institutional oddities.
 
 Examples:
-- Topic: "Time crystals" → "time crystals non-equilibrium matter recent experimental anomalies 2024"
+- Topic: "Time crystals" → "time crystals non-equilibrium matter recent experimental anomalies {current_year}"
 - Topic: "Animal migration" → "unexplained animal migration pattern deviations documented studies"
 - Topic: "Memory" → "false memory implantation research counterintuitive findings neuroscience"
 
 Output ONLY the search query string. No explanation, no quotes, just the query."""
         
         user_prompt = f"Topic: {topic}"
-        return llm.chat_completion(system_prompt, user_prompt)
+        query = llm.chat_completion(system_prompt, user_prompt)
+
+        # Normalize year in the query so we always target the current year
+        if not query:
+            return query
+
+        year_str = str(current_year)
+        # Replace any explicit 20xx year with the current year
+        query_normalized = re.sub(r"20[0-9]{2}", year_str, query)
+
+        # If the model didn't include any year, append the current year hint
+        if year_str not in query_normalized:
+            query_normalized = f"{query_normalized} {year_str}"
+
+        return query_normalized
 
     def normalize_perplexity_result(self, raw_content: str, topic_origin: str) -> List[Dict[str, Any]]:
         """
@@ -70,7 +87,8 @@ Rules:
                 "title": s.get('title'),
                 "url": s.get('url'),
                 "summary": s.get('summary'),
-                "source_origin": f"Perplexity: {topic_origin}"
+                "source_origin": f"Perplexity: {topic_origin}",
+                "published_at": None
             })
         return normalized
 
