@@ -4,13 +4,13 @@ from dotenv import load_dotenv
 import sys
 
 # Load environment variables from the root .env file
-# We try to find the .env file in the parent directory of lead-gen-code
+# We try to find the .env file in the parent directory
 # AND in the current directory as a fallback.
 
-# 1. Try parent of this file's directory (lead-generator/.env)
+# 1. Try parent of this file's directory
 env_path_parent = Path(__file__).resolve().parent.parent / '.env'
 
-# 2. Try current working directory (lead-generator/lead-gen-code/.env)
+# 2. Try current working directory
 env_path_cwd = Path.cwd() / '.env'
 
 # Load

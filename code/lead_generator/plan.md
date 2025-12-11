@@ -15,7 +15,7 @@ Migrate the "Infinite Lead Generator" n8n workflow into a robust, maintainable, 
 
 ### Directory Structure
 ```
-lead-gen-code/
+lead_generator/
 ├── main.py                 # CLI entry point (commands: run, stats, test-connection)
 ├── config.py               # Configuration loading (Env vars)
 ├── database.py             # DB connection and CRUD operations
@@ -93,14 +93,14 @@ The user will run the generator using simple commands:
 
 ```bash
 # Run the full process
-python lead-gen-code/main.py run
+python lead_generator/main.py run
 
 # Run only RSS or only Perplexity
-python lead-gen-code/main.py run --source rss
-python lead-gen-code/main.py run --source perplexity
+python lead_generator/main.py run --source rss
+python lead_generator/main.py run --source perplexity
 
 # Check stats (how many leads today, error rates)
-python lead-gen-code/main.py stats
+python lead_generator/main.py stats
 ```
 
 ## Database Schema (Existing)

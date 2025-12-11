@@ -55,7 +55,7 @@ Raw leads must survive a gauntlet of filters to reach the database:
 It is recommended to use a virtual environment:
 
 ```bash
-cd lead-gen-code
+cd lead_generator
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
