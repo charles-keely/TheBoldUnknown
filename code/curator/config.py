@@ -27,7 +27,7 @@ class Config:
     
     # Paths
     ROOT_DIR = Path(__file__).resolve().parent.parent
-    BRAND_GUIDE_PATH = ROOT_DIR / "brand-guide.md"
+    BRAND_GUIDE_PATH = ROOT_DIR / "brand-guide2.md"
 
     @property
     def DATABASE_URL(self):
