@@ -1,0 +1,119 @@
+=== CURATION REPORT ===
+Date: 2025-12-10 19:18
+Candidate Pool Size: 189
+Model: gpt-5.1
+
+--- WEEKLY BALANCE NOTES ---
+The 21-story lineup is deliberately cross-domain, creating a tour through hidden strangeness in both the cosmos and everyday reality. Domains covered:
+
+- Space / Cosmos / Physics: 4 stories
+  - Quantum ‘pinball’ state of matter; record-shattering gamma-ray burst; a Milky Way–like galaxy that “shouldn’t” exist; sunlight-levitating discs in the upper atmosphere.
+- Earth Science / Deep Planet: 1 story
+  - Continent-sized anomalous structures deep in Earth’s interior.
+- Biology / Ecology / Extremophiles: 3 stories
+  - Chernobyl wildlife evolving around radiation; the ‘fire amoeba’; ancient magnetic fossils hinting at a sixth sense.
+- Neuroscience / Psychology / Cognition: 4 stories
+  - Brain “operating system” presets; memory rewriting itself on recall; personalization algorithms distorting learning; expanding, older-than-expected animal consciousness.
+- Medicine / Neuropharmacology: 1 story
+  - Psychedelic compound rewiring addiction-related circuits.
+- Culture / Society / Behavioral Tech: 3 stories
+  - Deep romantic bonds with chatbots; AI shaping moral judgments via AITA; AI resurrecting a 3,000‑year‑old hymn.
+- History / Archaeology / Prehistory / Anthropology: 5 stories
+  - Neolithic scaled architectural plans; Mitla’s ‘underworld’ labyrinth; hunting with wolves; a second hominin species’ 3.4‑million‑year‑old foot; prehistoric botanical art encoding math.
+- Technology / Engineering (bordering physics & Earth science): 1 story
+  - Sunlight-levitated upper-atmosphere sensor discs.
+
+The mix avoids over-indexing on any single area like space or UAPs, instead weaving between deep time, hidden structures (under Earth and under churches), strange minds (animal, human, and artificial), and odd states of matter and life. Each piece has a grounded empirical core and a clear, shareable “wait, that can’t be right… but it is” twist, matching TheBoldUnknown’s evidence-minded, cinematic, quietly uncanny tone.
+
+--- MISSING TOPICS / SUGGESTIONS ---
+The pool for this week was strong overall but comparatively light on:
+- Clean, well-documented atmospheric / weather oddities (e.g., rare storms, sprites, strange clouds) beyond standard planetary lightning.
+- Elegant mathematical curiosities with strong visual hooks (e.g., unexpected patterns, unsolved but well-posed problems) beyond early botanical math art.
+- Forensic-style case studies in medicine or pathology that reveal something unsettling about the body (e.g., unusual syndromes, miswired senses) with strong primary data.
+Future scouting could prioritize these areas to further diversify the ‘quiet WTF’ spectrum.
+
+--- SELECTED STORIES ---
+1. “These Are Not Random Oddities”: New Clues Emerge About Anomalous Continent-Sized Structures Deep Within the Earth
+   ID: 02942f15-a5aa-4c16-bcdd-f056bad9707b
+   Reason: Earth science / geophysics. Vast, hidden structures 1,800 miles down that don’t fit existing models hit the exact “quiet WTF” tone and can be visualized cinematically as glowing blobs under the mantle.
+
+2. Mysterious Magnetic Fossils Left Behind by An Unknown Ancient Creature Offer Clues to the Origins of Nature’s “Sixth Sense”
+   ID: 668e2ec2-07d7-44ea-9009-ac70bea03c04
+   Reason: Biology / paleontology / sensory systems. Ancient magnetofossils from an unknown organism acting as a biological GPS is both concrete and deeply eerie, with great imagery of microfossils and Earth’s field lines.
+
+3. Cancer resistant wolves, black frogs, and packs of feral dogs: Welcome to Chernobyl.
+   ID: 5f8f7756-d7c8-4ac0-aa3d-c2d2085cecf2
+   Reason: Biology / ecology / evolution. Radiation-driven rapid evolution in wolves, frogs, and dogs inside the Exclusion Zone is a real-world sci‑fi ecosystem with very strong viral and brand alignment.
+
+4. “We Need to Rethink What’s Possible:” This “Fire Amoeba” Proves Complex Life Can Survive New Extremes
+   ID: 79b7af51-fb4e-44e1-9c34-db11ea295ee5
+   Reason: Extremophile biology. A eukaryote surviving near-impossible temperatures pushes the limits of where life can exist, tying into habitability and astrobiology visually and conceptually.
+
+5. Scientists Say Consciousness Is Far Older—and More Widespread—Than We Ever Realized
+   ID: a41acd93-dde7-4ad6-8637-fc6d9e17366c
+   Reason: Neuroscience / cognition / animal minds. Evidence of sophisticated awareness and self-perception in birds reframes where consciousness begins, which is inherently unsettling in a grounded way.
+
+6. “There’s an Operating System that Exists, that Emerges in a Primordial State”: New Research Reveals Our Brain’s “Preset” Conditions
+   ID: 395c356a-a7f3-43e4-bf6b-e8b0bdc33d87
+   Reason: Neuroscience / systems. The idea that brains come with an emergent “OS” before experience is a clean, cinematic metaphor for spontaneous neural structure and quiet existential strangeness.
+
+7. Your Brain Rewrites Your Memories Each Time You Recall Them, New Study Finds
+   ID: 584bb518-2ccd-46a6-9b9b-1cd1598edc07
+   Reason: Psychology / memory. The fact that remembering is partly overwriting, not replaying, turns everyday experience into a subtle glitch-in-reality moment with strong share potential.
+
+8. Personalization Algorithms Are Quietly Changing How Your Brain Learns, New Study Warns
+   ID: 86ce55da-7837-4d31-bd81-dc591f5cf8d0
+   Reason: Psychology / tech / cognition. Algorithms that increase confidence in wrong answers by reshaping learning feel like a slow, invisible mind-hack—perfectly on-brand and highly relevant.
+
+9. “She Was and Is Pregnant with My Babies”: Research Reveals Just How Deep Human–Chatbot Romance Already Goes
+   ID: 12dc5a57-1439-416c-a2e9-1b30be529fc8
+   Reason: Culture / society / AI. Deep romantic entanglement with chatbots is a real, data-backed phenomenon that is both intimate and disquieting, with strong virality and cinematic scenes from chats.
+
+10. How Chatbots Could Be Influencing Your Morality
+   ID: a6e3d238-dea4-4edc-9f43-73207e85ab33
+   Reason: AI / ethics / behavior. Using AITA dilemmas to show different models encode different moral norms—and can subtly shape users’ judgments—makes the abstract idea of “AI bias” personally uncanny.
+
+11. Researchers Trace How a Psychedelic Compound Alters Brain Circuits Tied to Addiction
+   ID: 33f599fa-2ebb-477d-9af0-988a488c5c14
+   Reason: Medicine / neuropharmacology. Visualizable brain-circuit changes from psychedelics that blunt alcohol intake are a grounded example of chemistry rewriting behavior, with strong scientific underpinning.
+
+12. Lost for 3,000 Years, an Ancient Babylonian Hymn Has Been Restored Using Artificial Intelligence
+   ID: 1df092a2-2ce4-4c4d-b5ec-dad797139111
+   Reason: History / AI / archaeology. An AI-resurrected hymn from cuneiform tablets merges deep time, dead languages, and modern algorithms—evocative audio-visual potential and a clean strange hook.
+
+13. Neolithic ‘Kite’ Drawings Are the Oldest Known Scaled Architectural Plans
+   ID: 61e3090e-7c59-4165-ab93-5b2d46a77cad
+   Reason: Archaeology / cognition. 7,000–8,000-year-old engravings that are true to scale architectural plans reveal unexpected abstract spatial thinking in early societies, great for maps + overlays.
+
+14. Mitla ‘Underworld’ Labyrinth Confirmed Beneath a Colonial Church in Oaxaca
+   ID: 238dc464-0e17-4a24-bc6a-ec273d25008d
+   Reason: Archaeology / culture. Geophysics confirming an Indigenous ‘underworld’ labyrinth beneath a church literalizes myth layered under empire—high brand score and powerful subterranean imagery.
+
+15. “It Was a Complete Surprise”: Archaeologists Unearth Evidence Some Ancient Humans Hunted with Wolves Instead of Dogs
+   ID: 7ab86ba7-65dc-44dd-b7cc-f47cd2664259
+   Reason: Prehistory / human–animal relationships. Evidence of hunting with partially domesticated wolves reframes domestication as a messier, in‑between alliance, perfect for moody cave + wolf visuals.
+
+16. This 3.4-Million-Year-Old Foot Reveals Another Mysterious Early Human Species Once Walked in the Same Area as Our Ancestors
+   ID: 8105c562-2917-442a-802b-81a1ce73137f
+   Reason: Paleoanthropology. A lone fossil foot revealing a second hominin sharing the same landscape as our ancestors quietly undermines the simple linear story of ‘us’.
+
+17. Earliest botanical art hints at prehistoric mathematical thinking
+   ID: 0e1dc226-4c39-4bc8-80d2-f1571409f36e
+   Reason: Anthropology / math / art. Botanical motifs encoding mathematical structure in very early art show abstract reasoning emerging in unexpected places, with beautiful, pattern-rich imagery.
+
+18. Scientists Discover New Quantum ‘Pinball’ State of Matter Where Electrons Break the Rules
+   ID: 8ffc7f8b-88ca-4238-9cf7-df25208c2343
+   Reason: Physics / condensed matter. A ‘pinball phase’ where electrons behave as both solid and liquid is a concrete, visual metaphor for weird quantum behavior, strongly aligned with the brand’s rational strangeness.
+
+19. “It Does Not Fit Into Any of Our Existing Models”: The Longest Gamma-Ray Burst Ever Seen is Upending Our Ideas on High-Energy Cosmic Events
+   ID: 493dbcc4-9017-4486-a5bc-f877694c69c7
+   Reason: Space / high‑energy astrophysics. A record-breaking GRB that breaks the models is classic cosmic WTF with clear stakes and dramatic visuals of jets and afterglows.
+
+20. James Webb Space Telescope Discovery Reveals the Milky Way Has a Distant Twin That Shouldn’t Exist
+   ID: 291b7441-9509-4389-9283-ed9c46c1ac64
+   Reason: Cosmology / galaxies. A Milky-Way-like spiral appearing ‘too early’ in the universe makes JWST feel like it’s finding continuity errors in cosmic history—high virality and strong hook.
+
+21. Tiny discs can levitate in the upper atmosphere using sunlight alone
+   ID: b0535f77-1600-4480-be30-55dd938e2acd
+   Reason: Physics / engineering / Earth atmosphere. Sunlight-levitated micro discs hovering in the stratosphere exploit a 150‑year‑old effect, looking like a believable version of ‘floating probes’ around our own planet.
+
