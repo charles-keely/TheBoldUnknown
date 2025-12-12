@@ -59,9 +59,13 @@ Output a JSON object with:
     "author": "string or null",
     "source_title": "string or null",
     "text_in_image": "string or null",
-    "style": "photo/illustration/diagram/map"
+    "style": "photo/illustration/diagram/map",
+    "aesthetic_score": 0-10 (How visually striking/beautiful is it? 10=Cinematic/Stunning, 0=Blurry/Ugly),
+    "aesthetic_quality": "string (e.g. 'cinematic', 'gritty', 'archival', 'amateur', 'clean', 'cluttered')",
+    "usability_score": 0-10 (How usable is this image? 10=High Res/Clean/No Watermarks, 0=Blurry/Obtrusive Watermarks/Bad Cropping),
+    "is_ai_generated": boolean (true if the image looks like AI generation, false if it looks like a real photo/diagram)
   }
-- "status": "approved" if relevance >= 7 and verifiability >= 6, else "rejected".
+- "status": "approved" if relevance >= 7 and verifiability >= 6 and usability_score >= 6 and not is_ai_generated, else "rejected".
 """
 
         user_prompt = f"""

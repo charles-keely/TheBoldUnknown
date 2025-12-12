@@ -51,7 +51,7 @@ def main():
             seen_urls = set()
             
             for query in queries:
-                results = searcher.search(query, num_results=2) # Fetch top 2 per query
+                results = searcher.search(query, num_results=5) # Fetch top 5 per query
                 
                 for res in results:
                     url = res['image_url']

@@ -20,7 +20,7 @@ class Config:
 
     # Google Custom Search
     GOOGLE_CUSTOM_SEARCH_KEY = os.getenv('GOOGLE_CUSTOM_SEARCH_KEY')
-    GOOGLE_SEARCH_ENGINE_ID = "54c2c62f17f304c38"
+    GOOGLE_SEARCH_ENGINE_ID = "06b02557e79fa482e"
 
 
     # Paths
