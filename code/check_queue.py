@@ -36,3 +36,4 @@ for t in titles:
     print(f"- {t[0]}")
 
 conn.close()
+

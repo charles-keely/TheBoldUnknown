@@ -1,49 +1,54 @@
 import requests
 from bs4 import BeautifulSoup
+from .config import config
 
 class PageScraper:
-    def scrape(self, url):
+    def scrape_context(self, url):
         """
-        Scrapes the source page for context about the image.
-        Returns a dictionary with title, description, and page text snippet.
+        Visits the webpage where the image was found to extract context.
+        Returns a dictionary with title, description, and relevant text.
         """
         if not url:
             return {}
-
-        print(f"Scraping source page: {url}...")
+            
+        print(f"Scraping context from: {url}...")
+        
         try:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
-            response = requests.get(url, headers=headers, timeout=5)
-            response.raise_for_status()
+            response = requests.get(url, headers=headers, timeout=10)
             
-            soup = BeautifulSoup(response.text, 'html.parser')
+            if response.status_code != 200:
+                print(f"Failed to scrape {url}: Status {response.status_code}")
+                return {}
+                
+            soup = BeautifulSoup(response.content, 'html.parser')
             
-            # Extract meta tags
+            # Extract basic metadata
             title = soup.title.string if soup.title else ""
             
-            og_title = soup.find("meta", property="og:title")
-            if og_title:
-                title = og_title["content"]
+            # Try to find description meta tag
+            description = ""
+            desc_tag = soup.find('meta', attrs={'name': 'description'}) or soup.find('meta', attrs={'property': 'og:description'})
+            if desc_tag:
+                description = desc_tag.get('content', '')
+
+            # Extract image captions (heuristic: look for figcaption or text near images)
+            captions = []
+            for figcaption in soup.find_all('figcaption'):
+                captions.append(figcaption.get_text().strip())
                 
-            og_desc = soup.find("meta", property="og:description")
-            description = og_desc["content"] if og_desc else ""
-            
-            # Extract main text (simple approximation)
-            # Find paragraphs
-            paragraphs = soup.find_all('p')
-            text_snippet = "\n".join([p.get_text()[:200] for p in paragraphs[:5]]) # First 5 paragraphs
-            
-            # Find potential image captions (figcaption, or text near img tags - hard to map specific img, but page context helps)
-            captions = [c.get_text() for c in soup.find_all('figcaption')]
-            caption_text = "\n".join(captions[:3])
+            # Extract main text (heuristic: paragraphs)
+            paragraphs = [p.get_text().strip() for p in soup.find_all('p')]
+            # Filter out short/empty paragraphs
+            main_text = "\n".join([p for p in paragraphs if len(p) > 50])
             
             return {
-                "page_title": title.strip(),
-                "page_description": description.strip(),
-                "page_text": text_snippet,
-                "captions": caption_text
+                "page_title": title,
+                "page_description": description,
+                "captions": "\n".join(captions[:5]), # Limit to first 5 captions
+                "page_text": main_text[:3000] # Limit context size
             }
             
         except Exception as e:

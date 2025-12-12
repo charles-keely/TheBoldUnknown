@@ -6,6 +6,7 @@ from .generator import QueryGenerator
 from .searcher import ImageSearcher
 from .validator import Validator
 from .analyzer import VisualAnalyzer
+from .scraper import PageScraper
 
 def main():
     parser = argparse.ArgumentParser(description="Photo Researcher Worker")
@@ -19,6 +20,7 @@ def main():
     searcher = ImageSearcher()
     validator = Validator()
     analyzer = VisualAnalyzer()
+    scraper = PageScraper()
 
     try:
         stories = db.fetch_stories_needing_photos(limit=1 if args.single else args.limit)
@@ -70,10 +72,24 @@ def main():
                 # Get ground truth for context
                 ground_truth = story.get('research_data', {}).get('ground_truth', '')
                 
-                analysis = analyzer.analyze(candidate['image_url'], ground_truth)
+                # SCRAPE SOURCE CONTEXT
+                source_url = candidate.get('source_page_url')
+                source_context = {}
+                if source_url:
+                    source_context = scraper.scrape_context(source_url)
+                
+                # Analyze with extra context
+                analysis = analyzer.analyze(candidate['image_url'], ground_truth, source_context)
                 
                 # Merge analysis into candidate data
                 candidate.update(analysis)
+                # Store source context in metadata for future reference
+                if 'metadata' not in candidate:
+                    candidate['metadata'] = {}
+                candidate['metadata']['source_context'] = {
+                    'title': source_context.get('page_title'),
+                    'description': source_context.get('page_description')
+                }
                 
                 # Save to DB
                 photo_id = db.save_photo_candidate(story['id'], candidate)

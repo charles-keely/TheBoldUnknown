@@ -20,7 +20,8 @@ class Config:
 
     # Google Custom Search
     GOOGLE_CUSTOM_SEARCH_KEY = os.getenv('GOOGLE_CUSTOM_SEARCH_KEY')
-    GOOGLE_SEARCH_ENGINE_ID = os.getenv('GOOGLE_SEARCH_ENGINE_ID') # Needs to be added to .env
+    GOOGLE_SEARCH_ENGINE_ID = "54c2c62f17f304c38"
+
 
     # Paths
     BRAND_GUIDE_PATH = os.path.join(os.path.dirname(__file__), '..', 'brand-guide2.md')
