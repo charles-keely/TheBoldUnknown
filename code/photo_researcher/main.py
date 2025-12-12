@@ -104,7 +104,8 @@ def main():
         
         # Save Report if requested
         if args.save_output and test_report:
-            with open("photo_research_report.md", "w") as f:
+            output_path = Path(__file__).resolve().parent / "photo_research_report.md"
+            with open(output_path, "w") as f:
                 f.write("# Photo Research Report\n\n")
                 for s in test_report:
                     f.write(f"## Story: {s['title']}\n")
@@ -119,7 +120,7 @@ def main():
                         f.write(f"- **Metadata:** {c.get('metadata')}\n")
                         f.write(f"![Image]({c['image_url']})\n\n")
                         f.write("---\n")
-            print("\nReport saved to photo_research_report.md")
+            print(f"\nReport saved to {output_path}")
 
     except Exception as e:
         print(f"An error occurred: {e}")

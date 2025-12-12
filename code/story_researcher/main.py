@@ -7,8 +7,9 @@ from .db import Database
 from .researcher import Researcher
 
 def save_results_to_file(story, results):
-    """Saves research results to a readable Markdown file."""
-    filename = "research_output.md"
+    """Saves research results to a readable Markdown file inside story_researcher/."""
+    output_dir = Path(__file__).resolve().parent
+    filename = output_dir / "research_output.md"
     
     follow_up = results.get("follow_up")
     

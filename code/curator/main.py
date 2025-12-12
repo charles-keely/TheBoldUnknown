@@ -12,12 +12,13 @@ from curator.logic import CuratorLogic
 from curator.config import config
 
 # Setup logging
+base_dir = Path(__file__).resolve().parent
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler('curator.log')
+        logging.FileHandler(base_dir / 'curator.log')
     ]
 )
 logger = logging.getLogger("curator")
@@ -61,7 +62,7 @@ def main():
         logger.info(f"Selected {len(result.selected_stories)} stories:")
 
         # Write results to a readable text file
-        output_file = Path("curation_results.txt")
+        output_file = base_dir / "curation_results.txt"
         with open(output_file, "w") as f:
             f.write("=== CURATION REPORT ===\n")
             f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")

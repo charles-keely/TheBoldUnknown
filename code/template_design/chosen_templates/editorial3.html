@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TheBoldUnknown Editorial v3 (Scientific)</title>
+  
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
+      font-family: "Montserrat", sans-serif;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* 1080x1350 Configuration */
+    :root {
+      --frame-width: 1080px;
+      --frame-height: 1350px;
+      --margin: 70px; /* Aligns with cover2.html */
+      
+      /* Typography */
+      --text-size: 40px; /* ~W/27, same as editorial2 */
+      --line-height: 1.5;
+      --paragraph-gap: 1em;
+      
+      /* Colors */
+      --ui-color: rgba(255, 255, 255, 0.9);
+      --dim-color: rgba(255, 255, 255, 0.5);
+      --border-color: rgba(255,255,255,0.3);
+    }
+
+    .scale-wrapper {
+      width: var(--frame-width);
+      height: var(--frame-height);
+      transform-origin: center center;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: #05060a;
+      color: #fff;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      padding: var(--margin);
+    }
+
+    /* --- Background Elements --- */
+    .vignette {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.8) 100%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Technical Corner Marks */
+    .mark {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: rgba(255,255,255,0.4);
+      border-style: solid;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .mark-tl { top: 50px; left: 50px; border-width: 2px 0 0 2px; }
+    .mark-tr { top: 50px; right: 50px; border-width: 2px 2px 0 0; }
+    .mark-bl { bottom: 50px; left: 50px; border-width: 0 0 2px 2px; }
+    .mark-br { bottom: 50px; right: 50px; border-width: 0 2px 2px 0; }
+
+    /* --- Layout Layers --- */
+
+    /* Header: Logo + File Metadata */
+    .header {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-top: 1px solid var(--border-color);
+      padding-top: 20px;
+      margin-bottom: 40px;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      width: 80px;
+      height: auto;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+
+    .meta-data {
+      text-align: right;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      line-height: 1.4;
+      color: var(--dim-color);
+      text-transform: uppercase;
+    }
+
+    /* Main Body Content */
+    .content-area {
+      position: relative;
+      z-index: 2;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center; /* Vertically centered */
+      align-items: center;
+    }
+
+    .text-column {
+      width: 720px; /* ~2/3 width, keeping it readable */
+      font-size: var(--text-size);
+      line-height: var(--line-height);
+      font-weight: 400;
+      text-align: left;
+    }
+    
+    .text-column p {
+      margin: 0 0 var(--paragraph-gap) 0;
+    }
+    .text-column p:last-child {
+      margin-bottom: 0;
+    }
+
+    /* Footer: Page Number + Arrow */
+    .footer {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+      margin-top: 40px;
+      flex-shrink: 0;
+    }
+
+    .page-number {
+      font-size: 16px;
+      letter-spacing: 0.15em;
+      color: var(--dim-color);
+      text-transform: uppercase;
+    }
+
+    .swipe-arrow {
+      width: 30px;
+      height: auto;
+      filter: brightness(0) invert(1);
+      opacity: 0.8;
+    }
+
+    /* Debug Overlay (Copied from editorial2.html) */
+    .char-debug {
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      z-index: 9999;
+      font: 12px/1.4 monospace;
+      color: #ddd;
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 8px 10px;
+      backdrop-filter: blur(2px);
+    }
+    .char-debug button {
+      font: inherit;
+      color: #111;
+      background: #ddd;
+      border: none;
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin-left: 6px;
+      cursor: pointer;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- DEBUG OVERLAY -->
+  <div id="char-debug" class="char-debug" style="display:none">
+    <span id="char-results">measuring…</span>
+    <button id="test-1p" type="button">Test 1p</button>
+    <button id="test-2p" type="button">Test 2p</button>
+  </div>
+
+  <div class="scale-wrapper">
+    <div class="slide">
+      
+      <div class="vignette"></div>
+
+      <!-- Corner Marks -->
+      <div class="mark mark-tl"></div>
+      <div class="mark mark-tr"></div>
+      <div class="mark mark-bl"></div>
+      <div class="mark mark-br"></div>
+
+      <!-- Header -->
+      <div class="header">
+        <img src="assets/TBU_Logo4.png" alt="TBU" class="logo">
+        <div class="meta-data">
+          11.22.25<br>
+          DÉJÀ VU
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content-area">
+        <div class="text-column">
+          <!-- Text will be injected here -->
+          <p>
+            Scientists have long suspected that déjà vu is a "glitch" in the brain's memory retrieval system. But a new theory suggests something far stranger: that it might be a momentary overlap with a parallel timeline.
+          </p>
+          <p>
+            When we experience this sensation, we aren't just remembering the past—we are briefly perceiving a future that almost happened, but didn't.
+          </p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="page-number">02 / 08</div>
+        <img src="assets/next.png" alt="Next" class="swipe-arrow">
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /* --- SCALING SCRIPT --- */
+    function resizeSlide() {
+      const baseWidth = 1080;
+      const baseHeight = 1350;
+      const scale = Math.min(
+        window.innerWidth / baseWidth,
+        window.innerHeight / baseHeight
+      );
+      const wrapper = document.querySelector('.scale-wrapper');
+      if (wrapper) wrapper.style.transform = `scale(${scale})`;
+      window.__slideScale = scale;
+    }
+    window.addEventListener('load', resizeSlide);
+    window.addEventListener('resize', resizeSlide);
+
+    /* --- CHAR COUNT TESTING (Adapted from editorial2.html) --- */
+    function sampleText(len) {
+      const base =
+        'This is sample editorial copy — with Capitals, commas, periods, and names: Ada, Turing, and Curie. ' +
+        'It includes short and long words, quotes “like this,” and dashes — to mirror real writing. ';
+      let s = '';
+      while (s.length < len) s += base;
+      return s.slice(0, len);
+    }
+
+    function measureMaxChars(paragraphCount) {
+      const target = document.querySelector('.text-column');
+      if (!target) return 0;
+      const rect = target.getBoundingClientRect();
+      const scale = window.__slideScale || 1;
+
+      // We measure against the flex container's available height
+      // But since flex is dynamic, let's look at the parent .content-area height
+      // Or we can just use a fixed max height based on layout. 
+      // The .content-area grows, but let's be safe and assume we don't want to overflow the header/footer.
+      // Better method: Create a clone in a fixed box matching the .content-area size.
+      
+      const contentArea = document.querySelector('.content-area');
+      const areaRect = contentArea.getBoundingClientRect();
+      
+      const baseWidth = 720; // Fixed width from CSS
+      const baseHeight = areaRect.height / scale; // Available height in unscaled px
+
+      const probe = document.createElement('div');
+      probe.className = 'text-column';
+      probe.style.position = 'absolute';
+      probe.style.left = '-9999px';
+      probe.style.top = '0';
+      probe.style.width = baseWidth + 'px';
+      // We don't set height, we measure scrollHeight against baseHeight
+      probe.style.visibility = 'hidden';
+      document.body.appendChild(probe);
+
+      function fill(count) {
+        probe.innerHTML = '';
+        if (paragraphCount === 1) {
+          const p = document.createElement('p');
+          p.textContent = sampleText(count);
+          probe.appendChild(p);
+        } else {
+          const p1 = document.createElement('p');
+          const p2 = document.createElement('p');
+          const first = Math.ceil(count * 0.52);
+          p1.textContent = sampleText(first);
+          p2.textContent = sampleText(count - first);
+          probe.appendChild(p1);
+          probe.appendChild(p2);
+        }
+      }
+
+      let lo = 0, hi = 5000, best = 0;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        fill(mid);
+        if (probe.scrollHeight <= baseHeight) {
+          best = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+
+      document.body.removeChild(probe);
+      return best;
+    }
+
+    function updateCharDebug() {
+      const el = document.getElementById('char-debug');
+      const res = document.getElementById('char-results');
+      if (!el || !res) return;
+      
+      // Delay slightly to ensure layout is stable
+      setTimeout(() => {
+        const one = measureMaxChars(1);
+        const two = measureMaxChars(2);
+        res.textContent = `Max chars — 1p: ${one} | 2p: ${two}`;
+        el.style.display = 'block';
+
+        const btn1 = document.getElementById('test-1p');
+        const btn2 = document.getElementById('test-2p');
+        const target = document.querySelector('.text-column');
+        
+        btn1.onclick = () => {
+          target.innerHTML = `<p>${sampleText(one)}</p>`;
+        };
+        btn2.onclick = () => {
+          const first = Math.ceil(two * 0.52);
+          target.innerHTML = `<p>${sampleText(first)}</p><p>${sampleText(two - first)}</p>`;
+        };
+      }, 100);
+    }
+
+    window.addEventListener('load', updateCharDebug);
+    window.addEventListener('resize', updateCharDebug);
+  </script>
+
+</body>
+</html>
