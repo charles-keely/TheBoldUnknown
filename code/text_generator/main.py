@@ -45,6 +45,7 @@ def main():
     parser = argparse.ArgumentParser(description="Text Generator Service")
     parser.add_argument("--limit", type=int, help="Limit the number of stories to process")
     parser.add_argument("--story-id", type=str, help="Process a specific story ID (bypasses 'already generated' check)")
+    parser.add_argument("--random", action="store_true", help="Process a RANDOM story (great for testing)")
     parser.add_argument("--dry-run", action="store_true", help="Run without saving to DB (prints results to stdout)")
     parser.add_argument("--out", type=str, help="Write output to a file (Markdown). Recommended with --dry-run.")
     args = parser.parse_args()
@@ -52,7 +53,7 @@ def main():
     logger.info("Starting Text Generator service...")
     
     # 1. Fetch stories ready for processing
-    stories = get_completed_research(limit=args.limit, story_id=args.story_id)
+    stories = get_completed_research(limit=args.limit, story_id=args.story_id, random=args.random)
     
     if not stories:
         logger.info("No research found awaiting text generation.")

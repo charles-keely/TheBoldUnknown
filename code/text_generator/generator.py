@@ -189,14 +189,37 @@ CONSTRAINTS:
   - 1 paragraph: MAX 549 characters
   - 2 paragraphs: MAX 502 characters total
 
-DOCUMENT_TYPE_TAG for each slide:
-- FIELD REPORT — observed events, documented behavior
-- ARCHIVAL BRIEF — historical context, background
-- TECHNICAL NOTE — mechanism, how something works
-- RESEARCH SUMMARY — findings from studies
-- THEORY OVERVIEW — interpretations, hypotheses
-- INCIDENT LOG — specific documented occurrence
-- EDITORIAL PERSPECTIVE — synthesis, reflection
+DOCUMENT_TYPE_TAG for each slide (choose the most fitting):
+
+OBSERVATION & EVIDENCE:
+- FIELD REPORT — observed events, documented behavior in real-world settings
+- INCIDENT LOG — specific documented occurrence with time/place
+- WITNESS ACCOUNT — first-person testimonial, eyewitness record
+- SITE SURVEY — location-specific observations, environmental documentation
+- SIGNAL INTERCEPT — communications, transmissions, recordings captured
+- ARTIFACT CATALOG — documentation of physical objects, specimens
+
+RESEARCH & ANALYSIS:
+- RESEARCH SUMMARY — findings from studies, experiments, investigations
+- DATA ANALYSIS — statistical findings, patterns in numbers, trends
+- TECHNICAL NOTE — mechanism, how something works, process explanation
+- CASE FILE — detailed examination of a specific instance or subject
+- ANOMALY REPORT — unexplained phenomena, deviations from expected patterns
+- CROSS-REFERENCE — connecting multiple sources, events, or patterns
+
+HISTORICAL & ARCHIVAL:
+- ARCHIVAL BRIEF — historical context, background from records
+- EXPEDITION RECORD — exploration accounts, journey documentation
+- TIMELINE RECONSTRUCTION — chronological breakdown of events
+- DECLASSIFIED — formerly restricted or hidden information now revealed
+- RECOVERED DOCUMENT — found text, rediscovered records
+
+INTERPRETATION & SYNTHESIS:
+- THEORY OVERVIEW — interpretations, hypotheses, proposed explanations
+- EDITORIAL PERSPECTIVE — synthesis, reflection, connecting threads
+- OBSERVER'S NOTE — personal insight, subjective interpretation with evidence
+- PATTERN RECOGNITION — identified recurring elements across cases
+- OPEN QUESTION — unresolved mysteries, acknowledged unknowns
 
 OUTPUT FORMAT (JSON):
 {{
@@ -302,7 +325,38 @@ BAD: "This fascinating phenomenon is changing how we think about relationships."
 RULES FOR DOMAIN_TAG (1-3 words):
 
 The intellectual category. Like a section label in a magazine.
-Examples: "Human-AI Relationships" / "Collective Memory" / "Deep Time" / "Neuroscience"
+
+Choose from or adapt these domains:
+
+MIND & BEHAVIOR:
+- Neuroscience / Cognitive Science / Perception Studies / Memory Research
+- Collective Behavior / Mass Psychology / Decision Science / Consciousness Studies
+- Sleep Science / Dream Research / Altered States / Behavioral Anomalies
+
+TECHNOLOGY & SYSTEMS:
+- Human-AI Relationships / Machine Learning / Digital Archaeology / Signal Processing
+- Surveillance Studies / Network Theory / Cryptography / Systems Failure
+- Automation / Synthetic Media / Data Forensics / Emergent Technology
+
+TIME & SPACE:
+- Deep Time / Temporal Anomalies / Chronology / Historical Revision
+- Geography / Cartographic History / Lost Places / Urban Exploration
+- Archaeology / Paleontology / Geological Record / Stratigraphy
+
+NATURE & COSMOS:
+- Astrobiology / Cosmology / Exoplanet Research / Signal Detection
+- Marine Biology / Ecology / Animal Behavior / Evolutionary Puzzles
+- Climate Science / Atmospheric Phenomena / Extreme Environments
+
+SOCIETY & CULTURE:
+- Collective Memory / Cultural Transmission / Ritual Studies / Folklore
+- Economic Anomalies / Institutional Failure / Social Contagion
+- Linguistic Mystery / Lost Knowledge / Secret Societies / Conspiracy Analysis
+
+MYSTERY & UNEXPLAINED:
+- Paranormal Research / Anomaly Studies / Cryptozoology / UFO Phenomena
+- Disappearances / Cold Cases / Unsolved Mysteries / Evidence Analysis
+- Fringe Science / Rejected Knowledge / Suppressed History
 
 ---
 
@@ -387,8 +441,44 @@ Never invent institutional names.
 
 CONCEPT_TAG (1-3 words):
 
-What idea does this image visualize? Be precise.
-Examples: "Temporal Displacement" / "Ritual Staging" / "Signal Decay" / "Threshold Behavior"
+What idea does this image visualize? Be precise and evocative.
+
+Choose from or adapt these concepts:
+
+TIME & CHANGE:
+- Temporal Displacement / Frozen Moment / Time Erosion / Chronological Rupture
+- Before & After / Decay Process / Preservation State / Historical Echo
+- Last Known Image / Final Transmission / Moment of Impact
+
+SPACE & PLACE:
+- Threshold Crossing / Liminal Space / Abandoned Interior / Site of Interest
+- Point of Disappearance / Geographic Anomaly / Isolated Location
+- Boundary Condition / Restricted Zone / Undocumented Territory
+
+EVIDENCE & DOCUMENTATION:
+- Physical Evidence / Artifact State / Document Fragment / Recovered Object
+- Chain of Custody / Evidence Marker / Forensic Detail / Trace Element
+- Archival Photograph / Original Document / Primary Source
+
+PATTERNS & SIGNALS:
+- Signal Decay / Pattern Recognition / Data Visualization / Frequency Analysis
+- Anomalous Reading / Interference Pattern / Transmission Record
+- Correlation Map / Statistical Outlier / Network Diagram
+
+HUMAN ELEMENT:
+- Witness Perspective / Subject Portrait / Crowd Behavior / Ritual Staging
+- Last Known Photo / Participant Documentation / Observer Position
+- Human Scale / Individual Case / Group Dynamic
+
+ATMOSPHERE & CONDITION:
+- Environmental State / Atmospheric Phenomenon / Light Condition
+- Surface Texture / Material Evidence / Structural Detail
+- Natural Formation / Weather Event / Visibility Condition
+
+MYSTERY & UNKNOWN:
+- Unidentified Object / Unknown Origin / Unexplained Formation
+- Missing Element / Obscured Detail / Partial View
+- Open Question / Contested Image / Multiple Interpretations
 
 OUTPUT FORMAT (JSON):
 {{

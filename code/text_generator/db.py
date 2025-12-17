@@ -47,11 +47,13 @@ def get_db_connection():
         logger.error(f"Failed to connect to database: {e}")
         raise
 
-def get_completed_research(limit=None, story_id=None):
+def get_completed_research(limit=None, story_id=None, random=False):
     """
     Fetches story_research items that are 'completed'.
     If story_id is provided, fetches that specific story (regardless of generation status).
-    If story_id is None, fetches completed stories that haven't been generated yet.
+    If story_id is None:
+        - If random is True, fetches a random completed story (generated or not).
+        - If random is False, fetches completed stories that haven't been generated yet.
     """
     conn = get_db_connection()
     try:
@@ -64,6 +66,17 @@ def get_completed_research(limit=None, story_id=None):
                     WHERE sr.id = %s
                 """
                 cur.execute(query, (story_id,))
+            elif random:
+                # Random completed story, regardless of generation status
+                query = """
+                    SELECT sr.id, sr.research_data, l.url as lead_url 
+                    FROM story_research sr
+                    JOIN leads l ON sr.lead_id = l.id
+                    WHERE sr.status = 'completed'
+                    ORDER BY RANDOM()
+                    LIMIT 1
+                """
+                cur.execute(query)
             else:
                 # We want research that is completed, but NOT yet in story_generations
                 query = """

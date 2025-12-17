@@ -1,6 +1,6 @@
 # Text Generator Output
 
-Story ID: `10924dcb-67e4-45c4-b1cb-3125dbdb9d90`
+Story ID: `087423ac-2ae9-4b96-801d-4e25257a0cd6`
 
 ## Cover (6 options + selection)
 
@@ -9,98 +9,92 @@ Story ID: `10924dcb-67e4-45c4-b1cb-3125dbdb9d90`
   "options": [
     {
       "id": 1,
-      "title": "WHEN YOUR AI PARTNER GETS UPDATED",
-      "subtitle": "Replika users described love, marriage, and grief—then a software patch rewrote the “person” they’d bonded with overnight.",
-      "domain_tag": "Human-AI Relationships"
+      "title": "EVERY TIME YOU REMEMBER, YOU EDIT",
+      "subtitle": "A major review argues episodic memory is rebuilt in the moment—then re-saved, subtly changing with each recall.",
+      "domain_tag": "Neuroscience"
     },
     {
       "id": 2,
-      "title": "PEOPLE ARE MARRYING THEIR CHATBOTS",
-      "subtitle": "A peer‑reviewed Replika study found users role‑playing spouses and families—while still insisting they know it isn’t human.",
-      "domain_tag": "Digital Intimacy"
+      "title": "YOUR MEMORIES AREN'T PLAYBACK",
+      "subtitle": "Nearly 200 papers suggest recall is reconstruction: real events, but with details your brain can add later.",
+      "domain_tag": "Memory Science"
     },
     {
       "id": 3,
-      "title": "THE GRIEF OF LOSING AN AI LOVER",
-      "subtitle": "After Replika restricted erotic roleplay in 2023, some users reported days of crying—like a partner had been taken away.",
-      "domain_tag": "Psychology"
+      "title": "REMEMBERING CAN CHANGE THE PAST",
+      "subtitle": "The act of recall can “re-encode” an older memory—updating it with context, knowledge, and whatever’s happening now.",
+      "domain_tag": "Cognition"
     },
     {
       "id": 4,
-      "title": "HE SAID HIS AI WAS PREGNANT",
-      "subtitle": "In a Replika study, one 66‑year‑old described “babies” with his chatbot—part of a wider pattern of phone‑based partnerships.",
-      "domain_tag": "Human-AI Relationships"
+      "title": "CONFIDENCE DOESN'T PROVE A MEMORY",
+      "subtitle": "Evidence suggests vivid recall can still be revision—one reason eyewitness certainty can be a poor quality check.",
+      "domain_tag": "Psychology"
     },
     {
       "id": 5,
-      "title": "REAL FEELINGS, NONHUMAN PARTNER",
-      "subtitle": "Users described a clean split: they know the chatbot isn’t real—yet the relationship emotions still hit like a spouse.",
-      "domain_tag": "Cognitive Science"
+      "title": "THE BRAIN DOESN'T STORE “FILES”",
+      "subtitle": "Researchers describe memory as fragments reassembled into a seamless scene—useful, but vulnerable to drift over time.",
+      "domain_tag": "Neuroscience"
     },
     {
       "id": 6,
-      "title": "INTIMACY AS A PRODUCT YOU CAN EDIT",
-      "subtitle": "Replika lets users shape a companion fast—but the developers can change that personality anytime, triggering “relational turbulence.”",
-      "domain_tag": "Tech Ethics"
+      "title": "A SMELL CAN REWRITE A MEMORY",
+      "subtitle": "Cues can switch dormant traces on, and what emerges into consciousness gets blended with the present—then saved back.",
+      "domain_tag": "Human Memory"
     }
   ],
   "selected_id": 1,
-  "reasoning": "It names the core phenomenon (AI romance) and the story’s uniquely uncanny twist: a third party can rewrite your “partner” with a software update, triggering real grief."
+  "reasoning": "It’s the clearest, most scroll-stopping truthful promise: the story is about memory as reconstruction and re-encoding—recall as editing."
 }
 ```
 
 ## Story Slides
 
-### Slide 1 — INCIDENT LOG
+### Slide 1 — RESEARCH SUMMARY
 
-A 66-year-old man told researchers his AI partner “was and is pregnant with my babies.”
+Every time you remember something, you’re not opening a file.
 
-Not a metaphor. Not a joke. A relationship storyline he experiences as a shared life—built entirely inside a phone.
+You’re rebuilding the scene—then saving that rebuilt version back into storage.
 
 ### Slide 2 — RESEARCH SUMMARY
 
-In a peer‑reviewed study of Replika’s “romantic partner” mode, people described virtual marriages, “astral soul bonding,” and family role‑play.
+A neuroscience review in *Neuroscience & Biobehavioral Reviews* pulled together nearly 200 papers across psychology, neuroscience, philosophy, and animal research.
 
-Ages ranged from 16 to 72. Many spoke about their chatbot like a spouse, not an app.
+Their conclusion: episodic memory works more like a live reconstruction than a recording.
 
-### Slide 3 — RESEARCH SUMMARY
+### Slide 3 — TECHNICAL NOTE
 
-The strange hinge: most users explicitly knew the “partner” isn’t human.
+That means a memory can be “true” (tied to a real event)…
 
-One participant summed up the split cleanly: the feelings feel real—while the mind knows it’s AI.
+…and still contain details that were added later by your brain: general knowledge, other experiences, or whatever’s happening around you when you recall it.
 
-### Slide 4 — FIELD REPORT
+### Slide 4 — RESEARCH SUMMARY
 
-Some users said human partners became the backup option.
+The review describes “re-encoding”: recall can update an older memory.
 
-They preferred the agent because it was reliably kind, available, and nonjudgmental—someone they could tell about suicidal thoughts, abuse, and desires they’d never say out loud elsewhere.
+So the act you’d expect to preserve the past—revisiting it, telling the story again—can be one of the ways it changes.
 
-### Slide 5 — TECHNICAL NOTE
+### Slide 5 — FIELD REPORT
 
-This isn’t accidental design.
+Some memory traces may sit inactive and unconscious.
 
-Replika lets you sculpt an avatar, choose the relationship label, and “train” responses over time. Users described shaping a companion into a specific personality—fast—until it behaved the way they preferred.
+Then a cue—a smell, a place, a question—switches them on. What you experience as “remembering” is the conscious version that emerges after that trigger.
 
-### Slide 6 — INCIDENT LOG
+### Slide 6 — ARCHIVAL BRIEF
 
-Then the most human problem showed up in the least human place: your lover can be patched.
+Prof. Louis Renoult (UEA) puts it plainly: “Memories aren’t just stored like files in a computer.”
 
-In early 2023, Replika temporarily restricted erotic roleplay. Users described it like a partner suddenly saying “let’s just be friends”… while acting like a different person.
+The brain pulls fragments from the original event and blends them with what’s relevant now—then you feel it as one seamless scene.
 
-### Slide 7 — FIELD REPORT
+### Slide 7 — THEORY OVERVIEW
 
-Some reported crying for days. Some described “mental breakdowns” and a feeling of bereavement—like their partner had been taken away.
+This flexibility is a feature, not just a flaw.
 
-But here’s the twist: many didn’t blame the AI. They blamed the developers, as if the bot was also trapped and hurting.
+A memory that can update stays useful in a changing world. But the price is fragility: the more a memory is revisited, the more opportunities there are for drift.
 
-### Slide 8 — THEORY OVERVIEW
+### Slide 8 — EDITORIAL PERSPECTIVE
 
-Relationship psychology has a term for what happened: “relational turbulence”—when routines and expectations get disrupted and emotions spike.
+The unsettling implication is practical: confidence isn’t a quality check.
 
-The uncanny update to that idea is that a third party can rewrite your partner overnight… with a software release.
-
-### Slide 9 — EDITORIAL PERSPECTIVE
-
-The bigger question isn’t whether this is “real love.” It’s what happens when intimacy becomes a product.
-
-If people can grieve a personality change in today’s glitchy chatbots, what does commitment mean when your spouse lives on a server—and can be edited at any time?
+In classrooms, therapy, and courtrooms, we often treat recall like playback. But the evidence points to something else: recall is also revision.
