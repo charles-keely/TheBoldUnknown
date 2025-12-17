@@ -15,7 +15,7 @@ def _format_markdown_output(story_id: str, cover_result: dict, slides_result: di
     lines.append(f"Story ID: `{story_id}`\n")
 
     if cover_result:
-        lines.append("## Cover (3 options + selection)\n")
+        lines.append("## Cover (6 options + selection)\n")
         lines.append("```json")
         lines.append(json.dumps(cover_result, indent=2, ensure_ascii=False))
         lines.append("```\n")

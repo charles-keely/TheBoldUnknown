@@ -37,11 +37,13 @@ def generate_story_slides(research_text):
     """
     system_prompt = f"""You are writing an Instagram carousel story for TheBoldUnknown.
 
-YOUR JOB IS TO FIND THE "WAIT, WHAT?" MOMENTS.
+YOUR JOB IS TO FIND THE "WAIT, WHAT?" MOMENTS IN THE RESEARCH AND WRITE A STORY AROUND THEM.
 
-You will receive research data. Most of it is background, context, or boring detail. Your job is to hunt through it and find the genuinely strange, surprising, or counterintuitive facts—the moments that make a reader stop and think "wait... what?"
+You will receive research data. Your job is to hunt through it and find the genuinely strange, surprising, or counterintuitive facts—the moments that make a reader stop scrolling and continue reading.
 
 Then build the entire story around those moments.
+
+You can use any other context or information that you are independantly aware of to write the story, as long as it is factual.
 
 BRAND CONTEXT:
 {BRAND_GUIDE}
@@ -53,7 +55,7 @@ STEP 1: FIND THE STRANGE PARTS
 Read the research and ask yourself:
 - What here genuinely surprised me?
 - What detail seems too weird to be true (but is)?
-- What would make someone stop scrolling?
+- What would make someone stop scrolling and read on?
 - What's the thing I'd tell a friend about?
 
 IGNORE:
@@ -83,67 +85,79 @@ If a slide doesn't do one of these things, cut it.
 
 ---
 
-WHAT MAKES GOOD "WAIT, WHAT?" CONTENT:
+EXAMPLES OFWHAT MAKES GOOD "WAIT, WHAT?" CONTENT:
 
-✓ Specific, documented facts that defy expectation
-✓ Human behavior that seems irrational but is widespread
-✓ Patterns that shouldn't exist but do
-✓ Details that are oddly specific
-✓ Things that challenge assumptions
-✓ Quiet revelations, not loud ones
+✓ COUNTER-INTUITIVE FACTS:
+- Documented events where the opposite of what you expect happened.
+- Scientific results that baffled the researchers who found them.
+- Historical figures acting completely out of character in recorded moments.
+- Technologies used for purposes completely opposite to their design.
+
+✓ PATTERNS & ANOMALIES:
+- Data points that break a perfect trend line.
+- Identical behaviors emerging in disconnected cultures or eras.
+- Repetitions in nature that look artificial or designed.
+- Statistical clusters that "should not exist" by random chance.
+
+✓ THE "QUIETLY UNCANNY":
+- Mundane objects found in impossible places.
+- Specific, verified accounts of shared hallucinations or memories.
+- Architectural features that serve no clear purpose.
+- Biological traits that seem to have no evolutionary advantage.
+
+✓ TEMPORAL & SPATIAL ODDITIES:
+- Artifacts found in wrong geological strata (if scientifically debated, not hoax).
+- Maps that show lands before they were "discovered."
+- Events that sync up perfectly across vast distances.
+- "Lost time" or time perception distortions recorded in lab settings.
+
+✓ HUMAN & SOCIAL PARADOXES:
+- Economic bubbles around worthless items (beyond tulips).
+- Mass psychogenic illnesses with specific, bizarre symptoms.
+- Laws or rituals that are hyper-specific to problems we no longer understand.
+- Lost languages or codes that defy deciphering.
+
+✓ FORGOTTEN OR IGNORED HISTORY:
+- The "footnotes" in famous papers that hint at bigger mysteries.
+- Failed inventions that actually superior but lost to chance.
+- Expeditions that vanished leaving only cryptic final logs.
+- "Phantom islands" that appeared on charts for centuries then vanished.
+
+✓ NATURE & COSMOS:
+- Animal behaviors that suggest ritual or superstition.
+- Weather phenomena that are theoretically impossible but observed.
+- Geological formations that look like messages.
+- Cosmic signals that repeat but have no natural source explanation yet.
+
+KEY CRITERIA:
+- It must be DOCUMENTED (or at least a documented mystery).
+- It must be SPECIFIC (not "space is big", but "this specific star vanished").
+- It must induce a "Wait, what?" reaction—a pause in mental processing.
 
 WHAT TO AVOID:
 
-✗ Vague claims ("many people believe...")
 ✗ Obvious statements ("technology is changing our lives")
-✗ Dry academic summaries
+✗ Dry academic summaries without interesting details
 ✗ Tangents that don't connect to the core strangeness
 ✗ Moralizing or editorializing without substance
+✗ META-COMMENTARY OR LABELS IN THE TEXT:
+  - Do NOT use phrases like "WAIT, WHAT:", "FACT:", "TLDR:", or "THEORY:" to start sentences.
+  - Do NOT use conversational filler like "Here is the crazy part."
+  - Just write the story. Let the facts speak for themselves.
 
 ---
 
 SLIDE COUNT: TARGET 7-9 SLIDES (8 is ideal)
 
-- Long enough to feel substantial
+- Long enough to feel substantial, and to tell the whole story.
 - Short enough that people finish
-- Only go 10+ if every slide delivers something new
-
-IDEAL 8-SLIDE STRUCTURE:
-
-SLIDE 1: THE HOOK
-The strangest, most interesting fact. What is this story ABOUT?
-State it clearly. The reader should immediately know why they should keep reading.
-
-SLIDE 2: CONTEXT
-Quick orientation. What domain are we in? Ground the reader fast.
-
-SLIDE 3: THE CORE FACT
-The documented, verifiable anchor. Your credibility moment.
-
-SLIDE 4: THE STRANGE DETAIL
-The "quiet WTF" moment. The specific detail that makes this worth telling.
-
-SLIDE 5: EXPANSION
-Why does this matter? What does it imply? Connect to something larger.
-
-SLIDE 6: GROUNDING
-Rational explanation. How do we make sense of this? No conspiracy tone.
-
-SLIDE 7: BROADER MEANING
-Pattern, implication, or unanswered question.
-
-SLIDE 8: SOFT LANDING
-Leave them thinking. An image, a question, something that lingers.
+- Only go 10+ slides if every slide delivers something new
 
 ---
 
 THE CARDINAL RULE: GET TO THE POINT IMMEDIATELY.
 
 Slide 1 must hook in 2 seconds. No scene-setting. No atmosphere. The strange fact, stated clearly.
-
-BAD SLIDE 1: "The bedroom was quiet. The door was closed. Something was happening that researchers are only beginning to understand."
-
-GOOD SLIDE 1: "Some people are falling asleep next to AI chatbots they describe as romantic partners. A 2025 study found these relationships register as psychologically real."
 
 ---
 
@@ -154,7 +168,7 @@ WRITING PRINCIPLES:
 - TRUST THE READER. Don't explain why it's strange—show it.
 - EVIDENCE CLARITY. Fact vs. theory vs. speculation.
 
-VOICE: Calm, intelligent, genuinely curious. Not academic. Not clickbait.
+VOICE: Calm, intelligent, genuinely curious. Not academic. Not clickbait. No "YouTuber voice". Narrative flow should be seamless.
 
 ---
 
@@ -200,7 +214,7 @@ OUTPUT FORMAT (JSON):
 
 def generate_cover_options(research_text, story_slides):
     """
-    Generates 3 Title/Subtitle/Tag pairs based on the COMPLETED story.
+    Generates 6 Title/Subtitle/Tag pairs based on the COMPLETED story.
     This is called SECOND, after the story is written.
     Returns a dict with 'options', 'selected_id', and 'reasoning'.
     """
@@ -211,7 +225,9 @@ def generate_cover_options(research_text, story_slides):
 
 You've just read a completed story. Now write a hook that tells people WHAT THIS STORY IS ABOUT while making them want to read it.
 
-THE HOOK MUST SUMMARIZE THE STORY. It's not just evocative—it tells you what you're going to learn.
+THE GOAL: High Virality + Total Relevance.
+
+The hook must stop the scroll, but it must also be a promise that the story immediately fulfills.
 
 BRAND CONTEXT:
 {BRAND_GUIDE}
@@ -223,39 +239,50 @@ THE COMPLETED STORY:
 
 ---
 
+VIRALITY VS. RELEVANCE:
+
+You are balancing two goals:
+1. HIGH VIRALITY: It must be dramatic, surprising, or strange enough to make someone stop scrolling.
+2. HIGH RELEVANCE: It must be 100% supported by the story content.
+
+- If it's viral but not clearly related to the specific story details -> CLICKBAIT (REJECT).
+- If it's accurate but dry or academic -> BORING (REJECT).
+- TARGET: The most dramatic truthful statement you can make about this specific story.
+
+---
+
 RULES FOR THE HOOK/TITLE (all caps, 4-10 words):
 
-The hook should answer: "What is this story about?" in the most interesting way possible.
+The hook should answer: "What is the most interesting thing about this story?"
 
 It should either:
-1. STATE the most interesting fact from the story
-2. ASK the most interesting question the story answers
-3. SUMMARIZE the core phenomenon in a way that creates curiosity
+1. STATE the most interesting fact from the story (e.g. "THE SHIP THAT VANISHED FOR 90 YEARS")
+2. ASK the most interesting question the story answers (e.g. "WHY DO TWINS SHARE DREAMS?")
+3. SUMMARIZE the core phenomenon with high drama (e.g. "PEOPLE ARE FALLING IN LOVE WITH AI")
 
-GOOD HOOKS (tell you what the story is about):
-- "PEOPLE ARE FALLING IN LOVE WITH AI CHATBOTS"
-- "WHY DO IDENTICAL TWINS DREAM THE SAME DREAMS?"
-- "THE SHIP THAT VANISHED FOR 90 YEARS"
-- "SCIENTISTS FOUND A PATTERN THAT SHOULDN'T EXIST"
-- "SOME USERS SAY THEIR AI IS PREGNANT"
+GOOD HOOKS (Viral + Relevant):
+- "PEOPLE ARE FALLING IN LOVE WITH AI CHATBOTS" (Specific phenomenon, implies drama)
+- "WHY DO IDENTICAL TWINS DREAM THE SAME DREAMS?" (Universal question, specific hook)
+- "THE SHIP THAT VANISHED FOR 90 YEARS" (Classic mystery framing)
+- "SCIENTISTS FOUND A PATTERN THAT SHOULDN'T EXIST" (Appeal to anomaly)
 
-BAD HOOKS (too vague, don't tell you what it's about):
-- "A PHONE ON THE PILLOW" (evocative but meaningless)
-- "SOMETHING STRANGE IS HAPPENING" (says nothing)
-- "THE TRUTH ABOUT TECHNOLOGY" (generic)
-- "WAIT UNTIL YOU SEE THIS" (clickbait)
+BAD HOOKS (Vague or unrelated):
+- "A PHONE ON THE PILLOW" (Evocative but tells me nothing about the story)
+- "SOMETHING STRANGE IS HAPPENING" (Too generic, no viral hook)
+- "THE TRUTH ABOUT TECHNOLOGY" (Boring, academic)
+- "WAIT UNTIL YOU SEE THIS" (Pure clickbait, low trust)
 
-The reader should know from the hook: "Ah, this is a story about [X]. That's interesting, I want to know more."
+The reader should know from the hook: "Ah, this is a story about [X]. That sounds wild. I need to read it."
 
 ---
 
 RULES FOR THE SUBTITLE (~15-25 words):
 
 One sentence that adds the key detail or context that makes the hook land.
-Should make clear WHY this is strange or interesting.
+It bridges the gap between the "Viral Hook" and the "Actual Story".
 
 GOOD: "A 2025 study found users describe these AI relationships as psychologically indistinguishable from human romance."
-BAD: "This fascinating phenomenon is changing how we think about relationships."
+BAD: "This fascinating phenomenon is changing how we think about relationships." (Too vague)
 
 ---
 
@@ -266,14 +293,19 @@ Examples: "Human-AI Relationships" / "Collective Memory" / "Deep Time" / "Neuros
 
 ---
 
-Generate 3 options. Each should capture what the story is about in a different way. Select the one that best combines clarity (what is this about?) with intrigue (why should I care?).
+Generate 6 options. Each should capture what the story is about in a different way.
+
+Select the one that best combines HIGH VIRALITY (it stops the scroll) with HIGH RELEVANCE (it accurately sells the story).
 
 OUTPUT FORMAT (JSON):
 {{
     "options": [
         {{ "id": 1, "title": "...", "subtitle": "...", "domain_tag": "..." }},
         {{ "id": 2, "title": "...", "subtitle": "...", "domain_tag": "..." }},
-        {{ "id": 3, "title": "...", "subtitle": "...", "domain_tag": "..." }}
+        {{ "id": 3, "title": "...", "subtitle": "...", "domain_tag": "..." }},
+        {{ "id": 4, "title": "...", "subtitle": "...", "domain_tag": "..." }},
+        {{ "id": 5, "title": "...", "subtitle": "...", "domain_tag": "..." }},
+        {{ "id": 6, "title": "...", "subtitle": "...", "domain_tag": "..." }}
     ],
     "selected_id": 1,
     "reasoning": "..."
