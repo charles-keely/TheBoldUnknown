@@ -4,6 +4,7 @@ import time
 import argparse
 from db import get_completed_research, get_approved_photos, save_story_generation, save_story_slides, update_photo_text
 from generator import generate_cover_options, generate_story_slides, generate_photo_text
+from utils import fetch_article_content
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -66,6 +67,11 @@ def main():
         try:
             # Prepare Research Text
             research_data = story.get('research_data', {})
+            lead_url = story.get('lead_url')
+            
+            # Fetch Source Content
+            source_content = fetch_article_content(lead_url) if lead_url else None
+
             if isinstance(research_data, dict):
                 research_text = json.dumps(research_data, indent=2)
             else:
@@ -73,7 +79,7 @@ def main():
 
             # --- Step 1: Story Slides Generation (FIRST) ---
             logger.info("Generating story slides (story-first)...")
-            slides_result = generate_story_slides(research_text)
+            slides_result = generate_story_slides(research_text, source_content=source_content)
             slides = slides_result.get('slides', [])
 
             # --- Step 2: Cover Generation (SECOND, based on story) ---
@@ -107,7 +113,7 @@ def main():
                     f"Image URL: {photo.get('image_url', 'N/A')}"
                 )
                 
-                photo_text = generate_photo_text(photo_desc, research_text)
+                photo_text = generate_photo_text(photo_desc, research_text, source_content=source_content)
 
                 generated_photo_texts.append({
                     "photo_id": str(photo["id"]),

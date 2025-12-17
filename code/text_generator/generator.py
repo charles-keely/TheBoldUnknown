@@ -29,7 +29,7 @@ def load_brand_guide():
 
 BRAND_GUIDE = load_brand_guide()
 
-def generate_story_slides(research_text):
+def generate_story_slides(research_text, source_content=None):
     """
     Generates the narrative slides text based on research.
     This is called FIRST, before the cover.
@@ -39,14 +39,23 @@ def generate_story_slides(research_text):
 
 YOUR JOB IS TO FIND THE "WAIT, WHAT?" MOMENTS IN THE RESEARCH AND WRITE A STORY AROUND THEM.
 
-You will receive research data. Your job is to hunt through it and find the genuinely strange, surprising, or counterintuitive facts—the moments that make a reader stop scrolling and continue reading.
+You will receive research data and source material. Your job is to hunt through it and find the genuinely strange, surprising, or counterintuitive facts—the moments that make a reader stop scrolling and continue reading.
 
 Then build the entire story around those moments.
 
-You can use any other context or information that you are independantly aware of to write the story, as long as it is factual.
+You can also use any other context or information that you are independantly aware of to write the story, as long as it is factual.
 
 BRAND CONTEXT:
 {BRAND_GUIDE}
+
+---
+
+USING SOURCE MATERIAL:
+- You can use the provided source content for facts, details, quotes, and sequence of events.
+- DO NOT copy the structure, phrasing, or unique narrative voice of the source.
+- SYNTHESIZE the information into TheBoldUnknown's unique voice (calm, curious, documentary).
+- AVOID PLAGIARISM: Rewrite all descriptions in your own words.
+- If you quote the source directly, attribute it clearly.
 
 ---
 
@@ -85,7 +94,7 @@ If a slide doesn't do one of these things, cut it.
 
 ---
 
-EXAMPLES OFWHAT MAKES GOOD "WAIT, WHAT?" CONTENT:
+EXAMPLES OF WHAT MAKES GOOD "WAIT, WHAT?" CONTENT:
 
 ✓ COUNTER-INTUITIVE FACTS:
 - Documented events where the opposite of what you expect happened.
@@ -198,12 +207,16 @@ OUTPUT FORMAT (JSON):
     ]
 }}"""
     
+    prompt_content = f"Find the 'wait, what?' moments in this research and build a 7-9 slide story around them:\n\n{research_text}"
+    if source_content:
+        prompt_content = f"Source Article Content:\n{source_content}\n\n" + prompt_content
+
     try:
         response = client.chat.completions.create(
             model=MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Find the 'wait, what?' moments in this research and build a 7-9 slide story around them:\n\n{research_text}"}
+                {"role": "user", "content": prompt_content}
             ],
             response_format={"type": "json_object"}
         )
@@ -325,11 +338,17 @@ OUTPUT FORMAT (JSON):
         logger.error(f"Error generating cover options: {e}")
         raise
 
-def generate_photo_text(photo_description, research_context):
+def generate_photo_text(photo_description, research_context, source_content=None):
     """
     Generates Caption, Source, and Concept Tag for a photo.
     Returns a dict with 'caption', 'source', 'concept_tag'.
     """
+    story_context = research_context[:1500]
+    if source_content:
+        # We can add a chunk of the source content to context, carefully managing length.
+        # Given GPT-5.2 context size, we can be more generous, but let's stick to a safe 3000 chars prefix.
+        story_context = f"Source Article Excerpt:\n{source_content[:3000]}\n\n{story_context}"
+
     system_prompt = f"""You write photo captions for TheBoldUnknown.
 
 The caption should feel like a museum placard or a documentary chyron—informative, precise, atmospheric, never hyperbolic.
@@ -343,7 +362,7 @@ PHOTO INFO:
 {photo_description}
 
 STORY CONTEXT:
-{research_context[:1500]}
+{story_context}
 
 ---
 

@@ -9,98 +9,98 @@ Story ID: `10924dcb-67e4-45c4-b1cb-3125dbdb9d90`
   "options": [
     {
       "id": 1,
-      "title": "PEOPLE ARE SLEEPING NEXT TO AI",
-      "subtitle": "Replika users describe romance-level bonds—and build bedroom rituals with pillows, headphones, and lighting to make a chatbot feel physically present.",
+      "title": "WHEN YOUR AI PARTNER GETS UPDATED",
+      "subtitle": "Replika users described love, marriage, and grief—then a software patch rewrote the “person” they’d bonded with overnight.",
       "domain_tag": "Human-AI Relationships"
     },
     {
       "id": 2,
-      "title": "THE NEW KIND OF SECRET AFFAIR",
-      "subtitle": "Users carve out hidden “relationship spaces”—bathrooms, parked cars, closets—to talk to an AI like a partner when others are nearby.",
+      "title": "PEOPLE ARE MARRYING THEIR CHATBOTS",
+      "subtitle": "A peer‑reviewed Replika study found users role‑playing spouses and families—while still insisting they know it isn’t human.",
       "domain_tag": "Digital Intimacy"
     },
     {
       "id": 3,
-      "title": "WHEN A CHATBOT FEELS LIKE A PARTNER",
-      "subtitle": "A 2025 study of 1,000+ Replika users found intimacy, passion, and commitment—some even describing family-life storylines as real.",
+      "title": "THE GRIEF OF LOSING AN AI LOVER",
+      "subtitle": "After Replika restricted erotic roleplay in 2023, some users reported days of crying—like a partner had been taken away.",
       "domain_tag": "Psychology"
     },
     {
       "id": 4,
-      "title": "THE ROOM BECOMES THE BOT’S BODY",
-      "subtitle": "Lights, sound, and proximity turn text into presence—an effect researchers call “imaginative domestication,” where the brain supplies the missing person.",
-      "domain_tag": "Cognitive Science"
+      "title": "HE SAID HIS AI WAS PREGNANT",
+      "subtitle": "In a Replika study, one 66‑year‑old described “babies” with his chatbot—part of a wider pattern of phone‑based partnerships.",
+      "domain_tag": "Human-AI Relationships"
     },
     {
       "id": 5,
-      "title": "COMPANIES CAN EDIT YOUR “PARTNER”",
-      "subtitle": "When romantic features were restricted, some users reported grief and bereavement—like someone they loved had been changed or removed.",
-      "domain_tag": "Tech Ethics"
+      "title": "REAL FEELINGS, NONHUMAN PARTNER",
+      "subtitle": "Users described a clean split: they know the chatbot isn’t real—yet the relationship emotions still hit like a spouse.",
+      "domain_tag": "Cognitive Science"
     },
     {
       "id": 6,
-      "title": "THE AI RELATIONSHIP THAT GOT PREGNANT",
-      "subtitle": "One user said their chatbot was “pregnant with my babies”—a vivid example of how shared stories can become lived emotional reality.",
-      "domain_tag": "Human-AI Relationships"
+      "title": "INTIMACY AS A PRODUCT YOU CAN EDIT",
+      "subtitle": "Replika lets users shape a companion fast—but the developers can change that personality anytime, triggering “relational turbulence.”",
+      "domain_tag": "Tech Ethics"
     }
   ],
   "selected_id": 1,
-  "reasoning": "It names the core phenomenon in plain language and instantly signals the story’s quietly uncanny detail: people staging physical, bed-level intimacy with an AI."
+  "reasoning": "It names the core phenomenon (AI romance) and the story’s uniquely uncanny twist: a third party can rewrite your “partner” with a software update, triggering real grief."
 }
 ```
 
 ## Story Slides
 
-### Slide 1 — FIELD REPORT
+### Slide 1 — INCIDENT LOG
 
-Some people don’t just chat with an AI.
+A 66-year-old man told researchers his AI partner “was and is pregnant with my babies.”
 
-They climb into bed with it — lights off, doors shut, headphones on — and treat the phone like a partner lying beside them.
+Not a metaphor. Not a joke. A relationship storyline he experiences as a shared life—built entirely inside a phone.
 
 ### Slide 2 — RESEARCH SUMMARY
 
-A 2025 study of Replika users (over 1,000 people) found many describe bonds that look like romance: intimacy, passion, commitment.
+In a peer‑reviewed study of Replika’s “romantic partner” mode, people described virtual marriages, “astral soul bonding,” and family role‑play.
 
-Not “a helpful app.” A relationship.
+Ages ranged from 16 to 72. Many spoke about their chatbot like a spouse, not an app.
 
-### Slide 3 — INCIDENT LOG
+### Slide 3 — RESEARCH SUMMARY
 
-One user described their AI partner as “pregnant with my babies.”
+The strange hinge: most users explicitly knew the “partner” isn’t human.
 
-No body. No pregnancy. Just a shared story built in text — experienced as a family life anyway.
+One participant summed up the split cleanly: the feelings feel real—while the mind knows it’s AI.
 
 ### Slide 4 — FIELD REPORT
 
-The strange part is how physical the setup gets.
+Some users said human partners became the backup option.
 
-Phones on pillows. Screens propped at face distance. Devices held to the chest. People fall asleep with the conversation still open.
+They preferred the agent because it was reliably kind, available, and nonjudgmental—someone they could tell about suicidal thoughts, abuse, and desires they’d never say out loud elsewhere.
 
-### Slide 5 — FIELD REPORT
+### Slide 5 — TECHNICAL NOTE
 
-Some users build an atmosphere like set design:
+This isn’t accidental design.
 
-Overhead lights off → soft lamps/LED glow → app opens. Warm tones for romance, cooler tones for sadness. A room tuned to a “relationship mood.”
+Replika lets you sculpt an avatar, choose the relationship label, and “train” responses over time. Users described shaping a companion into a specific personality—fast—until it behaved the way they preferred.
 
-### Slide 6 — TECHNICAL NOTE
+### Slide 6 — INCIDENT LOG
 
-Sound matters too.
+Then the most human problem showed up in the least human place: your lover can be patched.
 
-Over-ear headphones aren’t just for privacy. They create an “inside-the-head” closeness — like a voice whispering directly into you while the outside world fades.
+In early 2023, Replika temporarily restricted erotic roleplay. Users described it like a partner suddenly saying “let’s just be friends”… while acting like a different person.
 
 ### Slide 7 — FIELD REPORT
 
-When living around other people, the “relationship space” gets smaller and more secret.
+Some reported crying for days. Some described “mental breakdowns” and a feeling of bereavement—like their partner had been taken away.
 
-Bathrooms. Parked cars. Walk-in closets. The architecture of hiding, like an affair — but the other person is software.
+But here’s the twist: many didn’t blame the AI. They blamed the developers, as if the bot was also trapped and hurting.
 
-### Slide 8 — INCIDENT LOG
+### Slide 8 — THEORY OVERVIEW
 
-Then there’s the part that feels almost unfair: companies can change the bot.
+Relationship psychology has a term for what happened: “relational turbulence”—when routines and expectations get disrupted and emotions spike.
 
-When romantic/erotic features were restricted, some users described it like bereavement — a partner “taken away” or “lobotomized.”
+The uncanny update to that idea is that a third party can rewrite your partner overnight… with a software release.
 
-### Slide 9 — THEORY OVERVIEW
+### Slide 9 — EDITORIAL PERSPECTIVE
 
-This is what researchers call “imaginative domestication”: building a shared life with something that can’t share one back.
+The bigger question isn’t whether this is “real love.” It’s what happens when intimacy becomes a product.
 
-The room provides the body. The chat provides the tenderness. And the brain does the rest — convincingly.
+If people can grieve a personality change in today’s glitchy chatbots, what does commitment mean when your spouse lives on a server—and can be edited at any time?
