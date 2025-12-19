@@ -30,7 +30,7 @@
       --margin: 70px; /* Aligns with cover2.html */
       
       /* Typography */
-      --text-size: 40px; /* ~W/27, same as editorial2 */
+      --text-size: 44px; /* slightly larger for readability */
       --line-height: 1.5;
       --paragraph-gap: 1em;
       
@@ -168,41 +168,9 @@
       opacity: 0.8;
     }
 
-    /* Debug Overlay (Copied from editorial2.html) */
-    .char-debug {
-      position: fixed;
-      left: 12px;
-      bottom: 12px;
-      z-index: 9999;
-      font: 12px/1.4 monospace;
-      color: #ddd;
-      background: rgba(0, 0, 0, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 8px;
-      padding: 8px 10px;
-      backdrop-filter: blur(2px);
-    }
-    .char-debug button {
-      font: inherit;
-      color: #111;
-      background: #ddd;
-      border: none;
-      border-radius: 4px;
-      padding: 2px 6px;
-      margin-left: 6px;
-      cursor: pointer;
-    }
-
   </style>
 </head>
 <body>
-
-  <!-- DEBUG OVERLAY -->
-  <div id="char-debug" class="char-debug" style="display:none">
-    <span id="char-results">measuring…</span>
-    <button id="test-1p" type="button">Test 1p</button>
-    <button id="test-2p" type="button">Test 2p</button>
-  </div>
 
   <div class="scale-wrapper">
     <div class="slide">
@@ -220,20 +188,14 @@
         <img src="../img/TBU_Logo4.png" alt="TBU" class="logo">
         <div class="meta-data">
           <!-- 11.22.25<br> -->
-          DÉJÀ VU
+          <!-- Domain tag injected via postMessage -->
         </div>
       </div>
 
       <!-- Content -->
       <div class="content-area">
         <div class="text-column">
-          <!-- Text will be injected here -->
-          <p>
-            Scientists have long suspected that déjà vu is a "glitch" in the brain's memory retrieval system. But a new theory suggests something far stranger: that it might be a momentary overlap with a parallel timeline.
-          </p>
-          <p>
-            When we experience this sensation, we aren't just remembering the past—we are briefly perceiving a future that almost happened, but didn't.
-          </p>
+          <!-- Text injected via postMessage (template-wrapper.js) -->
         </div>
       </div>
 
@@ -257,110 +219,9 @@
       );
       const wrapper = document.querySelector('.scale-wrapper');
       if (wrapper) wrapper.style.transform = `scale(${scale})`;
-      window.__slideScale = scale;
     }
     window.addEventListener('load', resizeSlide);
     window.addEventListener('resize', resizeSlide);
-
-    /* --- CHAR COUNT TESTING (Adapted from editorial2.html) --- */
-    function sampleText(len) {
-      const base =
-        'This is sample editorial copy — with Capitals, commas, periods, and names: Ada, Turing, and Curie. ' +
-        'It includes short and long words, quotes “like this,” and dashes — to mirror real writing. ';
-      let s = '';
-      while (s.length < len) s += base;
-      return s.slice(0, len);
-    }
-
-    function measureMaxChars(paragraphCount) {
-      const target = document.querySelector('.text-column');
-      if (!target) return 0;
-      const rect = target.getBoundingClientRect();
-      const scale = window.__slideScale || 1;
-
-      // We measure against the flex container's available height
-      // But since flex is dynamic, let's look at the parent .content-area height
-      // Or we can just use a fixed max height based on layout. 
-      // The .content-area grows, but let's be safe and assume we don't want to overflow the header/footer.
-      // Better method: Create a clone in a fixed box matching the .content-area size.
-      
-      const contentArea = document.querySelector('.content-area');
-      const areaRect = contentArea.getBoundingClientRect();
-      
-      const baseWidth = 720; // Fixed width from CSS
-      const baseHeight = areaRect.height / scale; // Available height in unscaled px
-
-      const probe = document.createElement('div');
-      probe.className = 'text-column';
-      probe.style.position = 'absolute';
-      probe.style.left = '-9999px';
-      probe.style.top = '0';
-      probe.style.width = baseWidth + 'px';
-      // We don't set height, we measure scrollHeight against baseHeight
-      probe.style.visibility = 'hidden';
-      document.body.appendChild(probe);
-
-      function fill(count) {
-        probe.innerHTML = '';
-        if (paragraphCount === 1) {
-          const p = document.createElement('p');
-          p.textContent = sampleText(count);
-          probe.appendChild(p);
-        } else {
-          const p1 = document.createElement('p');
-          const p2 = document.createElement('p');
-          const first = Math.ceil(count * 0.52);
-          p1.textContent = sampleText(first);
-          p2.textContent = sampleText(count - first);
-          probe.appendChild(p1);
-          probe.appendChild(p2);
-        }
-      }
-
-      let lo = 0, hi = 5000, best = 0;
-      while (lo <= hi) {
-        const mid = (lo + hi) >> 1;
-        fill(mid);
-        if (probe.scrollHeight <= baseHeight) {
-          best = mid;
-          lo = mid + 1;
-        } else {
-          hi = mid - 1;
-        }
-      }
-
-      document.body.removeChild(probe);
-      return best;
-    }
-
-    function updateCharDebug() {
-      const el = document.getElementById('char-debug');
-      const res = document.getElementById('char-results');
-      if (!el || !res) return;
-      
-      // Delay slightly to ensure layout is stable
-      setTimeout(() => {
-        const one = measureMaxChars(1);
-        const two = measureMaxChars(2);
-        res.textContent = `Max chars — 1p: ${one} | 2p: ${two}`;
-        el.style.display = 'block';
-
-        const btn1 = document.getElementById('test-1p');
-        const btn2 = document.getElementById('test-2p');
-        const target = document.querySelector('.text-column');
-        
-        btn1.onclick = () => {
-          target.innerHTML = `<p>${sampleText(one)}</p>`;
-        };
-        btn2.onclick = () => {
-          const first = Math.ceil(two * 0.52);
-          target.innerHTML = `<p>${sampleText(first)}</p><p>${sampleText(two - first)}</p>`;
-        };
-      }, 100);
-    }
-
-    window.addEventListener('load', updateCharDebug);
-    window.addEventListener('resize', updateCharDebug);
   </script>
 
 </body>

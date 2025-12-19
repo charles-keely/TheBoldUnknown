@@ -13,35 +13,78 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import config
-from db import (
-    get_stories_ready_for_assembly,
-    get_story_full_data,
-    get_assembly,
-    save_assembly,
-    check_db_connection
-)
-from models import (
-    StoriesResponse,
-    StorySummary,
-    StoryFullData,
-    StoryInfo,
-    StoryGeneration,
-    StorySlide,
-    StoryPhoto,
-    StoryThumbnail,
-    AssemblyResponse,
-    Assembly,
-    AssemblyData,
-    AssemblySlide,
-    SlideContent,
-    AssemblyMetadata,
-    SaveAssemblyRequest,
-    SaveAssemblyResponse,
-    AssemblyStatus,
-    SlideType,
-    TemplateType
-)
+"""
+NOTE ON IMPORTS:
+This module is sometimes run as:
+- `uvicorn main:app` from within `code/pre_assembler/`
+and sometimes as:
+- `uvicorn pre_assembler.main:app` from within `code/`
+
+So we support both package-relative and local-module imports.
+"""
+
+try:
+    # Package-style imports
+    from .config import config
+    from .db import (
+        get_stories_ready_for_assembly,
+        get_story_full_data,
+        get_assembly,
+        save_assembly,
+        check_db_connection,
+    )
+    from .models import (
+        StoriesResponse,
+        StorySummary,
+        StoryFullData,
+        StoryInfo,
+        StoryGeneration,
+        StorySlide,
+        StoryPhoto,
+        StoryThumbnail,
+        AssemblyResponse,
+        Assembly,
+        AssemblyData,
+        AssemblySlide,
+        SlideContent,
+        AssemblyMetadata,
+        SaveAssemblyRequest,
+        SaveAssemblyResponse,
+        AssemblyStatus,
+        SlideType,
+        TemplateType,
+    )
+except ImportError:
+    # Local-folder imports
+    from config import config
+    from db import (
+        get_stories_ready_for_assembly,
+        get_story_full_data,
+        get_assembly,
+        save_assembly,
+        check_db_connection,
+    )
+    from models import (
+        StoriesResponse,
+        StorySummary,
+        StoryFullData,
+        StoryInfo,
+        StoryGeneration,
+        StorySlide,
+        StoryPhoto,
+        StoryThumbnail,
+        AssemblyResponse,
+        Assembly,
+        AssemblyData,
+        AssemblySlide,
+        SlideContent,
+        AssemblyMetadata,
+        SaveAssemblyRequest,
+        SaveAssemblyResponse,
+        AssemblyStatus,
+        SlideType,
+        TemplateType,
+    )
 
 # =============================================================================
 # App Setup
@@ -115,7 +158,6 @@ async def list_stories():
     Stories must have:
     - Completed research
     - At least 1 text slide
-    - At least 1 approved photo
     - At least 1 generated thumbnail
     - NOT finalized in assembly
     """
@@ -171,8 +213,135 @@ async def get_story(story_generation_id: str):
 # API Routes - Assemblies
 # =============================================================================
 
+def _iso_now() -> str:
+    return datetime.now().isoformat()
+
+
+def hydrate_assembly_from_story(
+    assembly_data: dict,
+    story_data: dict,
+    *,
+    force: bool = False,
+) -> tuple[dict, bool]:
+    """
+    Re-hydrate an existing assembly's per-slide *content* from DB story tables,
+    while preserving slide ordering / visibility / template selection.
+
+    Why:
+    - Early assemblies may have been saved with test placeholder content.
+    - The "source_*_id" fields point to the canonical DB rows; we can rebuild
+      content from those sources.
+
+    Behavior:
+    - Hydrates when `force=True` or when metadata.hydrated_from_story != True
+    - Overwrites slide.content fields for slides that have source ids.
+    - Leaves slides without source ids untouched.
+    """
+    if not assembly_data or not story_data:
+        return assembly_data, False
+
+    metadata = assembly_data.get("metadata") or {}
+    already_hydrated = bool(metadata.get("hydrated_from_story"))
+    if already_hydrated and not force:
+        return assembly_data, False
+
+    story = story_data.get("story") or {}
+    story_domain = story.get("domain_tag")
+
+    slides_by_id = {str(s["id"]): s for s in (story_data.get("slides") or []) if s.get("id")}
+    photos_by_id = {str(p["id"]): p for p in (story_data.get("photos") or []) if p.get("id")}
+    thumbs_by_id = {str(t["id"]): t for t in (story_data.get("thumbnails") or []) if t.get("id")}
+
+    # Decide selected thumbnail
+    selected_thumb_id = (
+        assembly_data.get("selected_thumbnail_id")
+        or next((str(t["id"]) for t in (story_data.get("thumbnails") or []) if t.get("is_selected")), None)
+        or (str(story_data["thumbnails"][0]["id"]) if story_data.get("thumbnails") else None)
+    )
+    selected_thumb_url = thumbs_by_id.get(selected_thumb_id, {}).get("image_url") if selected_thumb_id else None
+
+    # Hydrate slides
+    changed = False
+    new_data = dict(assembly_data)
+    new_data["selected_thumbnail_id"] = selected_thumb_id
+
+    new_slides = []
+    for slide in (assembly_data.get("slides") or []):
+        if not isinstance(slide, dict):
+            new_slides.append(slide)
+            continue
+
+        s = dict(slide)
+        content = dict(s.get("content") or {})
+
+        # Ensure domain tag is present (used in header meta-data)
+        if story_domain and content.get("domain_tag") != story_domain:
+            content["domain_tag"] = story_domain
+            changed = True
+
+        if s.get("type") == SlideType.COVER.value:
+            # Cover should reflect the story generation by default
+            if story.get("hook_title") and content.get("title") != story.get("hook_title"):
+                content["title"] = story.get("hook_title")
+                changed = True
+            if story.get("subtitle") and content.get("subtitle") != story.get("subtitle"):
+                content["subtitle"] = story.get("subtitle")
+                changed = True
+            if selected_thumb_url and content.get("thumbnail_url") != selected_thumb_url:
+                content["thumbnail_url"] = selected_thumb_url
+                changed = True
+
+        elif s.get("type") == SlideType.TEXT.value:
+            src_id = s.get("source_slide_id")
+            if src_id and str(src_id) in slides_by_id:
+                desired_text = slides_by_id[str(src_id)].get("text_content")
+                if desired_text is not None and content.get("text") != desired_text:
+                    content["text"] = desired_text
+                    changed = True
+                desired_paras = slides_by_id[str(src_id)].get("paragraph_count")
+                if desired_paras is not None and content.get("paragraph_count") != desired_paras:
+                    content["paragraph_count"] = desired_paras
+                    changed = True
+
+        elif s.get("type") == SlideType.PHOTO.value:
+            src_id = s.get("source_photo_id")
+            if src_id and str(src_id) in photos_by_id:
+                p = photos_by_id[str(src_id)]
+                desired_url = p.get("image_url")
+                if desired_url and content.get("image_url") != desired_url:
+                    content["image_url"] = desired_url
+                    changed = True
+                desired_caption = p.get("caption") or ""
+                if content.get("caption") != desired_caption:
+                    content["caption"] = desired_caption
+                    changed = True
+                desired_source = p.get("source_attribution") or ""
+                if content.get("source") != desired_source:
+                    content["source"] = desired_source
+                    changed = True
+
+        s["content"] = content
+        new_slides.append(s)
+
+    new_data["slides"] = new_slides
+
+    # Mark hydration so we don't keep overwriting manual edits on future loads.
+    new_metadata = dict(metadata)
+    new_metadata["hydrated_from_story"] = True
+    new_metadata["hydrated_at"] = _iso_now()
+    # Keep created_at/updated_at fields if present; otherwise populate.
+    new_metadata.setdefault("created_at", _iso_now())
+    new_metadata["updated_at"] = _iso_now()
+    new_data["metadata"] = new_metadata
+
+    return new_data, changed
+
+
 @app.get("/api/stories/{story_generation_id}/assembly")
-async def get_or_create_assembly(story_generation_id: str):
+async def get_or_create_assembly(
+    story_generation_id: str,
+    force_hydrate: bool = Query(False, description="Force re-hydrating slide content from DB story sources"),
+):
     """
     Get existing assembly or generate a default one.
     
@@ -185,16 +354,29 @@ async def get_or_create_assembly(story_generation_id: str):
     existing = get_assembly(story_generation_id)
     
     if existing:
+        # Hydrate existing assembly content from canonical story tables.
+        # This fixes older saved assemblies that contain placeholder test content.
+        story_data = get_story_full_data(story_generation_id)
+        if not story_data:
+            raise HTTPException(status_code=404, detail="Story not found")
+
+        hydrated_data, changed = hydrate_assembly_from_story(
+            existing["assembly_data"] or {},
+            story_data,
+            force=force_hydrate,
+        )
+
         return {
             "assembly": {
-                "id": str(existing['id']),
-                "story_generation_id": str(existing['story_generation_id']),
-                "assembly_data": existing['assembly_data'],
-                "status": existing['status'],
-                "created_at": existing['created_at'],
-                "updated_at": existing['updated_at']
+                "id": str(existing["id"]),
+                "story_generation_id": str(existing["story_generation_id"]),
+                "assembly_data": hydrated_data,
+                "status": existing["status"],
+                "created_at": existing["created_at"],
+                "updated_at": existing["updated_at"],
             },
-            "is_default": False
+            # Treat hydration like a "new default" so the editor shows unsaved changes.
+            "is_default": bool(changed),
         }
     
     # Generate default assembly
@@ -203,6 +385,10 @@ async def get_or_create_assembly(story_generation_id: str):
         raise HTTPException(status_code=404, detail="Story not found")
     
     default_assembly = generate_default_assembly(story_data)
+    # Mark as hydrated so subsequent loads don't overwrite manual edits.
+    default_assembly.setdefault("metadata", {})
+    default_assembly["metadata"]["hydrated_from_story"] = True
+    default_assembly["metadata"]["hydrated_at"] = _iso_now()
     
     return {
         "assembly": {
@@ -254,6 +440,69 @@ async def save_story_assembly(story_generation_id: str, request: SaveAssemblyReq
 
 
 # =============================================================================
+# Template Rendering Endpoint
+# =============================================================================
+
+@app.get("/api/render/{template_type}")
+async def render_template(
+    template_type: str,
+    slide_id: str = Query(..., description="Slide ID for postMessage identification"),
+    slide_type: str = Query("text", description="Slide type: cover, text, photo")
+):
+    """
+    Serve a template with the wrapper script injected.
+    
+    The wrapper script enables postMessage communication between
+    the template iframe and the parent editor.
+    
+    Template types: cover3, editorial3, photos1
+    """
+    # Map template type to file
+    template_files = {
+        "cover3": "cover3.html",
+        "editorial3": "editorial3.html",
+        "photos1": "photos1.html",
+        "videos1": "videos1.html"
+    }
+    
+    if template_type not in template_files:
+        raise HTTPException(status_code=400, detail=f"Unknown template type: {template_type}")
+    
+    template_path = os.path.join(config.TEMPLATE_DESIGN_DIR, 'chosen_templates', template_files[template_type])
+    
+    if not os.path.exists(template_path):
+        raise HTTPException(status_code=404, detail=f"Template not found: {template_type}")
+    
+    # Read the template
+    with open(template_path, 'r', encoding='utf-8') as f:
+        html = f.read()
+    
+    # Fix image paths to use our served assets
+    # Original: ../img/... → /template-assets/img/...
+    html = html.replace('src="../img/', 'src="/template-assets/img/')
+    html = html.replace("src='../img/", "src='/template-assets/img/")
+    
+    # Create the initialization script with slide metadata
+    init_script = f'''
+<script>
+  // Set slide metadata before wrapper script runs
+  window.__slideId = "{slide_id}";
+  window.__slideType = "{slide_type}";
+</script>
+<script src="/static/js/template-wrapper.js"></script>
+'''
+    
+    # Inject the wrapper script before </body>
+    if '</body>' in html:
+        html = html.replace('</body>', f'{init_script}</body>')
+    else:
+        # Fallback: append to end
+        html += init_script
+    
+    return HTMLResponse(content=html, media_type="text/html")
+
+
+# =============================================================================
 # Thumbnail Image Endpoint
 # =============================================================================
 
@@ -266,7 +515,10 @@ async def get_thumbnail_image(thumbnail_id: str):
     This endpoint decodes and serves the image.
     """
     from fastapi.responses import Response
-    from db import get_db_connection
+    try:
+        from .db import get_db_connection
+    except ImportError:
+        from db import get_db_connection
     import base64
     
     conn = get_db_connection()
@@ -441,3 +693,4 @@ if __name__ == "__main__":
         port=config.PORT,
         reload=config.DEBUG
     )
+

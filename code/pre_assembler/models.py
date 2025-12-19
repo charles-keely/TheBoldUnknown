@@ -158,6 +158,10 @@ class AssemblyMetadata(BaseModel):
     created_at: datetime
     updated_at: datetime
     last_edited_by: Optional[str] = None
+    # When true, slide content has been hydrated from canonical story tables
+    # (story_slides / story_photos / story_thumbnails) at least once.
+    hydrated_from_story: Optional[bool] = None
+    hydrated_at: Optional[datetime] = None
 
 
 class AssemblyData(BaseModel):
@@ -196,3 +200,4 @@ class SaveAssemblyResponse(BaseModel):
     id: str
     status: AssemblyStatus
     updated_at: datetime
+

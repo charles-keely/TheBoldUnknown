@@ -34,3 +34,4 @@ config = Config()
 os.makedirs(config.STATIC_DIR, exist_ok=True)
 os.makedirs(os.path.join(config.STATIC_DIR, 'js'), exist_ok=True)
 os.makedirs(os.path.join(config.STATIC_DIR, 'css'), exist_ok=True)
+

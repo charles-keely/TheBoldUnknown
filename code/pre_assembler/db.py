@@ -4,8 +4,9 @@ Database connection and queries for the Pre-Assembler.
 
 import os
 import logging
-import psycopg2
-from psycopg2.extras import RealDictCursor, Json
+import json
+import psycopg
+from psycopg.rows import dict_row
 from contextlib import contextmanager
 from dotenv import load_dotenv
 
@@ -26,6 +27,8 @@ def get_db_connection():
     """Establishes and returns a database connection."""
     try:
         db_url = os.getenv("DATABASE_URL")
+        connect_timeout = int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "5"))  # seconds
+        statement_timeout_ms = int(os.getenv("POSTGRES_STATEMENT_TIMEOUT_MS", "15000"))
         
         # Fallback: Construct DATABASE_URL from individual POSTGRES_* vars
         if not db_url:
@@ -40,8 +43,18 @@ def get_db_connection():
             
         if not db_url:
             raise ValueError("DATABASE_URL environment variable is not set")
-            
-        conn = psycopg2.connect(db_url, cursor_factory=RealDictCursor)
+
+        # Prevent "infinite loading" when DB is unreachable by applying:
+        # - connect_timeout: fail fast during TCP connect / SSL handshake
+        # - statement_timeout: fail slow queries fast (server-side)
+        #
+        # NOTE: statement_timeout is best-effort; it requires server support.
+        conn = psycopg.connect(
+            db_url,
+            connect_timeout=connect_timeout,
+            options=f"-c statement_timeout={statement_timeout_ms}",
+            row_factory=dict_row,
+        )
         return conn
     except Exception as e:
         logger.error(f"Failed to connect to database: {e}")
@@ -73,7 +86,6 @@ def get_stories_ready_for_assembly():
     - Completed story_research
     - At least 1 story_generation
     - At least 1 story_slide
-    - At least 1 approved story_photo
     - At least 1 generated story_thumbnail
     - NOT finalized in story_assemblies
     
@@ -143,7 +155,6 @@ def get_stories_ready_for_assembly():
                     assembly_updated_at as updated_at
                 FROM story_stats
                 WHERE slide_count > 0
-                  AND photo_count > 0
                   AND thumbnail_count > 0
                   AND (assembly_status IS NULL OR assembly_status != 'finalized')
                 ORDER BY 
@@ -301,19 +312,19 @@ def save_assembly(story_generation_id: str, assembly_data: dict, status: str = '
                 # Update existing assembly
                 cur.execute("""
                     UPDATE story_assemblies
-                    SET assembly_data = %s, status = %s, updated_at = NOW()
+                    SET assembly_data = %s::jsonb, status = %s, updated_at = NOW()
                     WHERE id = %s
                     RETURNING id
-                """, (Json(assembly_data), status, existing['id']))
+                """, (json.dumps(assembly_data), status, existing['id']))
                 assembly_id = cur.fetchone()['id']
                 logger.info(f"Updated assembly {assembly_id} for story {story_generation_id}")
             else:
                 # Create new assembly
                 cur.execute("""
                     INSERT INTO story_assemblies (story_generation_id, assembly_data, status)
-                    VALUES (%s, %s, %s)
+                    VALUES (%s, %s::jsonb, %s)
                     RETURNING id
-                """, (story_generation_id, Json(assembly_data), status))
+                """, (story_generation_id, json.dumps(assembly_data), status))
                 assembly_id = cur.fetchone()['id']
                 logger.info(f"Created assembly {assembly_id} for story {story_generation_id}")
             
@@ -365,3 +376,4 @@ def check_db_connection():
     except Exception as e:
         logger.error(f"Database connection check failed: {e}")
         return False
+
