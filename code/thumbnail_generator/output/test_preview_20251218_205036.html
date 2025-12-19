@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TheBoldUnknown - Thumbnail Preview</title>
+  
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      background: #111;
+      font-family: "Montserrat", sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      color: #fff;
+    }
+
+    /* Control Panel */
+    .control-panel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.9);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      z-index: 1000;
+      min-width: 280px;
+    }
+    
+    .control-panel h3 {
+      margin: 0 0 15px 0;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    .concept-btn {
+      display: block;
+      width: 100%;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .concept-btn:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.4);
+    }
+    
+    .concept-btn.active {
+      background: rgba(255,255,255,0.15);
+      border-color: #fff;
+    }
+    
+    .concept-btn .number {
+      font-weight: 700;
+      margin-right: 8px;
+    }
+    
+    .concept-btn .type {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      opacity: 0.7;
+    }
+    
+    .concept-description {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      font-size: 12px;
+      line-height: 1.5;
+      color: rgba(255,255,255,0.6);
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    /* Cover Preview */
+    :root {
+      --frame-width: 1080px;
+      --frame-height: 1350px;
+      --margin: 70px;
+      --ui-color: rgba(255, 255, 255, 0.9);
+      --dim-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .scale-wrapper {
+      width: var(--frame-width);
+      height: var(--frame-height);
+      transform-origin: center center;
+      margin: 40px 0;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: #05060a;
+      color: #fff;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(0,0,0,0.8);
+      border-radius: 8px;
+    }
+
+    .bg-image {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      object-fit: cover;
+      opacity: 0.9;
+      transition: opacity 0.3s;
+    }
+
+    .vignette {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.8) 100%);
+      z-index: 1;
+      mix-blend-mode: multiply;
+    }
+
+    .bottom-gradient {
+      position: absolute;
+      bottom: 0; left: 0; width: 100%; height: 55%;
+      background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.95) 100%);
+      z-index: 2;
+      pointer-events: none;
+    }
+    
+    .ui-layer {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      padding: var(--margin);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-top: 1px solid rgba(255,255,255,0.3);
+      padding-top: 20px;
+    }
+
+    .logo {
+      width: 90px;
+      height: auto;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+
+    .meta-data {
+      text-align: right;
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      line-height: 1.4;
+      color: var(--dim-color);
+      text-transform: uppercase;
+    }
+
+    .center-stage {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 0;
+    }
+
+    .main-title {
+      font-weight: 800;
+      font-size: 100px;
+      line-height: 0.95;
+      text-transform: uppercase;
+      letter-spacing: -0.03em;
+      text-shadow: 0 10px 40px rgba(0,0,0,0.7);
+      margin: 0;
+    }
+
+    .subtitle {
+      font-weight: 500;
+      font-size: 24px;
+      line-height: 1.4;
+      max-width: 600px;
+      margin-top: 30px;
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+    }
+
+    .title-deco {
+      width: 2px;
+      height: 120px;
+      background: linear-gradient(to bottom, transparent, #fff, transparent);
+      margin: 0 40px;
+      opacity: 0.5;
+    }
+    
+    .title-row {
+      display: flex;
+      align-items: center;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 1px solid rgba(255,255,255,0.3);
+      padding-bottom: 20px;
+    }
+
+    .footer-left {
+      font-size: 16px;
+      letter-spacing: 0.1em;
+      color: var(--dim-color);
+      text-transform: uppercase;
+    }
+
+    .arrow-container {
+      animation: floatRight 2s ease-in-out infinite;
+    }
+    
+    .swipe-arrow {
+      width: 50px;
+      height: auto;
+      filter: brightness(0) invert(1);
+      opacity: 0.9;
+    }
+
+    @keyframes floatRight {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(8px); }
+    }
+
+    .mark {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: rgba(255,255,255,0.4);
+      border-style: solid;
+      pointer-events: none;
+    }
+    .mark-tl { top: 50px; left: 50px; border-width: 2px 0 0 2px; }
+    .mark-tr { top: 50px; right: 50px; border-width: 2px 2px 0 0; }
+    .mark-bl { bottom: 50px; left: 50px; border-width: 0 0 2px 2px; }
+    .mark-br { bottom: 50px; right: 50px; border-width: 0 2px 2px 0; }
+
+    /* Info Panel */
+    .info-panel {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0,0,0,0.9);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 400px;
+    }
+    
+    .info-panel h4 {
+      margin: 0 0 10px 0;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.5);
+    }
+    
+    .info-panel p {
+      margin: 0;
+      font-size: 11px;
+      line-height: 1.6;
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* Keyboard hint */
+    .keyboard-hint {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+    }
+    
+    kbd {
+      background: rgba(255,255,255,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin: 0 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Control Panel -->
+  <div class="control-panel">
+    <h3>Select Thumbnail</h3>
+    
+    <button class="concept-btn" onclick="selectConcept(0)">
+      <span class="number">1</span>
+      <span class="type">literal</span>
+    </button>
+
+    <button class="concept-btn" onclick="selectConcept(1)">
+      <span class="number">2</span>
+      <span class="type">symbolic</span>
+    </button>
+
+    <button class="concept-btn" onclick="selectConcept(2)">
+      <span class="number">3</span>
+      <span class="type">atmospheric</span>
+    </button>
+    <div class="concept-description" id="description">
+      Select a concept to see its description.
+    </div>
+  </div>
+
+  <!-- Cover Preview -->
+  <div class="scale-wrapper">
+    <div class="slide">
+      
+      <!-- Background Image (switchable) -->
+      <img id="bg-image" src="REMEMBERING_CAN_REWRITE_YOUR_M_20251218_205010_c1.png" alt="Cover" class="bg-image">
+      <div class="vignette"></div>
+      <div class="bottom-gradient"></div>
+
+      <!-- Technical Corner Marks -->
+      <div class="mark mark-tl"></div>
+      <div class="mark mark-tr"></div>
+      <div class="mark mark-bl"></div>
+      <div class="mark mark-br"></div>
+
+      <!-- Main UI -->
+      <div class="ui-layer">
+        
+        <!-- Top Row -->
+        <div class="header">
+          <img src="../../template_design/img/TBU_Logo4.png" alt="TBU" class="logo">
+          <div class="meta-data">
+            MEMORY RESEARCH<br>
+            Analysis
+          </div>
+        </div>
+
+        <!-- Center Content -->
+        <div class="center-stage">
+          <div class="title-row">
+            <div class="title-deco"></div> 
+            
+            <h1 class="main-title">
+              REMEMBERING CAN REWRITE<br>YOUR MEMORY
+            </h1>
+
+            <div class="title-deco"></div>
+          </div>
+
+          <p class="subtitle">
+            A major review of ~200 papers argues episodic memory is rebuilt on recall—and the updated version can get saved back in.
+          </p>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="footer">
+          <div class="footer-left">
+            01/08<br>
+            SWIPE FOR MORE
+          </div>
+          <div class="arrow-container">
+            <img src="../../template_design/img/next.png" alt="Next" class="swipe-arrow">
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Info Panel -->
+  <div class="info-panel">
+    <h4>Story Info</h4>
+    <p><strong>Title:</strong> REMEMBERING CAN REWRITE YOUR MEMORY</p>
+    <p><strong>Domain:</strong> Memory Research</p>
+    <p><strong>Generated:</strong> 2025-12-18 20:50</p>
+  </div>
+
+  <!-- Keyboard Hint -->
+  <div class="keyboard-hint">
+    Press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> to switch concepts
+  </div>
+
+  <script>
+    // Image data
+    const images = [{ number: 1, type: 'literal', path: 'REMEMBERING_CAN_REWRITE_YOUR_M_20251218_205010_c1.png', description: 'A documentary-style close shot of a neuroscientist in a dim lab, seen from behind/three-quarter angle, studying a large translucent brain scan or anatomical model suspended in the air (hologram-like b' }, { number: 2, type: 'symbolic', path: 'REMEMBERING_CAN_REWRITE_YOUR_M_20251218_205010_c2.png', description: 'A minimal, poster-like symbolic composition: a human head silhouette (side profile) formed from layered translucent “memory sheets” like thin acetate or film. Within the head, a small bright nucleus (' }, { number: 3, type: 'atmospheric', path: 'REMEMBERING_CAN_REWRITE_YOUR_M_20251218_205010_c3.png', description: 'An evocative, mood-driven scene of a dark empty hallway or quiet room at night (domestic, familiar), with a single doorway in the upper half emitting a faint cold light. In the light spill, dust motes' }];
+    
+    let currentIndex = 0;
+    
+    function selectConcept(index) {
+      if (index < 0 || index >= images.length) return;
+      
+      currentIndex = index;
+      const img = images[index];
+      
+      // Update background image
+      document.getElementById('bg-image').src = img.path;
+      
+      // Update description
+      document.getElementById('description').textContent = img.description || 'No description available.';
+      
+      // Update button states
+      document.querySelectorAll('.concept-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+    }
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key >= '1' && e.key <= '3') {
+        selectConcept(parseInt(e.key) - 1);
+      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        selectConcept((currentIndex + 1) % images.length);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        selectConcept((currentIndex - 1 + images.length) % images.length);
+      }
+    });
+    
+    // Initialize
+    selectConcept(0);
+
+    // Scaling
+    function resizeSlide() {
+      const baseWidth = 1080;
+      const baseHeight = 1350;
+      const availableWidth = window.innerWidth - 350; // Account for control panel
+      const availableHeight = window.innerHeight - 100;
+      const scale = Math.min(
+        availableWidth / baseWidth,
+        availableHeight / baseHeight,
+        0.8 // Max scale
+      );
+      const wrapper = document.querySelector('.scale-wrapper');
+      if (wrapper) {
+        wrapper.style.transform = `scale(${scale})`;
+      }
+    }
+    window.addEventListener('load', resizeSlide);
+    window.addEventListener('resize', resizeSlide);
+  </script>
+
+</body>
+</html>

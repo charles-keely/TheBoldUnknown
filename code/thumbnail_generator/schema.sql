@@ -1,0 +1,41 @@
+-- Thumbnail Generator Schema
+-- NOTE: User already created a simplified version of this table.
+-- This is the reference schema for documentation.
+
+-- Table: story_thumbnails
+-- Stores AI-generated cover images for each story
+-- 
+-- CREATE TABLE public.story_thumbnails (
+--     id UUID PRIMARY KEY,
+--     story_generation_id UUID REFERENCES story_generations(id),
+-- 
+--     concept_number INTEGER
+--         CHECK (concept_number BETWEEN 1 AND 3),
+-- 
+--     concept_type TEXT
+--         CHECK (concept_type IN ('literal', 'symbolic', 'atmospheric')),
+-- 
+--     scene_description TEXT,
+--     full_prompt TEXT,
+--     image_url TEXT,
+-- 
+--     status TEXT
+--         CHECK (status IN ('pending', 'generating', 'generated', 'approved', 'rejected', 'failed')),
+-- 
+--     is_selected BOOLEAN DEFAULT FALSE,
+-- 
+--     generation_metadata JSONB,
+-- 
+--     created_at TIMESTAMP DEFAULT now(),
+--     generated_at TIMESTAMP,
+--     selected_at TIMESTAMP
+-- );
+
+-- Optional: Add indexes for better query performance
+-- CREATE INDEX idx_story_thumbnails_generation ON story_thumbnails(story_generation_id);
+-- CREATE INDEX idx_story_thumbnails_status ON story_thumbnails(status);
+
+-- Optional: Ensure only one selected thumbnail per story_generation
+-- CREATE UNIQUE INDEX idx_story_thumbnails_selected 
+-- ON story_thumbnails(story_generation_id) 
+-- WHERE is_selected = TRUE;

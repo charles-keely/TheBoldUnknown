@@ -1,0 +1,16 @@
+# Thumbnail Generator Dependencies
+
+# OpenAI for GPT-5.2 prompt generation
+openai>=1.0.0
+
+# Google Generative AI (Nano Banana / Gemini Image Generation)
+google-genai>=1.0.0
+
+# Database
+psycopg2-binary>=2.9.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Image handling (used by google-genai)
+Pillow>=10.0.0
