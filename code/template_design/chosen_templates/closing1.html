@@ -226,8 +226,8 @@
       <div class="header">
         <img src="../img/TBU_Logo4.png" alt="TBU" class="logo">
         <div class="meta-data">
-          END OF FILE<br>
-          ANALYSIS COMPLETE
+          <span class="domain-tag-line"></span><br>
+          <span class="meta-subline">END OF FILE</span>
         </div>
       </div>
 
@@ -245,12 +245,8 @@
         <div class="sources-container">
           <span class="sources-label">Primary Sources</span>
           <div class="sources-list">
-            <span class="source-item">NASA / JPL</span>
-            <span class="source-item">Nature Journal</span>
-            <span class="source-item">Smithsonian Archives</span>
-            <span class="source-item">MIT Technology Review</span>
-            <span class="source-item">Historical Geographic</span>
-            <span class="source-item">Cambridge Studies</span>
+            <!-- Primary sources injected via postMessage (template-wrapper.js).
+                 If none exist for a story, this entire container is hidden. -->
           </div>
         </div>
 
@@ -258,12 +254,11 @@
 
       <!-- Footer -->
       <div class="footer">
-        <div class="footer-left">
-          <span class="brand-mark">TBU</span> // 2025
+        <div class="footer-left footer-final">
+          FINAL // 08
         </div>
-        <!-- No arrow needed on last slide, or maybe a replay icon? Leaving empty for now as standard footer structure -->
-        <div class="footer-left" style="text-align: right;">
-            FINAL // 08
+        <div class="footer-right footer-left" style="text-align: right;">
+          <span class="brand-mark">TBU</span> // <span class="brand-year">2025</span>
         </div>
       </div>
 

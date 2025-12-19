@@ -207,6 +207,8 @@ def get_story_full_data(story_generation_id: str):
                     sg.hashtags,
                     sg.created_at,
                     sr.research_data,
+                    sr.primary_sources,
+                    sr.primary_source_urls,
                     l.title as lead_title
                 FROM story_generations sg
                 JOIN story_research sr ON sg.story_research_id = sr.id

@@ -296,6 +296,8 @@ def hydrate_assembly_from_story(
     selected_gen = next((g for g in generations if str(g.get("id")) == str(selected_gen_id)), None)
 
     story_domain = (selected_gen or {}).get("domain_tag") or story.get("domain_tag")
+    story_primary_sources = story.get("primary_sources") or []
+    story_primary_source_urls = story.get("primary_source_urls") or []
 
     slides_by_id = {str(s["id"]): s for s in (story_data.get("slides") or []) if s.get("id")}
     photos_by_id = {str(p["id"]): p for p in (story_data.get("photos") or []) if p.get("id")}
@@ -391,10 +393,43 @@ def hydrate_assembly_from_story(
                     content["source"] = desired_source
                     changed = True
 
+        # Closing slide: keep primary sources in sync with story_research.
+        # (We key off template so we don't need a new slide type.)
+        if s.get("template") == TemplateType.CLOSING1.value:
+            if content.get("primary_sources") != story_primary_sources:
+                content["primary_sources"] = story_primary_sources
+                changed = True
+            if content.get("primary_source_urls") != story_primary_source_urls:
+                content["primary_source_urls"] = story_primary_source_urls
+                changed = True
+
         s["content"] = content
         new_slides.append(s)
 
     new_data["slides"] = new_slides
+
+    # Ensure every assembly ends with the closing slide.
+    # Older saved assemblies won't have it, so we append it here.
+    has_closing = any(
+        isinstance(s, dict) and s.get("template") == TemplateType.CLOSING1.value
+        for s in new_slides
+    )
+    if not has_closing:
+        new_slides.append(
+            {
+                "id": str(uuid.uuid4()),
+                "type": SlideType.TEXT.value,
+                "template": TemplateType.CLOSING1.value,
+                "visible": True,
+                "content": {
+                    "primary_sources": story_primary_sources,
+                    "primary_source_urls": story_primary_source_urls,
+                    "domain_tag": story_domain,
+                },
+            }
+        )
+        new_data["slides"] = new_slides
+        changed = True
 
     # Mark hydration so we don't keep overwriting manual edits on future loads.
     new_metadata = dict(metadata)
@@ -526,14 +561,15 @@ async def render_template(
     The wrapper script enables postMessage communication between
     the template iframe and the parent editor.
     
-    Template types: cover3, editorial3, photos1
+    Template types: cover3, editorial3, photos1, closing1
     """
     # Map template type to file
     template_files = {
         "cover3": "cover3.html",
         "editorial3": "editorial3.html",
         "photos1": "photos1.html",
-        "videos1": "videos1.html"
+        "videos1": "videos1.html",
+        "closing1": "closing1.html",
     }
     
     if template_type not in template_files:
@@ -771,6 +807,20 @@ def generate_default_assembly(story_data: dict) -> dict:
                 "source_photo_id": str(photo['id'])
             })
             photo_index += 1
+
+    # 4. Closing slide (always last)
+    # It renders primary sources from story_research; if none exist, the section is hidden client-side.
+    assembly_slides.append({
+        "id": str(uuid.uuid4()),
+        "type": SlideType.TEXT.value,
+        "template": TemplateType.CLOSING1.value,
+        "visible": True,
+        "content": {
+            "primary_sources": story.get("primary_sources") or [],
+            "primary_source_urls": story.get("primary_source_urls") or [],
+            "domain_tag": story.get("domain_tag"),
+        },
+    })
     
     return {
         "version": 1,

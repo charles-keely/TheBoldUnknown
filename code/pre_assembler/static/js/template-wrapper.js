@@ -62,19 +62,36 @@
    * Handles both cover format (01/08 + SWIPE) and editorial format (01 / 08)
    */
   function updatePageNumber(current, total) {
-    // Cover template format
-    const footerLeft = document.querySelector('.footer-left');
-    if (footerLeft) {
-      const formatted = `${String(current).padStart(2, '0')}/${String(total).padStart(2, '0')}`;
-      footerLeft.innerHTML = `${formatted}<br>SWIPE FOR MORE`;
+    // Closing template format: show FINAL // NN (uses total)
+    const footerFinal = document.querySelector('.footer-final') || document.querySelector('.footer-right');
+    if (footerFinal && footerFinal.classList && footerFinal.classList.contains('footer-final')) {
+      const formattedTotal = `${String(total).padStart(2, '0')}`;
+      footerFinal.textContent = `FINAL // ${formattedTotal}`;
       return;
     }
-    
+    // Back-compat: older closing template used .footer-right for FINAL.
+    // Guard with a closing-specific element so we don't affect unrelated templates.
+    if (footerFinal && !document.querySelector('.page-number') && document.querySelector('.sources-container')) {
+      const formattedTotal = `${String(total).padStart(2, '0')}`;
+      footerFinal.textContent = `FINAL // ${formattedTotal}`;
+      return;
+    }
+
     // Editorial/Photo template format
     const pageNumber = document.querySelector('.page-number');
     if (pageNumber) {
       const formatted = `${String(current).padStart(2, '0')} / ${String(total).padStart(2, '0')}`;
       pageNumber.textContent = formatted;
+      return;
+    }
+
+    // Cover template format (detect by swipe arrow / cover footer structure)
+    const footerLeft = document.querySelector('.footer-left');
+    const hasCoverArrow = !!(document.querySelector('.arrow-container') || document.querySelector('.swipe-arrow'));
+    if (footerLeft && hasCoverArrow) {
+      const formatted = `${String(current).padStart(2, '0')}/${String(total).padStart(2, '0')}`;
+      footerLeft.innerHTML = `${formatted}<br>SWIPE FOR MORE`;
+      return;
     }
   }
   
@@ -184,13 +201,80 @@
         src.textContent = String(normalized.source || '');
       }
     }
+
+    // === CLOSING TEMPLATE: Primary Sources ===
+    {
+      const container = document.querySelector('.sources-container');
+      const list = container ? (container.querySelector('.sources-list') || container) : null;
+      if (container && list) {
+        const namesRaw = normalized.primary_sources;
+        const urlsRaw = normalized.primary_source_urls;
+        const names = Array.isArray(namesRaw) ? namesRaw : [];
+        const urls = Array.isArray(urlsRaw) ? urlsRaw : [];
+
+        const n = Math.max(names.length, urls.length);
+        const items = [];
+        for (let i = 0; i < n; i++) {
+          const name = (names[i] != null) ? String(names[i]).trim() : '';
+          const url = (urls[i] != null) ? String(urls[i]).trim() : '';
+          if (!name && !url) continue;
+          items.push({ name, url });
+        }
+
+        if (items.length === 0) {
+          container.style.display = 'none';
+        } else {
+          container.style.display = '';
+          // Clear existing placeholder items
+          while (list.firstChild) list.removeChild(list.firstChild);
+
+          items.forEach(({ name, url }) => {
+            const span = document.createElement('span');
+            span.className = 'source-item';
+
+            const label = name || url;
+            if (url) {
+              const a = document.createElement('a');
+              a.href = url;
+              a.textContent = label;
+              a.target = '_blank';
+              a.rel = 'noopener noreferrer';
+              a.style.color = 'inherit';
+              a.style.textDecoration = 'none';
+              span.appendChild(a);
+            } else {
+              span.textContent = label;
+            }
+
+            list.appendChild(span);
+          });
+        }
+      }
+    }
     
     // === COMMON: Domain tag in meta-data ===
     if (normalized.domain_tag !== undefined) {
       const meta = document.querySelector('.meta-data');
-      if (meta) {
-        // Preserve the structure but update text
-        meta.innerHTML = String(normalized.domain_tag).toUpperCase();
+      if (meta && String(meta.getAttribute('data-static') || '').toLowerCase() !== 'true') {
+        // If the template provides a dedicated domain line, only update that
+        // (so templates like the closing slide can keep an "END OF FILE" subline).
+        const domainLine = meta.querySelector('.domain-tag-line');
+        if (domainLine) {
+          domainLine.textContent = String(normalized.domain_tag || '').toUpperCase();
+        } else {
+          // Default behavior for existing templates
+          meta.innerHTML = String(normalized.domain_tag).toUpperCase();
+        }
+      }
+    }
+
+    // === CLOSING TEMPLATE: Auto-update year in footer ===
+    {
+      // Guard with closing-specific elements so we don't touch other templates.
+      const isClosing = !!document.querySelector('.sources-container');
+      const yearEl = document.querySelector('.brand-year');
+      if (isClosing && yearEl) {
+        yearEl.textContent = String(new Date().getFullYear());
       }
     }
   }

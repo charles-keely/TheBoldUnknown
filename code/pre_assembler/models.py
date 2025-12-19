@@ -29,6 +29,7 @@ class TemplateType(str, Enum):
     COVER3 = "cover3"
     EDITORIAL3 = "editorial3"
     PHOTOS1 = "photos1"
+    CLOSING1 = "closing1"
 
 
 # =============================================================================
@@ -157,6 +158,10 @@ class SlideContent(BaseModel):
     image_url: Optional[str] = None
     caption: Optional[str] = None
     source: Optional[str] = None
+
+    # Closing slide content
+    primary_sources: Optional[List[str]] = None
+    primary_source_urls: Optional[List[str]] = None
     
     # Common
     domain_tag: Optional[str] = None
