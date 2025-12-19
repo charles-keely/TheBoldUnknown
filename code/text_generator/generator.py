@@ -649,9 +649,32 @@ THE COMPLETED STORY:
 
 ---
 
+HASHTAG SIZE TIERS (Critical for Reach):
+
+You MUST balance hashtags across these popularity tiers:
+
+1. NICHE (10K-100K posts): 3-4 hashtags
+   - High engagement rate, lower competition
+   - Your content can actually rank here
+   - Examples: #AffectiveComputing, #ParasocialRelationships, #CognitiveBias
+
+2. MID-TIER (100K-1M posts): 3-4 hashtags
+   - Balanced visibility and competition
+   - Good discovery potential
+   - Examples: #HumanBehavior, #DigitalCulture, #Neuroscience
+
+3. BROAD (1M+ posts): 1-2 hashtags MAX
+   - Use sparingly - high competition
+   - Only if highly relevant
+   - Examples: #Science, #Technology, #Psychology
+
+DO NOT use more than 2 broad hashtags. They dilute your signal.
+
+---
+
 THE 4-LAYER HASHTAG SYSTEM (Use Every Layer):
 
-LAYER 1: BRAND-OWNED (Always Use, 2-3 max)
+LAYER 1: BRAND-OWNED (Always Use, 2 max)
 Purpose: Train the algorithm to associate your content with itself.
 
 MANDATORY: #TheBoldUnknown
@@ -663,26 +686,21 @@ Pick 1 optional secondary:
 
 ---
 
-LAYER 2: HIGH-LEVEL DISCOVERY (Always Use, 3-4 max)
+LAYER 2: HIGH-LEVEL DISCOVERY (Always Use, 2-3 max)
 Purpose: Broad but relevant tags that bring in new eyes.
 
-Strong candidates:
-- #Interesting
+Strong candidates (MID-TIER size):
 - #Curiosity
 - #DidYouKnow
 - #HumanBehavior
 - #ScienceAndSociety
 - #TechnologyAndCulture
 
-AVOID (these hurt brand signal):
-- #MindBlown
-- #CrazyFacts
-- #YouWontBelieve
-
 ---
 
-LAYER 3: STORY-SPECIFIC DOMAINS (Rotating, 3-5 max)
+LAYER 3: STORY-SPECIFIC DOMAINS (Rotating, 3-4 max)
 Purpose: This is where most reach comes from. Match to the story's domain.
+AIM FOR MID-TIER AND NICHE SIZE HASHTAGS HERE.
 
 Science / Research:
 - #Neuroscience, #CognitiveScience, #PsychologyResearch
@@ -705,13 +723,14 @@ History / Time:
 - #LostKnowledge, #Archives
 
 Nature / Science:
-- #NaturalPhenomena, #Science, #Research
-- #Discovery, #ScientificMethod
+- #NaturalPhenomena, #Research, #Discovery
+- #ScientificMethod
 
 ---
 
-LAYER 4: MICRO-NICHE / PRECISION TAGS (Optional but Powerful, 1-2 max)
+LAYER 4: MICRO-NICHE / PRECISION TAGS (1-2 max)
 Purpose: Hit smaller, smarter audiences who actually engage.
+THESE SHOULD BE NICHE SIZE (10K-100K posts).
 
 Examples by topic:
 - #HumanComputerInteraction, #AffectiveComputing
@@ -724,20 +743,47 @@ These are especially effective for saves, shares, and algorithm trust signals.
 
 ---
 
+BANNED HASHTAGS (NEVER USE):
+
+These hashtags are flagged, shadowbanned, or hurt brand perception:
+
+Engagement Bait (hurts brand signal):
+- #MindBlown, #CrazyFacts, #YouWontBelieve, #WTF, #OMG
+- #Viral, #GoViral, #TrendingNow, #Trending
+- #FollowForFollow, #Like4Like, #F4F, #L4L
+- #InstaGood, #InstaDaily, #PhotoOfTheDay
+- #Explore, #ExplorePage, #ForYou, #FYP
+
+Flagged/Shadowbanned (Instagram restricts these):
+- #Adult, #Alone, #Attractive, #Babe, #Teens
+- #Dating, #Single, #DM, #DirectMessage
+- #Brain (sometimes flagged), #Killer, #Death
+- #Conspiracy, #Conspiracies (use #ConspiracyAnalysis instead)
+
+Too Generic (waste of slots):
+- #Interesting (too broad), #Amazing, #Awesome, #Cool
+- #Love, #Life, #Happy, #Fun
+- #Photo, #Picture, #Post
+
+---
+
 RULES:
 
 1. TOTAL: 8-12 hashtags (sweet spot)
    - More than 12 looks spammy and reduces authority
    - Fewer than 8 leaves reach on the table
 
-2. DO NOT create story-specific original hashtags
+2. SIZE BALANCE: 3-4 niche + 3-4 mid-tier + 1-2 broad MAX
+
+3. DO NOT create story-specific original hashtags
    - Zero discoverability
    - Wastes slots
-   - Exception: Only if it's a recurring series (rare)
 
-3. Match Layer 3 tags to the domain_tag from the cover
+4. Match Layer 3 tags to the domain_tag from the cover
 
-4. All hashtags should include the # symbol
+5. All hashtags should include the # symbol
+
+6. NEVER use any hashtag from the BANNED list
 
 ---
 
@@ -746,9 +792,14 @@ OUTPUT FORMAT (JSON):
     "hashtags": ["#TheBoldUnknown", "#QuietWTF", "#Curiosity", ...],
     "layer_breakdown": {{
         "brand": ["#TheBoldUnknown", "#QuietWTF"],
-        "discovery": ["#Curiosity", "#DidYouKnow", "#HumanBehavior"],
-        "domain": ["#ArtificialIntelligence", "#HumanAI", "#DigitalCulture"],
-        "niche": ["#ParasocialRelationships"]
+        "discovery": ["#Curiosity", "#HumanBehavior"],
+        "domain": ["#Neuroscience", "#CognitiveScience", "#DigitalCulture"],
+        "niche": ["#ParasocialRelationships", "#AffectiveComputing"]
+    }},
+    "size_breakdown": {{
+        "niche_10k_100k": ["#ParasocialRelationships", "#AffectiveComputing", "#CognitiveScience"],
+        "mid_100k_1m": ["#Neuroscience", "#HumanBehavior", "#DigitalCulture", "#Curiosity"],
+        "broad_1m_plus": ["#TheBoldUnknown"]
     }}
 }}"""
 
