@@ -76,15 +76,19 @@ Results are stored in the `story_research.research_data` JSONB column with this 
 
 ```json
 {
-  "phase_1_ground_truth": "...",
-  "phase_2_angles": {
-    "hook": "A 1-2 sentence WTF hook",
-    "follow_up_question": "Optional question or null",
-    "deep_dive": {
-      "question": "...",
-      "answer": "..."
-    }
-  }
+  "ground_truth": "Perplexity ground truth text...",
+  "ground_truth_search_results": [
+    { "title": "…", "url": "…", "date": "…" }
+  ],
+  "follow_up": {
+    "question": "…",
+    "answer": "…",
+    "search_results": [
+      { "title": "…", "url": "…", "date": "…" }
+    ]
+  },
+  "primary_sources": ["NASA", "National Geographic"],
+  "primary_source_urls": ["https://www.nasa.gov/…", "https://www.nationalgeographic.com/…"]
 }
 ```
 

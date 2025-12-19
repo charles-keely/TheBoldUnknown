@@ -12,10 +12,13 @@ def save_results_to_file(story, results):
     filename = output_dir / "research_output.md"
     
     follow_up = results.get("follow_up")
+    primary_sources = results.get("primary_sources") or []
     
     with open(filename, "w") as f:
         f.write(f"# Research Report: {story['title']}\n")
         f.write(f"**URL:** {story['url']}\n\n")
+        if primary_sources:
+            f.write(f"**Primary sources:** {', '.join(primary_sources)}\n\n")
         f.write("---\n\n")
         
         f.write("## Ground Truth\n\n")
