@@ -29,9 +29,11 @@ try:
     from .db import (
         get_stories_ready_for_assembly,
         get_story_full_data,
+        get_story_caption_and_hashtags,
         get_assembly,
         save_assembly,
         check_db_connection,
+        get_db_fingerprint,
     )
     from .models import (
         StoriesResponse,
@@ -60,9 +62,11 @@ except ImportError:
     from db import (
         get_stories_ready_for_assembly,
         get_story_full_data,
+        get_story_caption_and_hashtags,
         get_assembly,
         save_assembly,
         check_db_connection,
+        get_db_fingerprint,
     )
     from models import (
         StoriesResponse,
@@ -133,7 +137,7 @@ async def dashboard():
     """Serve the main dashboard page."""
     index_path = os.path.join(config.STATIC_DIR, 'index.html')
     if os.path.exists(index_path):
-        return FileResponse(index_path)
+        return FileResponse(index_path, headers={"Cache-Control": "no-store"})
     return HTMLResponse("<h1>Pre-Assembler Dashboard</h1><p>index.html not found</p>")
 
 
@@ -142,7 +146,7 @@ async def editor(story_generation_id: str):
     """Serve the assembly editor page."""
     editor_path = os.path.join(config.STATIC_DIR, 'editor.html')
     if os.path.exists(editor_path):
-        return FileResponse(editor_path)
+        return FileResponse(editor_path, headers={"Cache-Control": "no-store"})
     return HTMLResponse("<h1>Assembly Editor</h1><p>editor.html not found</p>")
 
 
@@ -176,6 +180,8 @@ async def list_stories():
             hook_title=row['hook_title'],
             subtitle=row['subtitle'],
             domain_tag=row['domain_tag'],
+            instagram_caption=row.get('instagram_caption'),
+            hashtags=row.get('hashtags'),
             slide_count=row['slide_count'],
             photo_count=row['photo_count'],
             thumbnail_url=thumbnail_url,
@@ -562,6 +568,36 @@ async def health_check():
     return {
         "status": "healthy" if db_ok else "unhealthy",
         "database": "connected" if db_ok else "disconnected"
+    }
+
+
+@app.get("/api/debug/db")
+async def debug_db():
+    """
+    Non-sensitive DB fingerprint to confirm which DB this API is connected to.
+    """
+    return get_db_fingerprint()
+
+
+@app.get("/api/debug/story/{story_generation_id}")
+async def debug_story(story_generation_id: str):
+    """
+    Lightweight debug endpoint to confirm caption/hashtags presence for a story id.
+    """
+    row = get_story_caption_and_hashtags(story_generation_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Story generation not found")
+
+    caption = row.get("instagram_caption")
+    hashtags = row.get("hashtags") or []
+
+    return {
+        "story_generation_id": str(row.get("story_generation_id")),
+        "created_at": row.get("created_at"),
+        "has_caption": bool(caption and str(caption).strip()),
+        "caption_len": len(str(caption)) if caption is not None else 0,
+        "hashtag_count": len(hashtags) if isinstance(hashtags, list) else None,
+        "hashtags_type": type(hashtags).__name__,
     }
 
 

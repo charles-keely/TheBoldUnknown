@@ -102,6 +102,8 @@ def get_stories_ready_for_assembly():
                         sg.hook_title,
                         sg.subtitle,
                         sg.domain_tag,
+                        sg.instagram_caption,
+                        sg.hashtags,
                         sg.created_at,
                         
                         -- Count slides
@@ -146,6 +148,8 @@ def get_stories_ready_for_assembly():
                     hook_title,
                     subtitle,
                     domain_tag,
+                    instagram_caption,
+                    hashtags,
                     slide_count,
                     photo_count,
                     thumbnail_id,
@@ -194,6 +198,8 @@ def get_story_full_data(story_generation_id: str):
                     sg.hook_title,
                     sg.subtitle,
                     sg.domain_tag,
+                    sg.instagram_caption,
+                    sg.hashtags,
                     sg.created_at,
                     sr.research_data,
                     l.title as lead_title
@@ -259,6 +265,61 @@ def get_story_full_data(story_generation_id: str):
     except Exception as e:
         logger.error(f"Error fetching story full data for {story_generation_id}: {e}")
         return None
+    finally:
+        conn.close()
+
+
+def get_story_caption_and_hashtags(story_generation_id: str) -> dict | None:
+    """
+    Fetch just instagram_caption + hashtags for a story generation.
+    Useful for debugging and for lightweight reads.
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    id as story_generation_id,
+                    instagram_caption,
+                    hashtags,
+                    created_at
+                FROM story_generations
+                WHERE id = %s
+                """,
+                (story_generation_id,),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
+    except Exception as e:
+        logger.error(f"Error fetching caption/hashtags for {story_generation_id}: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def get_db_fingerprint() -> dict:
+    """
+    Return a non-sensitive DB fingerprint to confirm which DB this API is connected to.
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    current_database() as database,
+                    current_schema() as schema,
+                    current_user as user,
+                    version() as version,
+                    now() as now
+                """
+            )
+            row = cur.fetchone()
+            return dict(row) if row else {}
+    except Exception as e:
+        logger.error(f"Error fetching DB fingerprint: {e}")
+        return {"error": str(e)}
     finally:
         conn.close()
 

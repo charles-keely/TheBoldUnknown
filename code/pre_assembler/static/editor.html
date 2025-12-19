@@ -438,6 +438,64 @@
                 Selected: <span class="capitalize" x-text="thumbnails.find(t => t.id === selectedThumbnailId)?.concept_type || 'none'"></span>
               </p>
             </div>
+
+            <hr class="border-gray-200">
+
+            <!-- Instagram Caption / Hashtags -->
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-semibold text-gray-900">Caption + Hashtags</h3>
+                <div class="flex items-center gap-2">
+                  <button
+                    class="text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                    @click="copyCaption()"
+                    :disabled="!(story?.instagram_caption)"
+                    :class="{ 'opacity-50 cursor-not-allowed': !(story?.instagram_caption) }"
+                    title="Copy caption"
+                  >Copy caption</button>
+                  <button
+                    class="text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                    @click="copyHashtags()"
+                    :disabled="!(story?.hashtags?.length)"
+                    :class="{ 'opacity-50 cursor-not-allowed': !(story?.hashtags?.length) }"
+                    title="Copy hashtags"
+                  >Copy tags</button>
+                  <button
+                    class="text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                    @click="copyCaptionAndHashtags()"
+                    :disabled="!(story?.instagram_caption || story?.hashtags?.length)"
+                    :class="{ 'opacity-50 cursor-not-allowed': !(story?.instagram_caption || story?.hashtags?.length) }"
+                    title="Copy caption + hashtags"
+                  >Copy both</button>
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Instagram caption</label>
+                  <textarea
+                    class="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-900 resize-none"
+                    rows="6"
+                    readonly
+                    :value="story?.instagram_caption || ''"
+                    placeholder="No caption found for this story_generation yet."
+                  ></textarea>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-gray-600 mb-1">
+                    Hashtags <span class="text-gray-400 font-normal" x-text="'(' + (story?.hashtags?.length || 0) + ')'"></span>
+                  </label>
+                  <textarea
+                    class="w-full px-3 py-2 border border-gray-200 rounded-xl bg-gray-50 text-sm text-gray-900 resize-none font-mono"
+                    rows="3"
+                    readonly
+                    :value="(story?.hashtags || []).join(' ')"
+                    placeholder="No hashtags found for this story_generation yet."
+                  ></textarea>
+                </div>
+              </div>
+            </div>
             
           </div>
         </aside>
@@ -1213,6 +1271,57 @@
           setTimeout(() => {
             this.toast.show = false;
           }, 3000);
+        },
+
+        // Copy helpers (caption / hashtags)
+        async copyToClipboard(text) {
+          const value = String(text || '');
+          if (!value.trim()) return;
+
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(value);
+              this.showToast('Copied to clipboard', 'success');
+              return;
+            }
+          } catch (e) {
+            // Fall through to legacy method
+          }
+
+          // Legacy fallback
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = value;
+            ta.setAttribute('readonly', 'true');
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            ta.style.top = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            this.showToast('Copied to clipboard', 'success');
+          } catch (err) {
+            this.showToast('Copy failed: ' + err.message, 'error');
+          }
+        },
+
+        copyCaption() {
+          this.copyToClipboard(this.story?.instagram_caption || '');
+        },
+
+        copyHashtags() {
+          const tags = (this.story?.hashtags || []).join(' ');
+          this.copyToClipboard(tags);
+        },
+
+        copyCaptionAndHashtags() {
+          const caption = (this.story?.instagram_caption || '').trim();
+          const tags = (this.story?.hashtags || []).join(' ').trim();
+          const parts = [];
+          if (caption) parts.push(caption);
+          if (tags) parts.push(tags);
+          this.copyToClipboard(parts.join('\n\n'));
         }
       }
     }

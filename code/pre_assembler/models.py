@@ -42,6 +42,8 @@ class StorySummary(BaseModel):
     hook_title: str
     subtitle: str
     domain_tag: str
+    instagram_caption: Optional[str] = None
+    hashtags: Optional[List[str]] = None
     slide_count: int
     photo_count: int
     thumbnail_url: Optional[str] = None
@@ -104,6 +106,8 @@ class StoryInfo(BaseModel):
     hook_title: str
     subtitle: str
     domain_tag: str
+    instagram_caption: Optional[str] = None
+    hashtags: Optional[List[str]] = None
     created_at: datetime
     lead_title: str
     research_data: Optional[Any] = None
