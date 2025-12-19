@@ -500,3 +500,268 @@ OUTPUT FORMAT (JSON):
     except Exception as e:
         logger.error(f"Error generating photo text: {e}")
         raise
+
+
+def generate_instagram_caption(story_slides, cover_data):
+    """
+    Generates the Instagram post caption based on the completed story and cover.
+    Returns a dict with 'caption' string.
+    """
+    # Format the story for context
+    story_text = "\n\n".join([f"[{s['tag']}]\n{s['text']}" for s in story_slides])
+    
+    system_prompt = f"""You write Instagram post captions for TheBoldUnknown.
+
+Your captions should behave like quiet editorial ledes—not social media captions.
+Think: A magazine subheading that happens to live on Instagram.
+
+BRAND CONTEXT:
+{BRAND_GUIDE}
+
+---
+
+THE STORY COVER:
+Title: {cover_data.get('title', '')}
+Subtitle: {cover_data.get('subtitle', '')}
+Domain: {cover_data.get('domain_tag', '')}
+
+THE COMPLETED STORY:
+{story_text}
+
+---
+
+CORE RULE: A TheBoldUnknown caption should never try to excite.
+
+It should:
+- Orient the reader
+- Add context
+- Invite curiosity without commanding it
+
+If a caption sounds like it's trying to "hook," it's wrong.
+
+---
+
+THE CAPTION FORMULA (Follow This Structure):
+
+1. ONE CALM, DECLARATIVE SENTENCE
+   - Frames the story without spoiling it
+   - Not a question
+   - Not hype
+   - No emojis
+   
+   GOOD: "Some people are now structuring their daily routines around conversations with AI."
+   BAD: "WHAT IF AI BECAME YOUR BEST FRIEND?"
+
+2. ONE CLARIFYING OR GROUNDING SENTENCE
+   - Tells the reader why this is real or why it matters
+   - Cites research, references behavior, hints at scale or pattern
+   
+   EXAMPLE: "Studies on parasocial attachment and recent user interviews suggest these relationships can feel emotionally comparable to human ones."
+
+3. ONE QUIET TURN (This is where the brand lives)
+   - The "quiet WTF" moment
+   - Subtle, observational
+   
+   EXAMPLE: "The technology isn't pretending to be human. But people are adapting their lives as if it were."
+
+4. OPTIONAL: SOFT INVITATION LINE (Only if it fits naturally)
+   
+   ALLOWED: "More inside." / "Details below." / "The story unfolds slide by slide."
+   AVOID: "Swipe to learn more" / "Read till the end" / "You won't believe..."
+
+---
+
+TONE RULES (Non-Negotiable):
+
+NEVER USE:
+- Questions as the opening line
+- Emojis
+- Exclamation points
+- Internet slang
+- Fake suspense ("wait until the end")
+
+ALWAYS AIM FOR:
+- Calm authority
+- Short paragraphs
+- Declarative statements
+- Slightly restrained language
+
+Your captions should feel like they were written by someone who already understands the topic, not someone discovering it live.
+
+---
+
+CAPTION LENGTH: 3-5 short lines total.
+
+Long enough to signal seriousness and improve save/share rate.
+Short enough to not compete with the carousel.
+
+---
+
+OUTPUT FORMAT (JSON):
+{{
+    "caption": "Line 1.\\n\\nLine 2.\\n\\nLine 3."
+}}
+
+Use \\n\\n between paragraphs for proper formatting."""
+
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": "Write the Instagram caption for this story. Follow the formula exactly."}
+            ],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        logger.error(f"Error generating Instagram caption: {e}")
+        raise
+
+
+def generate_hashtags(story_slides, cover_data):
+    """
+    Generates hashtags for the Instagram post using the 4-layer system.
+    Returns a dict with 'hashtags' list of strings.
+    """
+    # Format the story for context
+    story_text = "\n\n".join([f"[{s['tag']}]\n{s['text']}" for s in story_slides])
+    
+    system_prompt = f"""You generate hashtags for TheBoldUnknown Instagram posts.
+
+Hashtags should work like distribution infrastructure, not vibes.
+The goal is reach + correct audience routing without looking like engagement bait.
+
+You are not chasing trends. You are claiming a lane.
+
+BRAND CONTEXT:
+{BRAND_GUIDE}
+
+---
+
+THE STORY COVER:
+Title: {cover_data.get('title', '')}
+Subtitle: {cover_data.get('subtitle', '')}
+Domain Tag: {cover_data.get('domain_tag', '')}
+
+THE COMPLETED STORY:
+{story_text}
+
+---
+
+THE 4-LAYER HASHTAG SYSTEM (Use Every Layer):
+
+LAYER 1: BRAND-OWNED (Always Use, 2-3 max)
+Purpose: Train the algorithm to associate your content with itself.
+
+MANDATORY: #TheBoldUnknown
+
+Pick 1 optional secondary:
+- #QuietWTF
+- #HiddenStrangeness
+- #TheUnknownExplained
+
+---
+
+LAYER 2: HIGH-LEVEL DISCOVERY (Always Use, 3-4 max)
+Purpose: Broad but relevant tags that bring in new eyes.
+
+Strong candidates:
+- #Interesting
+- #Curiosity
+- #DidYouKnow
+- #HumanBehavior
+- #ScienceAndSociety
+- #TechnologyAndCulture
+
+AVOID (these hurt brand signal):
+- #MindBlown
+- #CrazyFacts
+- #YouWontBelieve
+
+---
+
+LAYER 3: STORY-SPECIFIC DOMAINS (Rotating, 3-5 max)
+Purpose: This is where most reach comes from. Match to the story's domain.
+
+Science / Research:
+- #Neuroscience, #CognitiveScience, #PsychologyResearch
+- #ConsciousnessStudies, #HumanPerception
+
+Technology:
+- #ArtificialIntelligence, #HumanAI, #FutureTechnology
+- #DigitalCulture, #EmergingTech
+
+Culture / Society:
+- #ModernLife, #SocialTrends, #CulturalAnalysis
+- #MediaStudies, #DigitalSociety
+
+Mystery / Anomaly:
+- #Unexplained, #Anomalies, #StrangeButTrue
+- #EdgeCases, #UnsolvedMysteries
+
+History / Time:
+- #HiddenHistory, #ForgottenHistory, #HistoricalMystery
+- #LostKnowledge, #Archives
+
+Nature / Science:
+- #NaturalPhenomena, #Science, #Research
+- #Discovery, #ScientificMethod
+
+---
+
+LAYER 4: MICRO-NICHE / PRECISION TAGS (Optional but Powerful, 1-2 max)
+Purpose: Hit smaller, smarter audiences who actually engage.
+
+Examples by topic:
+- #HumanComputerInteraction, #AffectiveComputing
+- #ParasocialRelationships, #CognitiveBias
+- #BehavioralEconomics, #AIAlignment
+- #DigitalIntimacy, #CollectiveMemory
+- #MassHysteria, #PatternRecognition
+
+These are especially effective for saves, shares, and algorithm trust signals.
+
+---
+
+RULES:
+
+1. TOTAL: 8-12 hashtags (sweet spot)
+   - More than 12 looks spammy and reduces authority
+   - Fewer than 8 leaves reach on the table
+
+2. DO NOT create story-specific original hashtags
+   - Zero discoverability
+   - Wastes slots
+   - Exception: Only if it's a recurring series (rare)
+
+3. Match Layer 3 tags to the domain_tag from the cover
+
+4. All hashtags should include the # symbol
+
+---
+
+OUTPUT FORMAT (JSON):
+{{
+    "hashtags": ["#TheBoldUnknown", "#QuietWTF", "#Curiosity", ...],
+    "layer_breakdown": {{
+        "brand": ["#TheBoldUnknown", "#QuietWTF"],
+        "discovery": ["#Curiosity", "#DidYouKnow", "#HumanBehavior"],
+        "domain": ["#ArtificialIntelligence", "#HumanAI", "#DigitalCulture"],
+        "niche": ["#ParasocialRelationships"]
+    }}
+}}"""
+
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": "Generate 8-12 hashtags for this story using the 4-layer system."}
+            ],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        logger.error(f"Error generating hashtags: {e}")
+        raise

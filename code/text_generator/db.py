@@ -206,3 +206,109 @@ def update_photo_text(photo_id, caption, source, concept_tag):
         raise
     finally:
         conn.close()
+
+
+def update_caption_and_hashtags(generation_id, caption, hashtags):
+    """
+    Updates a story_generation with Instagram caption and hashtags.
+    hashtags: list of strings (e.g., ["#TheBoldUnknown", "#Curiosity", ...])
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            query = """
+                UPDATE story_generations
+                SET instagram_caption = %s,
+                    hashtags = %s
+                WHERE id = %s
+            """
+            cur.execute(query, (caption, hashtags, generation_id))
+            conn.commit()
+            logger.info(f"Updated caption and hashtags for generation {generation_id}")
+    except Exception as e:
+        logger.error(f"Error updating caption/hashtags for generation {generation_id}: {e}")
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def get_stories_needing_captions(limit=None):
+    """
+    Fetches story_generations that don't have instagram_caption yet.
+    Returns list of dicts with generation info and slides.
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            query = """
+                SELECT 
+                    sg.id as generation_id,
+                    sg.hook_title,
+                    sg.subtitle,
+                    sg.domain_tag,
+                    sg.story_research_id
+                FROM story_generations sg
+                WHERE sg.instagram_caption IS NULL
+                ORDER BY sg.created_at ASC
+            """
+            if limit:
+                query += f" LIMIT {int(limit)}"
+            
+            cur.execute(query)
+            return cur.fetchall()
+    except Exception as e:
+        logger.error(f"Error fetching stories needing captions: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_story_generation_with_slides(generation_id):
+    """
+    Fetches a story_generation with its slides for caption/hashtag generation.
+    Returns dict with generation info and slides list.
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Get generation info
+            gen_query = """
+                SELECT 
+                    sg.id as generation_id,
+                    sg.hook_title,
+                    sg.subtitle,
+                    sg.domain_tag,
+                    sg.story_research_id
+                FROM story_generations sg
+                WHERE sg.id = %s
+            """
+            cur.execute(gen_query, (generation_id,))
+            generation = cur.fetchone()
+            
+            if not generation:
+                return None
+            
+            # Get slides
+            slides_query = """
+                SELECT text_content as text, document_type_tag as tag
+                FROM story_slides
+                WHERE story_generation_id = %s
+                ORDER BY slide_order ASC
+            """
+            cur.execute(slides_query, (generation_id,))
+            slides = cur.fetchall()
+            
+            return {
+                'generation_id': generation['generation_id'],
+                'hook_title': generation['hook_title'],
+                'subtitle': generation['subtitle'],
+                'domain_tag': generation['domain_tag'],
+                'story_research_id': generation['story_research_id'],
+                'slides': [dict(s) for s in slides]
+            }
+    except Exception as e:
+        logger.error(f"Error fetching generation with slides {generation_id}: {e}")
+        return None
+    finally:
+        conn.close()

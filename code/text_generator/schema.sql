@@ -10,12 +10,20 @@ CREATE TABLE IF NOT EXISTS public.story_generations (
     subtitle TEXT NOT NULL,
     domain_tag TEXT NOT NULL,
     
-    -- Raw generation data (storing the 3 options + reasoning)
+    -- Instagram Caption & Hashtags (Step 4)
+    instagram_caption TEXT,
+    hashtags TEXT[],
+    
+    -- Raw generation data (storing the 6 options + reasoning)
     generation_metadata JSONB,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     model_used TEXT DEFAULT 'gpt-5.2'
 );
+
+-- Migration for existing tables (run if columns don't exist)
+-- ALTER TABLE public.story_generations ADD COLUMN IF NOT EXISTS instagram_caption TEXT;
+-- ALTER TABLE public.story_generations ADD COLUMN IF NOT EXISTS hashtags TEXT[];
 
 -- 2. Table for narrative slides
 CREATE TABLE IF NOT EXISTS public.story_slides (

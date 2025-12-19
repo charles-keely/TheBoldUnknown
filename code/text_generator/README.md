@@ -4,6 +4,8 @@ This service generates the final text content for TheBoldUnknown Instagram stori
 1.  **Story Slides**: 7-9 narrative slides based on research.
 2.  **Cover Options**: 6 viral hook options derived from the generated story.
 3.  **Photo Captions**: Documentary-style captions for approved photos.
+4.  **Instagram Caption**: Editorial-style post caption (3-5 lines, calm declarative tone).
+5.  **Hashtags**: 8-12 hashtags using a 4-layer system (brand, discovery, domain, niche).
 
 **Model Used:** GPT-5.2
 
@@ -56,6 +58,25 @@ python main.py --random --dry-run --out random_test.md
 - `--random`: Select a random completed story.
 - `--dry-run`: Do not save results to the database.
 - `--out <file.md>`: Write the generated content to a Markdown file.
+- `--backfill-captions`: Backfill captions/hashtags for existing stories (see below).
+
+## Backfill Captions & Hashtags
+
+For stories that were generated before caption/hashtag support was added, use the backfill command:
+
+### Dry Test (Recommended First)
+```bash
+python main.py --backfill-captions --limit 1 --dry-run --out test_caption.md
+```
+
+Review `test_caption.md` to verify the quality of generated captions and hashtags.
+
+### Backfill All Stories
+```bash
+python main.py --backfill-captions
+```
+
+This will find all `story_generations` where `instagram_caption IS NULL` and generate captions + hashtags for them.
 
 ## Testing Flow
 
