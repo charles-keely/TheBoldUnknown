@@ -3,7 +3,7 @@ Pydantic models for the Pre-Assembler API.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Dict
 from datetime import datetime
 from enum import Enum
 
@@ -69,6 +69,13 @@ class StoryGeneration(BaseModel):
     hook_title: str
     subtitle: str
     domain_tag: str
+
+
+class UpdateStoryGenerationRequest(BaseModel):
+    """Patch a story generation's title/subtitle fields."""
+    hook_title: Optional[str] = None
+    subtitle: Optional[str] = None
+    domain_tag: Optional[str] = None
 
 
 class StorySlide(BaseModel):
@@ -176,6 +183,11 @@ class AssemblyData(BaseModel):
     """The assembly configuration stored in JSONB."""
     version: int = 1
     story_generation_id: str
+    # Which title/subtitle option (story_generations row) is currently selected for cover.
+    selected_generation_id: Optional[str] = None
+    # Per-option title/subtitle/domain_tag overrides keyed by the option id (e.g. "1".."6").
+    # Shape: { "2": { "title": "...", "subtitle": "...", "domain_tag": "..." }, ... }
+    title_overrides: Optional[Dict[str, Dict[str, str]]] = None
     selected_thumbnail_id: Optional[str] = None
     slides: List[AssemblySlide]
     metadata: Optional[AssemblyMetadata] = None

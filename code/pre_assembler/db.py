@@ -198,6 +198,7 @@ def get_story_full_data(story_generation_id: str):
                     sg.hook_title,
                     sg.subtitle,
                     sg.domain_tag,
+                    sg.generation_metadata,
                     sg.instagram_caption,
                     sg.hashtags,
                     sg.created_at,
@@ -214,15 +215,38 @@ def get_story_full_data(story_generation_id: str):
                 return None
             
             story_research_id = story['story_research_id']
-            
-            # Get all generations for this research (for title/subtitle alternatives)
-            cur.execute("""
-                SELECT id, hook_title, subtitle, domain_tag
-                FROM story_generations
-                WHERE story_research_id = %s
-                ORDER BY created_at DESC
-            """, (story_research_id,))
-            generations = cur.fetchall()
+
+            # Title/subtitle alternatives live inside generation_metadata (text_generator stores
+            # all options there, with a selected_id).
+            gm = story.get("generation_metadata") or {}
+            options = []
+            if isinstance(gm, dict):
+                options = gm.get("options") or []
+
+            generations = []
+            if isinstance(options, list):
+                for opt in options:
+                    if not isinstance(opt, dict):
+                        continue
+                    opt_id = opt.get("id")
+                    generations.append(
+                        {
+                            "id": str(opt_id) if opt_id is not None else "",
+                            "hook_title": opt.get("title") or opt.get("hook_title") or "",
+                            "subtitle": opt.get("subtitle") or "",
+                            "domain_tag": opt.get("domain_tag") or opt.get("tag") or "",
+                        }
+                    )
+            # Fallback: if no options were recorded, expose the current story columns as a single option.
+            if not generations:
+                generations = [
+                    {
+                        "id": str((gm.get("selected_id") if isinstance(gm, dict) else None) or "selected"),
+                        "hook_title": story.get("hook_title") or "",
+                        "subtitle": story.get("subtitle") or "",
+                        "domain_tag": story.get("domain_tag") or "",
+                    }
+                ]
             
             # Get all slides for this generation
             cur.execute("""
@@ -257,7 +281,7 @@ def get_story_full_data(story_generation_id: str):
             
             return {
                 'story': dict(story),
-                'generations': [dict(g) for g in generations],
+                'generations': generations,
                 'slides': [dict(s) for s in slides],
                 'photos': [dict(p) for p in photos],
                 'thumbnails': [dict(t) for t in thumbnails]
@@ -294,6 +318,73 @@ def get_story_caption_and_hashtags(story_generation_id: str) -> dict | None:
     except Exception as e:
         logger.error(f"Error fetching caption/hashtags for {story_generation_id}: {e}")
         return None
+    finally:
+        conn.close()
+
+
+def update_story_generation(
+    story_generation_id: str,
+    *,
+    hook_title: str | None = None,
+    subtitle: str | None = None,
+    domain_tag: str | None = None,
+) -> dict | None:
+    """
+    Update a story_generations row (title/subtitle/domain_tag).
+    Returns the updated row fields we care about, or None if not found.
+    """
+    # Nothing to update
+    if hook_title is None and subtitle is None and domain_tag is None:
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, hook_title, subtitle, domain_tag
+                    FROM story_generations
+                    WHERE id = %s
+                    """,
+                    (story_generation_id,),
+                )
+                row = cur.fetchone()
+                return dict(row) if row else None
+        finally:
+            conn.close()
+
+    sets: list[str] = []
+    params: list[object] = []
+
+    if hook_title is not None:
+        sets.append("hook_title = %s")
+        params.append(hook_title)
+    if subtitle is not None:
+        sets.append("subtitle = %s")
+        params.append(subtitle)
+    if domain_tag is not None:
+        sets.append("domain_tag = %s")
+        params.append(domain_tag)
+
+    params.append(story_generation_id)
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                UPDATE story_generations
+                SET {", ".join(sets)}
+                WHERE id = %s
+                RETURNING id, hook_title, subtitle, domain_tag
+                """,
+                tuple(params),
+            )
+            row = cur.fetchone()
+            conn.commit()
+            return dict(row) if row else None
+    except Exception as e:
+        logger.error(f"Error updating story_generation {story_generation_id}: {e}")
+        conn.rollback()
+        raise
     finally:
         conn.close()
 

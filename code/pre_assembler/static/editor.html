@@ -307,8 +307,8 @@
               </svg>
             </a>
             <div>
-              <h1 class="text-lg font-semibold text-gray-900 line-clamp-1" x-text="story?.hook_title || 'Loading...'"></h1>
-              <p class="text-sm text-gray-500" x-text="story?.domain_tag"></p>
+              <h1 class="text-lg font-semibold text-gray-900 line-clamp-1" x-text="getCoverSlide()?.content?.title || story?.hook_title || 'Loading...'"></h1>
+              <p class="text-sm text-gray-500" x-text="getCoverSlide()?.content?.domain_tag || story?.domain_tag"></p>
             </div>
           </div>
           
@@ -415,25 +415,6 @@
             
             <hr class="border-gray-200">
             
-            <!-- Title/Subtitle Options -->
-            <div x-show="generations.length > 1">
-              <h3 class="text-sm font-semibold text-gray-900 mb-3">Title Options</h3>
-              <div class="space-y-2">
-                <template x-for="gen in generations" :key="gen.id">
-                  <div 
-                    class="radio-option"
-                    :class="{ 'selected': selectedGenerationId === gen.id }"
-                    @click="selectGeneration(gen.id)"
-                  >
-                    <p class="font-medium text-sm line-clamp-2" x-text="gen.hook_title"></p>
-                    <p class="text-xs text-gray-500 line-clamp-1 mt-1" x-text="gen.subtitle"></p>
-                  </div>
-                </template>
-              </div>
-            </div>
-            
-            <hr class="border-gray-200" x-show="generations.length > 1">
-            
             <!-- Thumbnail Options -->
             <div x-show="thumbnails.length > 0">
               <h3 class="text-sm font-semibold text-gray-900 mb-3">Cover Thumbnail</h3>
@@ -515,6 +496,57 @@
                     @input="applyCoverAdjust()"
                   >
                 </div>
+              </div>
+
+              <!-- Title / Subtitle switcher (carousel style) -->
+              <div class="mt-5">
+                <div class="flex items-center justify-between mb-2">
+                  <h4 class="text-xs font-semibold text-gray-900">Title option</h4>
+                  <span class="text-xs text-gray-500 tabular-nums" x-text="titleOptionStatusText()"></span>
+                </div>
+
+                <div
+                  class="flex items-stretch gap-2"
+                  x-show="(generations?.length || 0) > 0"
+                >
+                  <!-- Left -->
+                  <button
+                    type="button"
+                    class="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 transition-colors flex items-center justify-center"
+                    @click="prevTitleOption()"
+                    :disabled="!canPrevTitleOption()"
+                    :class="{ 'opacity-50 cursor-not-allowed': !canPrevTitleOption() }"
+                    title="Previous title option"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                  </button>
+
+                  <!-- Current option preview -->
+                  <div class="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                    <p class="text-sm font-semibold text-gray-900 leading-snug line-clamp-2" x-text="currentTitleOption()?.hook_title || '—'"></p>
+                    <p class="text-xs text-gray-500 mt-1 leading-snug line-clamp-2" x-text="currentTitleOption()?.subtitle || ''"></p>
+                  </div>
+
+                  <!-- Right -->
+                  <button
+                    type="button"
+                    class="w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 transition-colors flex items-center justify-center"
+                    @click="nextTitleOption()"
+                    :disabled="!canNextTitleOption()"
+                    :class="{ 'opacity-50 cursor-not-allowed': !canNextTitleOption() }"
+                    title="Next title option"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                  </button>
+                </div>
+
+                <p class="text-xs text-gray-500 mt-2" x-show="(generations?.length || 0) <= 1">
+                  No alternates found (only 1 title option recorded).
+                </p>
               </div>
             </div>
 
@@ -874,6 +906,7 @@
         // Selections
         selectedGenerationId: null,
         selectedThumbnailId: null,
+        titleOverrides: {},
 
         // Cover crop controls (non-destructive)
         coverAdjust: { zoom: 1, x: 0, y: 0 },
@@ -943,7 +976,9 @@
             this.thumbnails = data.thumbnails || [];
             
             // Set initial selections
-            this.selectedGenerationId = this.storyGenerationId;
+            const gm = (this.story && this.story.generation_metadata) ? this.story.generation_metadata : null;
+            const selectedFromMetadata = (gm && typeof gm === 'object' && gm.selected_id != null) ? String(gm.selected_id) : null;
+            this.selectedGenerationId = selectedFromMetadata || String(this.generations?.[0]?.id || '');
             const selectedThumb = this.thumbnails.find(t => t.is_selected) || this.thumbnails[0];
             this.selectedThumbnailId = selectedThumb?.id;
             
@@ -968,12 +1003,26 @@
             if (data.assembly.assembly_data.selected_thumbnail_id) {
               this.selectedThumbnailId = data.assembly.assembly_data.selected_thumbnail_id;
             }
+
+            if (data.assembly.assembly_data.selected_generation_id) {
+              this.selectedGenerationId = data.assembly.assembly_data.selected_generation_id;
+            }
+
+            this.titleOverrides = data.assembly.assembly_data.title_overrides || {};
             
             // If this was a default assembly, mark as having changes
             this.hasUnsavedChanges = data.is_default;
 
             // Initialize cover crop controls from assembly (without forcing unsaved changes)
             this.syncCoverAdjustFromSlide();
+
+            // Ensure story header reflects selected title option
+            const gen = this.generations.find(g => g.id === this.selectedGenerationId);
+            if (gen && this.story) {
+              this.story.hook_title = gen.hook_title;
+              this.story.subtitle = gen.subtitle;
+              this.story.domain_tag = gen.domain_tag;
+            }
             
           } catch (err) {
             console.error('Failed to load assembly:', err);
@@ -1401,7 +1450,7 @@
         },
         
         // Apply edits from modal to slide
-        applyEdit() {
+        async applyEdit() {
           const slide = this.slides.find(s => s.id === this.editModal.slideId);
           if (!slide) {
             this.closeEditModal();
@@ -1416,11 +1465,30 @@
           
           // Mark as having changes
           this.hasUnsavedChanges = true;
+
+          // If editing the cover, persist an override for the currently-selected option
+          if (slide.type === 'cover') {
+            this.captureCoverOverride();
+          }
           
           // Close modal
           this.closeEditModal();
           
           this.showToast('Changes applied!', 'success');
+        },
+
+        // Store current cover title/subtitle/domain_tag as an override for the currently-selected option
+        captureCoverOverride() {
+          const coverSlide = this.getCoverSlide();
+          if (!coverSlide) return;
+          const key = String(this.selectedGenerationId || '');
+          if (!key) return;
+          if (!this.titleOverrides || typeof this.titleOverrides !== 'object') this.titleOverrides = {};
+          this.titleOverrides[key] = {
+            title: (coverSlide.content?.title ?? '').toString(),
+            subtitle: (coverSlide.content?.subtitle ?? '').toString(),
+            domain_tag: (coverSlide.content?.domain_tag ?? '').toString()
+          };
         },
         
         // Select photo in photo edit modal
@@ -1437,21 +1505,84 @@
         
         // Select generation (title/subtitle)
         selectGeneration(generationId) {
+          // Save current cover text as an override for the current option before switching
+          this.captureCoverOverride();
+
           this.selectedGenerationId = generationId;
           const gen = this.generations.find(g => g.id === generationId);
           
           // Update cover slide content
           const coverSlide = this.slides.find(s => s.type === 'cover');
           if (coverSlide && gen) {
-            coverSlide.content.title = gen.hook_title;
-            coverSlide.content.subtitle = gen.subtitle;
-            coverSlide.content.domain_tag = gen.domain_tag;
+            const override = (this.titleOverrides && typeof this.titleOverrides === 'object')
+              ? (this.titleOverrides[String(generationId)] || null)
+              : null;
+
+            coverSlide.content.title = (override && override.title != null) ? override.title : gen.hook_title;
+            coverSlide.content.subtitle = (override && override.subtitle != null) ? override.subtitle : gen.subtitle;
+            coverSlide.content.domain_tag = (override && override.domain_tag != null) ? override.domain_tag : gen.domain_tag;
             
             // Update the cover iframe
             this.updateIframeContent(coverSlide);
+
+            // Also reflect selection in the story header display
+            if (this.story) {
+              this.story.hook_title = gen.hook_title;
+              this.story.subtitle = gen.subtitle;
+              this.story.domain_tag = gen.domain_tag;
+            }
           }
           
           this.hasUnsavedChanges = true;
+        },
+
+        // --- Title option carousel helpers ---
+        selectedTitleOptionIndex() {
+          const gens = this.generations || [];
+          if (!Array.isArray(gens) || gens.length === 0) return -1;
+          const idx = gens.findIndex(g => String(g?.id) === String(this.selectedGenerationId));
+          return idx >= 0 ? idx : 0;
+        },
+
+        currentTitleOption() {
+          const idx = this.selectedTitleOptionIndex();
+          if (idx < 0) return null;
+          return (this.generations || [])[idx] || null;
+        },
+
+        titleOptionStatusText() {
+          const gens = this.generations || [];
+          const n = Array.isArray(gens) ? gens.length : 0;
+          if (n <= 0) return '—';
+          const idx = this.selectedTitleOptionIndex();
+          if (idx < 0) return `0 of ${n}`;
+          return `${idx + 1} of ${n}`;
+        },
+
+        canPrevTitleOption() {
+          const n = Array.isArray(this.generations) ? this.generations.length : 0;
+          if (n <= 1) return false;
+          return this.selectedTitleOptionIndex() > 0;
+        },
+
+        canNextTitleOption() {
+          const n = Array.isArray(this.generations) ? this.generations.length : 0;
+          if (n <= 1) return false;
+          return this.selectedTitleOptionIndex() < (n - 1);
+        },
+
+        prevTitleOption() {
+          if (!this.canPrevTitleOption()) return;
+          const idx = this.selectedTitleOptionIndex();
+          const prev = (this.generations || [])[idx - 1];
+          if (prev) this.selectGeneration(prev.id);
+        },
+
+        nextTitleOption() {
+          if (!this.canNextTitleOption()) return;
+          const idx = this.selectedTitleOptionIndex();
+          const next = (this.generations || [])[idx + 1];
+          if (next) this.selectGeneration(next.id);
         },
         
         // Select thumbnail
@@ -1532,6 +1663,8 @@
             const assemblyData = {
               version: 1,
               story_generation_id: this.storyGenerationId,
+              selected_generation_id: this.selectedGenerationId,
+              title_overrides: this.titleOverrides,
               selected_thumbnail_id: this.selectedThumbnailId,
               slides: this.slides,
               metadata

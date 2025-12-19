@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.story_assemblies (
     -- assembly_data schema:
     -- {
     --   "version": 1,
+--   "selected_generation_id": "uuid", -- chosen title/subtitle option (story_generations row)
     --   "selected_thumbnail_id": "uuid",
     --   "slides": [
     --     {

@@ -32,6 +32,7 @@ try:
         get_story_caption_and_hashtags,
         get_assembly,
         save_assembly,
+        update_story_generation,
         check_db_connection,
         get_db_fingerprint,
     )
@@ -55,6 +56,7 @@ try:
         AssemblyStatus,
         SlideType,
         TemplateType,
+        UpdateStoryGenerationRequest,
     )
 except ImportError:
     # Local-folder imports
@@ -65,6 +67,7 @@ except ImportError:
         get_story_caption_and_hashtags,
         get_assembly,
         save_assembly,
+        update_story_generation,
         check_db_connection,
         get_db_fingerprint,
     )
@@ -88,6 +91,7 @@ except ImportError:
         AssemblyStatus,
         SlideType,
         TemplateType,
+        UpdateStoryGenerationRequest,
     )
 
 # =============================================================================
@@ -215,6 +219,28 @@ async def get_story(story_generation_id: str):
     }
 
 
+@app.patch("/api/story-generations/{story_generation_id}")
+async def patch_story_generation(story_generation_id: str, request: UpdateStoryGenerationRequest):
+    """
+    Update a title/subtitle option (a story_generations row).
+    Used by the editor to persist edits per option.
+    """
+    try:
+        updated = update_story_generation(
+            story_generation_id,
+            hook_title=request.hook_title,
+            subtitle=request.subtitle,
+            domain_tag=request.domain_tag,
+        )
+        if not updated:
+            raise HTTPException(status_code=404, detail="Story generation not found")
+        return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # =============================================================================
 # API Routes - Assemblies
 # =============================================================================
@@ -252,7 +278,22 @@ def hydrate_assembly_from_story(
         return assembly_data, False
 
     story = story_data.get("story") or {}
-    story_domain = story.get("domain_tag")
+    generations = story_data.get("generations") or []
+
+    gm = (story.get("generation_metadata") or {}) if isinstance(story.get("generation_metadata"), dict) else {}
+    default_selected_option_id = gm.get("selected_id")
+
+    # Respect a selected title/subtitle option if present in the assembly JSON.
+    # NOTE: This is an "option id" from generation_metadata.options[*].id (typically 1..6),
+    # not a story_generations UUID.
+    selected_gen_id = (
+        assembly_data.get("selected_generation_id")
+        or (str(default_selected_option_id) if default_selected_option_id is not None else None)
+        or (str(generations[0].get("id")) if generations else None)
+    )
+    selected_gen = next((g for g in generations if str(g.get("id")) == str(selected_gen_id)), None)
+
+    story_domain = (selected_gen or {}).get("domain_tag") or story.get("domain_tag")
 
     slides_by_id = {str(s["id"]): s for s in (story_data.get("slides") or []) if s.get("id")}
     photos_by_id = {str(p["id"]): p for p in (story_data.get("photos") or []) if p.get("id")}
@@ -269,7 +310,18 @@ def hydrate_assembly_from_story(
     # Hydrate slides
     changed = False
     new_data = dict(assembly_data)
+    if str(assembly_data.get("selected_generation_id") or "") != str(selected_gen_id or ""):
+        changed = True
+    new_data["selected_generation_id"] = selected_gen_id
     new_data["selected_thumbnail_id"] = selected_thumb_id
+
+    # Per-option overrides for title/subtitle/domain_tag (kept in the assembly JSON).
+    title_overrides = new_data.get("title_overrides") or {}
+    if not isinstance(title_overrides, dict):
+        title_overrides = {}
+    selected_override = title_overrides.get(str(selected_gen_id)) or {}
+    if not isinstance(selected_override, dict):
+        selected_override = {}
 
     new_slides = []
     for slide in (assembly_data.get("slides") or []):
@@ -287,11 +339,22 @@ def hydrate_assembly_from_story(
 
         if s.get("type") == SlideType.COVER.value:
             # Cover should reflect the story generation by default
-            if story.get("hook_title") and content.get("title") != story.get("hook_title"):
-                content["title"] = story.get("hook_title")
+            desired_title = selected_override.get("title") or (selected_gen or {}).get("hook_title") or story.get("hook_title")
+            desired_subtitle = (
+                selected_override.get("subtitle")
+                if "subtitle" in selected_override
+                else ((selected_gen or {}).get("subtitle") or story.get("subtitle"))
+            )
+            desired_domain = selected_override.get("domain_tag") or (selected_gen or {}).get("domain_tag") or story_domain
+
+            if desired_title and content.get("title") != desired_title:
+                content["title"] = desired_title
                 changed = True
-            if story.get("subtitle") and content.get("subtitle") != story.get("subtitle"):
-                content["subtitle"] = story.get("subtitle")
+            if desired_subtitle is not None and content.get("subtitle") != desired_subtitle:
+                content["subtitle"] = desired_subtitle
+                changed = True
+            if desired_domain and content.get("domain_tag") != desired_domain:
+                content["domain_tag"] = desired_domain
                 changed = True
             if selected_thumb_url and content.get("thumbnail_url") != selected_thumb_url:
                 content["thumbnail_url"] = selected_thumb_url
@@ -629,6 +692,13 @@ def generate_default_assembly(story_data: dict) -> dict:
     3. Photo slides interspersed every 2-3 text slides
     """
     story = story_data['story']
+    generations = story_data.get("generations") or []
+    gm = (story.get("generation_metadata") or {}) if isinstance(story.get("generation_metadata"), dict) else {}
+    default_selected_option_id = gm.get("selected_id")
+    selected_gen_id = (
+        str(default_selected_option_id) if default_selected_option_id is not None else None
+    ) or (str(generations[0].get("id")) if generations else None)
+    selected_gen = next((g for g in generations if str(g.get("id")) == str(selected_gen_id)), None)
     slides = story_data['slides']
     photos = story_data['photos']
     thumbnails = story_data['thumbnails']
@@ -651,14 +721,14 @@ def generate_default_assembly(story_data: dict) -> dict:
         "template": TemplateType.COVER3.value,
         "visible": True,
         "content": {
-            "title": story['hook_title'],
-            "subtitle": story['subtitle'],
+            "title": (selected_gen or {}).get("hook_title") or story['hook_title'],
+            "subtitle": (selected_gen or {}).get("subtitle") or story['subtitle'],
             "thumbnail_url": selected_thumb['image_url'] if selected_thumb else None,
             # Non-destructive "crop" controls for the cover background image
             "thumbnail_zoom": 1.0,
             "thumbnail_offset_x": 0.0,
             "thumbnail_offset_y": 0.0,
-            "domain_tag": story['domain_tag']
+            "domain_tag": (selected_gen or {}).get("domain_tag") or story['domain_tag']
         }
     })
     
@@ -703,6 +773,7 @@ def generate_default_assembly(story_data: dict) -> dict:
     return {
         "version": 1,
         "story_generation_id": str(story['story_generation_id']),
+        "selected_generation_id": selected_gen_id,
         "selected_thumbnail_id": str(selected_thumb['id']) if selected_thumb else None,
         "slides": assembly_slides,
         "metadata": {
