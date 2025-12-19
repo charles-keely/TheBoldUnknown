@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TheBoldUnknown Closing v1</title>
+  
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+
+    body {
+      font-family: "Montserrat", sans-serif;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* 1080x1350 Configuration */
+    :root {
+      --frame-width: 1080px;
+      --frame-height: 1350px;
+      --margin: 70px;
+      
+      /* Typography */
+      --text-size: 44px;
+      --line-height: 1.5;
+      
+      /* Colors */
+      --ui-color: rgba(255, 255, 255, 0.9);
+      --dim-color: rgba(255, 255, 255, 0.5);
+      --border-color: rgba(255,255,255,0.3);
+    }
+
+    .scale-wrapper {
+      width: var(--frame-width);
+      height: var(--frame-height);
+      transform-origin: center center;
+    }
+
+    .slide {
+      position: relative;
+      width: 1080px;
+      height: 1350px;
+      background: #05060a;
+      color: #fff;
+      overflow: hidden;
+      box-shadow: 0 0 50px rgba(0,0,0,0.8);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      padding: var(--margin);
+    }
+
+    /* --- Background Elements --- */
+    .vignette {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.8) 100%);
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Technical Corner Marks */
+    .mark {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: rgba(255,255,255,0.4);
+      border-style: solid;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .mark-tl { top: 50px; left: 50px; border-width: 2px 0 0 2px; }
+    .mark-tr { top: 50px; right: 50px; border-width: 2px 2px 0 0; }
+    .mark-bl { bottom: 50px; left: 50px; border-width: 0 0 2px 2px; }
+    .mark-br { bottom: 50px; right: 50px; border-width: 0 2px 2px 0; }
+
+    /* --- Layout Layers --- */
+
+    /* Header: Logo + File Metadata */
+    .header {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-top: 1px solid var(--border-color);
+      padding-top: 20px;
+      margin-bottom: 40px;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      width: 80px;
+      height: auto;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+
+    .meta-data {
+      text-align: right;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      line-height: 1.4;
+      color: var(--dim-color);
+      text-transform: uppercase;
+    }
+
+    /* Main Body Content */
+    .content-area {
+      position: relative;
+      z-index: 2;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .center-logo {
+      width: 650px;
+      height: auto;
+      margin-bottom: 40px;
+      filter: drop-shadow(0 4px 20px rgba(0,0,0,0.8));
+    }
+
+    .cta-text {
+      font-size: 32px;
+      font-weight: 500;
+      color: var(--ui-color);
+      margin-bottom: 60px;
+      letter-spacing: 0.05em;
+    }
+    
+    .cta-button {
+        border: 1px solid var(--ui-color);
+        padding: 15px 40px;
+        font-size: 24px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        background: rgba(255,255,255,0.05);
+        margin-bottom: 80px;
+    }
+
+    .sources-container {
+      width: 100%;
+      max-width: 800px;
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      padding-top: 30px;
+    }
+
+    .sources-label {
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--dim-color);
+      margin-bottom: 15px;
+      display: block;
+    }
+
+    .sources-list {
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--dim-color);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px 30px;
+    }
+    
+    .source-item {
+        white-space: nowrap;
+    }
+
+    /* Footer: Page Number + Arrow */
+    .footer {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 20px;
+      margin-top: 40px;
+      flex-shrink: 0;
+    }
+
+    .footer-left {
+      font-size: 16px;
+      letter-spacing: 0.15em;
+      color: var(--dim-color);
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+        font-weight: 600;
+        color: #fff;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="scale-wrapper">
+    <div class="slide">
+      
+      <div class="vignette"></div>
+
+      <!-- Corner Marks -->
+      <div class="mark mark-tl"></div>
+      <div class="mark mark-tr"></div>
+      <div class="mark mark-bl"></div>
+      <div class="mark mark-br"></div>
+
+      <!-- Header -->
+      <div class="header">
+        <img src="../img/TBU_Logo4.png" alt="TBU" class="logo">
+        <div class="meta-data">
+          END OF FILE<br>
+          ANALYSIS COMPLETE
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="content-area">
+        
+        <img src="../img/TBU Logo no ellipse.png" alt="The Bold Unknown" class="center-logo">
+
+        <div class="cta-text">
+          Explore the hidden strangeness.
+        </div>
+        
+        <!-- <div class="cta-button">Follow</div> -->
+
+        <div class="sources-container">
+          <span class="sources-label">Primary Sources</span>
+          <div class="sources-list">
+            <span class="source-item">NASA / JPL</span>
+            <span class="source-item">Nature Journal</span>
+            <span class="source-item">Smithsonian Archives</span>
+            <span class="source-item">MIT Technology Review</span>
+            <span class="source-item">Historical Geographic</span>
+            <span class="source-item">Cambridge Studies</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <div class="footer-left">
+          <span class="brand-mark">TBU</span> // 2025
+        </div>
+        <!-- No arrow needed on last slide, or maybe a replay icon? Leaving empty for now as standard footer structure -->
+        <div class="footer-left" style="text-align: right;">
+            FINAL // 08
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /* --- SCALING SCRIPT --- */
+    function resizeSlide() {
+      const baseWidth = 1080;
+      const baseHeight = 1350;
+      const scale = Math.min(
+        window.innerWidth / baseWidth,
+        window.innerHeight / baseHeight
+      );
+      const wrapper = document.querySelector('.scale-wrapper');
+      if (wrapper) wrapper.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('load', resizeSlide);
+    window.addEventListener('resize', resizeSlide);
+  </script>
+
+</body>
+</html>
