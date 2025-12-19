@@ -488,6 +488,16 @@ async def render_template(
     html = html.replace('src="../img/', 'src="/template-assets/img/')
     html = html.replace("src='../img/", "src='/template-assets/img/")
     
+    # Cache-bust the wrapper script so UI changes apply immediately in iframes.
+    wrapper_path = os.path.join(config.STATIC_DIR, "js", "template-wrapper.js")
+    wrapper_v = None
+    try:
+        wrapper_v = str(int(os.path.getmtime(wrapper_path)))
+    except Exception:
+        wrapper_v = str(int(datetime.now().timestamp()))
+
+    wrapper_src = f"/static/js/template-wrapper.js?v={wrapper_v}"
+
     # Create the initialization script with slide metadata
     init_script = f'''
 <script>
@@ -495,7 +505,7 @@ async def render_template(
   window.__slideId = "{slide_id}";
   window.__slideType = "{slide_type}";
 </script>
-<script src="/static/js/template-wrapper.js"></script>
+<script src="{wrapper_src}"></script>
 '''
     
     # Inject the wrapper script before </body>
@@ -505,7 +515,11 @@ async def render_template(
         # Fallback: append to end
         html += init_script
     
-    return HTMLResponse(content=html, media_type="text/html")
+    return HTMLResponse(
+        content=html,
+        media_type="text/html",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 # =============================================================================
@@ -640,6 +654,10 @@ def generate_default_assembly(story_data: dict) -> dict:
             "title": story['hook_title'],
             "subtitle": story['subtitle'],
             "thumbnail_url": selected_thumb['image_url'] if selected_thumb else None,
+            # Non-destructive "crop" controls for the cover background image
+            "thumbnail_zoom": 1.0,
+            "thumbnail_offset_x": 0.0,
+            "thumbnail_offset_y": 0.0,
             "domain_tag": story['domain_tag']
         }
     })

@@ -314,6 +314,21 @@
           
           <!-- Actions -->
           <div class="flex items-center gap-3">
+            <!-- Reset positions -->
+            <button
+              @click="resetSlidePositions()"
+              class="btn btn-secondary"
+              type="button"
+              :disabled="saving || slides.length === 0"
+              :class="{ 'opacity-50 cursor-not-allowed': saving || slides.length === 0 }"
+              title="Reset slide order to default"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M5 19a9 9 0 0014-7M19 5a9 9 0 00-14 7"></path>
+              </svg>
+              <span>Reset positions</span>
+            </button>
+
             <!-- Unsaved indicator -->
             <div x-show="hasUnsavedChanges" class="flex items-center gap-2 text-sm text-gray-500">
               <span class="unsaved-dot"></span>
@@ -437,6 +452,70 @@
               <p class="text-xs text-gray-400 mt-2">
                 Selected: <span class="capitalize" x-text="thumbnails.find(t => t.id === selectedThumbnailId)?.concept_type || 'none'"></span>
               </p>
+
+              <!-- Cover crop controls (non-destructive zoom + pan) -->
+              <div x-show="getCoverSlide()" class="mt-4 space-y-3">
+                <div class="flex items-center justify-between">
+                  <h4 class="text-xs font-semibold text-gray-900">Cover crop</h4>
+                  <button
+                    class="text-xs px-2 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                    @click="resetCoverAdjust()"
+                    type="button"
+                    title="Reset zoom + position"
+                  >Reset</button>
+                </div>
+
+                <!-- Zoom -->
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-medium text-gray-600">Zoom</label>
+                    <span class="text-xs text-gray-500 tabular-nums" x-text="Number(coverAdjust.zoom).toFixed(2) + '×'"></span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.01"
+                    class="w-full"
+                    x-model.number="coverAdjust.zoom"
+                    @input="applyCoverAdjust()"
+                  >
+                </div>
+
+                <!-- X position -->
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-medium text-gray-600">Position X</label>
+                    <span class="text-xs text-gray-500 tabular-nums" x-text="Math.round(Number(coverAdjust.x) || 0) + 'px'"></span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-600"
+                    max="600"
+                    step="1"
+                    class="w-full"
+                    x-model.number="coverAdjust.x"
+                    @input="applyCoverAdjust()"
+                  >
+                </div>
+
+                <!-- Y position -->
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-medium text-gray-600">Position Y</label>
+                    <span class="text-xs text-gray-500 tabular-nums" x-text="Math.round(Number(coverAdjust.y) || 0) + 'px'"></span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-800"
+                    max="800"
+                    step="1"
+                    class="w-full"
+                    x-model.number="coverAdjust.y"
+                    @input="applyCoverAdjust()"
+                  >
+                </div>
+              </div>
             </div>
 
             <hr class="border-gray-200">
@@ -780,6 +859,7 @@
         storyGenerationId: null,
         story: null,
         generations: [],
+        storySlides: [],
         slides: [],
         photos: [],
         thumbnails: [],
@@ -794,6 +874,9 @@
         // Selections
         selectedGenerationId: null,
         selectedThumbnailId: null,
+
+        // Cover crop controls (non-destructive)
+        coverAdjust: { zoom: 1, x: 0, y: 0 },
         
         // Toast
         toast: { show: false, message: '', type: 'success' },
@@ -855,6 +938,7 @@
             const data = await response.json();
             this.story = data.story;
             this.generations = data.generations || [];
+            this.storySlides = data.slides || [];
             this.photos = data.photos || [];
             this.thumbnails = data.thumbnails || [];
             
@@ -887,6 +971,9 @@
             
             // If this was a default assembly, mark as having changes
             this.hasUnsavedChanges = data.is_default;
+
+            // Initialize cover crop controls from assembly (without forcing unsaved changes)
+            this.syncCoverAdjustFromSlide();
             
           } catch (err) {
             console.error('Failed to load assembly:', err);
@@ -906,16 +993,182 @@
             handle: '.drag-handle',
             ghostClass: 'sortable-ghost',
             dragClass: 'sortable-drag',
+            dataIdAttr: 'data-slide-id',
             onEnd: (evt) => {
-              // Update slides array order
-              const movedSlide = this.slides.splice(evt.oldIndex, 1)[0];
-              this.slides.splice(evt.newIndex, 0, movedSlide);
+              // Use the DOM's final order as the source of truth (Sortable has it).
+              // This avoids mismatch issues between the visual order and the Alpine array.
+              const orderedIds = (this.sortable && typeof this.sortable.toArray === 'function')
+                ? this.sortable.toArray()
+                : [];
+
+              const currentIds = this.slides.map(s => String(s.id));
+              const domOrderLooksDifferent =
+                orderedIds.length === currentIds.length &&
+                orderedIds.some((id, i) => String(id) !== currentIds[i]);
+
+              if (orderedIds.length && domOrderLooksDifferent) {
+                const byId = new Map(this.slides.map(s => [String(s.id), s]));
+                const reordered = [];
+                for (const id of orderedIds) {
+                  const slide = byId.get(String(id));
+                  if (slide) reordered.push(slide);
+                }
+                // Append any slides not present in DOM order (shouldn't happen, but safe).
+                for (const s of this.slides) {
+                  if (!orderedIds.includes(String(s.id))) reordered.push(s);
+                }
+                // Mutate in place so Alpine keeps reactivity.
+                this.slides.splice(0, this.slides.length, ...reordered);
+              } else if (typeof evt?.oldIndex === 'number' && typeof evt?.newIndex === 'number' && evt.oldIndex !== evt.newIndex) {
+                // Fallback: if Sortable's DOM order doesn't reflect the move (common with
+                // reactive templating), reorder based on the indices Sortable reports.
+                const movedSlide = this.slides.splice(evt.oldIndex, 1)[0];
+                this.slides.splice(evt.newIndex, 0, movedSlide);
+              }
+
               this.hasUnsavedChanges = true;
-              
-              // Update all page numbers after reorder
               this.updateAllPageNumbers();
+
+              // Explicitly sync DOM order to the slides array so iframe previews move
+              // with their corresponding slide cards.
+              this.$nextTick(() => {
+                this.syncDomOrderToSlides();
+                this.syncIframesToDom();
+              });
             }
           });
+        },
+
+        // Ensure the slide-card DOM order matches this.slides order.
+        // This prevents iframe previews from getting "stuck" under the wrong card after reorder.
+        syncDomOrderToSlides() {
+          const container = this.$refs.slidesContainer;
+          if (!container) return;
+
+          const cards = Array.from(container.querySelectorAll('.slide-card'));
+          const byId = new Map(cards.map(el => [String(el.dataset.slideId || ''), el]));
+
+          // Re-append in order; appendChild moves existing nodes.
+          for (const slide of this.slides) {
+            const el = byId.get(String(slide.id));
+            if (el) container.appendChild(el);
+          }
+        },
+
+        // Ensure each iframe is attached to the correct preview container.
+        // This protects against reactive DOM patching where the iframe can end up
+        // under the wrong slide card after reordering.
+        syncIframesToDom() {
+          for (let i = 0; i < this.slides.length; i++) {
+            const slide = this.slides[i];
+            const container = document.getElementById('preview-' + slide.id);
+            if (!container) continue;
+
+            const iframe = this.iframes?.[slide.id];
+            if (iframe && iframe instanceof HTMLElement) {
+              if (iframe.parentElement !== container) {
+                // Remove any stray iframes in this container (shouldn't happen, but safe).
+                container.querySelectorAll('iframe').forEach((node) => {
+                  if (node !== iframe) node.remove();
+                });
+
+                const placeholder = container.querySelector('.loading-placeholder');
+                if (placeholder) placeholder.style.display = 'none';
+
+                container.appendChild(iframe);
+
+                // Recompute scale based on the new container width
+                const containerWidth = container.offsetWidth || 0;
+                if (containerWidth > 0) {
+                  const scale = containerWidth / 1080;
+                  iframe.style.transform = `scale(${scale})`;
+                }
+              }
+            } else {
+              // If we don't have an iframe (or it was GC'd/removed), recreate it.
+              try {
+                this.createIframe(slide, i);
+              } catch (e) {}
+            }
+          }
+        },
+
+        // Reset slide ordering back to a deterministic "default" order:
+        // cover first, then text slides in DB order, with photos interspersed evenly.
+        resetSlidePositions() {
+          if (!this.slides.length) return;
+          const ok = window.confirm('Reset slide positions to the default order? This will not change slide content, only ordering.');
+          if (!ok) return;
+
+          const cover = this.slides.find(s => s.type === 'cover') || null;
+          const textSlides = this.slides.filter(s => s.type === 'text');
+          const photoSlides = this.slides.filter(s => s.type === 'photo');
+          const otherSlides = this.slides.filter(s => !['cover', 'text', 'photo'].includes(s.type));
+
+          const storyOrderById = new Map(
+            (this.storySlides || []).map(ss => [String(ss.id), Number(ss.slide_order)])
+          );
+          const photoOrderById = new Map(
+            (this.photos || []).map((p, idx) => [String(p.id), idx])
+          );
+
+          const sortedText = [...textSlides].sort((a, b) => {
+            const ao = storyOrderById.get(String(a.source_slide_id));
+            const bo = storyOrderById.get(String(b.source_slide_id));
+            const aKey = Number.isFinite(ao) ? ao : 1e9;
+            const bKey = Number.isFinite(bo) ? bo : 1e9;
+            if (aKey !== bKey) return aKey - bKey;
+            return String(a.id).localeCompare(String(b.id));
+          });
+
+          const sortedPhotos = [...photoSlides].sort((a, b) => {
+            const ao = photoOrderById.get(String(a.source_photo_id));
+            const bo = photoOrderById.get(String(b.source_photo_id));
+            const aKey = Number.isFinite(ao) ? ao : 1e9;
+            const bKey = Number.isFinite(bo) ? bo : 1e9;
+            if (aKey !== bKey) return aKey - bKey;
+            return String(a.id).localeCompare(String(b.id));
+          });
+
+          const photoPositions = this.distributePhotos(sortedText.length, sortedPhotos.length);
+          const rebuilt = [];
+          if (cover) rebuilt.push(cover);
+
+          let pIdx = 0;
+          for (let i = 0; i < sortedText.length; i++) {
+            rebuilt.push(sortedText[i]);
+            if (photoPositions.includes(i) && pIdx < sortedPhotos.length) {
+              rebuilt.push(sortedPhotos[pIdx++]);
+            }
+          }
+          while (pIdx < sortedPhotos.length) rebuilt.push(sortedPhotos[pIdx++]);
+          for (const s of otherSlides) rebuilt.push(s);
+
+          // Mutate in place so Alpine keeps existing nodes where possible.
+          this.slides.splice(0, this.slides.length, ...rebuilt);
+          this.hasUnsavedChanges = true;
+          this.updateAllPageNumbers();
+          this.$nextTick(() => {
+            this.syncDomOrderToSlides();
+            this.syncIframesToDom();
+          });
+          this.showToast('Slide positions reset (not saved yet).', 'success');
+        },
+
+        // JS port of backend photo distribution helper.
+        distributePhotos(textCount, photoCount) {
+          const t = Number(textCount) || 0;
+          const p = Number(photoCount) || 0;
+          if (p === 0 || t === 0) return [];
+          const positions = [];
+          const interval = t / (p + 1);
+          for (let i = 0; i < p; i++) {
+            let pos = Math.floor((i + 1) * interval) - 1;
+            pos = Math.max(0, Math.min(pos, t - 1));
+            positions.push(pos);
+          }
+          // De-dupe while preserving order (can happen when t is small).
+          return Array.from(new Set(positions));
         },
         
         // Create iframe for a slide
@@ -1216,6 +1469,50 @@
           }
           
           this.hasUnsavedChanges = true;
+        },
+
+        // --- Cover crop helpers ---
+        getCoverSlide() {
+          return this.slides.find(s => s.type === 'cover') || null;
+        },
+
+        syncCoverAdjustFromSlide() {
+          const coverSlide = this.getCoverSlide();
+          if (!coverSlide) return;
+          const c = coverSlide.content || {};
+
+          const z = Number(c.thumbnail_zoom);
+          const x = Number(c.thumbnail_offset_x);
+          const y = Number(c.thumbnail_offset_y);
+
+          this.coverAdjust = {
+            zoom: Number.isFinite(z) && z > 0 ? z : 1,
+            x: Number.isFinite(x) ? x : 0,
+            y: Number.isFinite(y) ? y : 0
+          };
+        },
+
+        applyCoverAdjust() {
+          const coverSlide = this.getCoverSlide();
+          if (!coverSlide) return;
+          coverSlide.content = coverSlide.content || {};
+
+          // Clamp to safe-ish ranges (the wrapper also clamps)
+          const zoom = Math.max(1, Math.min(4, Number(this.coverAdjust.zoom) || 1));
+          const x = Math.max(-2000, Math.min(2000, Number(this.coverAdjust.x) || 0));
+          const y = Math.max(-2000, Math.min(2000, Number(this.coverAdjust.y) || 0));
+
+          coverSlide.content.thumbnail_zoom = zoom;
+          coverSlide.content.thumbnail_offset_x = x;
+          coverSlide.content.thumbnail_offset_y = y;
+
+          this.updateIframeContent(coverSlide);
+          this.hasUnsavedChanges = true;
+        },
+
+        resetCoverAdjust() {
+          this.coverAdjust = { zoom: 1, x: 0, y: 0 };
+          this.applyCoverAdjust();
         },
         
         // Save assembly

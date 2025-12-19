@@ -127,6 +127,27 @@
         bg.src = normalized.thumbnail_url;
       }
     }
+
+    // Non-destructive cover "crop" controls: zoom + x/y pan for bg-image
+    // Applied via CSS transform so user can always zoom back out.
+    {
+      const bg = document.querySelector('.bg-image');
+      if (bg) {
+        const zoomRaw = normalized.thumbnail_zoom;
+        const xRaw = normalized.thumbnail_offset_x;
+        const yRaw = normalized.thumbnail_offset_y;
+
+        const zoom = clampNumber(zoomRaw, 1, 4, 1);
+        const x = clampNumber(xRaw, -2000, 2000, 0);
+        const y = clampNumber(yRaw, -2000, 2000, 0);
+
+        bg.style.transformOrigin = 'center center';
+        // NOTE: transform functions are applied right-to-left; this ordering
+        // keeps translate values from being scaled.
+        bg.style.transform = `translate(${x}px, ${y}px) scale(${zoom})`;
+        bg.style.willChange = 'transform';
+      }
+    }
     
     // === EDITORIAL TEMPLATE ===
     if (normalized.text !== undefined) {
@@ -276,6 +297,12 @@
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  function clampNumber(value, min, max, fallback) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(min, Math.min(max, n));
   }
   
   /**

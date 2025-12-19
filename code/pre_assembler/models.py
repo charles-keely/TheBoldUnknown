@@ -132,6 +132,10 @@ class SlideContent(BaseModel):
     title: Optional[str] = None
     subtitle: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    # Non-destructive cover "crop" controls (applied via CSS transform)
+    thumbnail_zoom: Optional[float] = None
+    thumbnail_offset_x: Optional[float] = None
+    thumbnail_offset_y: Optional[float] = None
     
     # Text content
     text: Optional[str] = None
