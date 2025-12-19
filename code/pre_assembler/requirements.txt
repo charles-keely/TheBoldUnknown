@@ -1,0 +1,20 @@
+# Pre-Assembler Dependencies
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+
+# Database
+psycopg2-binary==2.9.9
+
+# Environment
+python-dotenv==1.0.0
+
+# Data Validation
+pydantic==2.5.3
+
+# Templating (for wrapper injection)
+jinja2==3.1.3
+
+# Type hints support
+typing-extensions>=4.0.0

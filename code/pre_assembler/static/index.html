@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pre-Assembler — TheBoldUnknown</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  
+  <!-- SF Pro Font (fallback to system) -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    :root {
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F5F5F7;
+      --bg-tertiary: #E8E8ED;
+      --text-primary: #1D1D1F;
+      --text-secondary: #6E6E73;
+      --text-tertiary: #86868B;
+      --accent: #007AFF;
+      --accent-hover: #0056B3;
+      --success: #34C759;
+      --warning: #FF9500;
+      --danger: #FF3B30;
+      --border: rgba(0, 0, 0, 0.1);
+      --shadow: rgba(0, 0, 0, 0.08);
+    }
+    
+    * {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 
+                   'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    
+    body {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    .card {
+      background: var(--bg-primary);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px var(--shadow);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    
+    .status-new { background: var(--bg-tertiary); color: var(--text-secondary); }
+    .status-draft { background: #FFF3CD; color: #856404; }
+    .status-in_progress { background: #D4EDDA; color: #155724; }
+    
+    .domain-tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: var(--text-primary);
+      color: white;
+    }
+    
+    .thumbnail-preview {
+      aspect-ratio: 4/5;
+      background: var(--bg-tertiary);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .thumbnail-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 20px;
+      background: var(--accent);
+      color: white;
+      border-radius: 10px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'apple-blue': '#007AFF',
+            'apple-gray': '#F5F5F7',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  
+  <div x-data="dashboard()" x-init="loadStories()" class="max-w-7xl mx-auto px-6 py-12">
+    
+    <!-- Header -->
+    <header class="mb-12">
+      <div class="flex items-center justify-between">
+        <div>
+          <h1 class="text-4xl font-bold tracking-tight text-gray-900">Pre-Assembler</h1>
+          <p class="mt-2 text-lg text-gray-500">Assemble and preview Instagram carousel stories</p>
+        </div>
+        <div class="flex items-center gap-4">
+          <div x-show="stories.length > 0" class="text-sm text-gray-500">
+            <span x-text="stories.length"></span> stories ready
+          </div>
+          <button @click="loadStories()" class="p-2 rounded-lg hover:bg-gray-100 transition-colors" title="Refresh">
+            <svg class="w-5 h-5 text-gray-500" :class="{'animate-spin': loading}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Loading State -->
+    <div x-show="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <template x-for="i in 6">
+        <div class="card p-5">
+          <div class="skeleton h-48 rounded-xl mb-4"></div>
+          <div class="skeleton h-6 w-3/4 rounded mb-2"></div>
+          <div class="skeleton h-4 w-1/2 rounded"></div>
+        </div>
+      </template>
+    </div>
+    
+    <!-- Empty State -->
+    <div x-show="!loading && stories.length === 0" class="text-center py-20">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-6">
+        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+        </svg>
+      </div>
+      <h3 class="text-xl font-semibold text-gray-900 mb-2">No stories ready</h3>
+      <p class="text-gray-500 max-w-md mx-auto">
+        Stories will appear here once they have completed research, text generation, photo research, and thumbnail generation.
+      </p>
+    </div>
+    
+    <!-- Error State -->
+    <div x-show="error" class="bg-red-50 border border-red-200 rounded-xl p-6 mb-8">
+      <div class="flex items-start gap-3">
+        <svg class="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <div>
+          <h4 class="font-semibold text-red-800">Error loading stories</h4>
+          <p class="text-red-600 text-sm mt-1" x-text="error"></p>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Stories Grid -->
+    <div x-show="!loading && stories.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <template x-for="story in stories" :key="story.story_generation_id">
+        <a :href="'/editor/' + story.story_generation_id" class="card p-5 block cursor-pointer">
+          
+          <!-- Thumbnail Preview -->
+          <div class="thumbnail-preview mb-4 relative">
+            <template x-if="story.thumbnail_url">
+              <img :src="story.thumbnail_url" :alt="story.hook_title" loading="lazy">
+            </template>
+            <template x-if="!story.thumbnail_url">
+              <div class="w-full h-full flex items-center justify-center">
+                <svg class="w-12 h-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+              </div>
+            </template>
+            
+            <!-- Status Badge (overlay) -->
+            <div class="absolute top-3 right-3">
+              <span class="status-badge" :class="'status-' + story.assembly_status">
+                <template x-if="story.assembly_status === 'new'">New</template>
+                <template x-if="story.assembly_status === 'draft'">Draft</template>
+                <template x-if="story.assembly_status === 'in_progress'">In Progress</template>
+              </span>
+            </div>
+          </div>
+          
+          <!-- Content -->
+          <div class="space-y-3">
+            <!-- Domain Tag -->
+            <span class="domain-tag" x-text="story.domain_tag"></span>
+            
+            <!-- Title -->
+            <h3 class="font-semibold text-lg leading-tight text-gray-900 line-clamp-2" x-text="story.hook_title"></h3>
+            
+            <!-- Subtitle -->
+            <p class="text-sm text-gray-500 line-clamp-2" x-text="story.subtitle"></p>
+            
+            <!-- Stats -->
+            <div class="flex items-center gap-2 pt-2">
+              <span class="stat-pill">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <span x-text="story.slide_count + ' slides'"></span>
+              </span>
+              <span class="stat-pill">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                <span x-text="story.photo_count + ' photos'"></span>
+              </span>
+            </div>
+          </div>
+          
+        </a>
+      </template>
+    </div>
+    
+  </div>
+  
+  <script>
+    function dashboard() {
+      return {
+        stories: [],
+        loading: true,
+        error: null,
+        
+        async loadStories() {
+          this.loading = true;
+          this.error = null;
+          
+          try {
+            const response = await fetch('/api/stories');
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            this.stories = data.stories || [];
+          } catch (err) {
+            console.error('Failed to load stories:', err);
+            this.error = err.message;
+          } finally {
+            this.loading = false;
+          }
+        },
+        
+        formatDate(dateString) {
+          if (!dateString) return '';
+          const date = new Date(dateString);
+          return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            year: 'numeric'
+          });
+        }
+      }
+    }
+  </script>
+  
+</body>
+</html>

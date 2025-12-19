@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assembly Editor — TheBoldUnknown</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  
+  <!-- SortableJS for drag-and-drop -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    :root {
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F5F5F7;
+      --bg-tertiary: #E8E8ED;
+      --text-primary: #1D1D1F;
+      --text-secondary: #6E6E73;
+      --text-tertiary: #86868B;
+      --accent: #007AFF;
+      --accent-hover: #0056B3;
+      --success: #34C759;
+      --warning: #FF9500;
+      --danger: #FF3B30;
+      --border: rgba(0, 0, 0, 0.1);
+      --shadow: rgba(0, 0, 0, 0.08);
+    }
+    
+    * {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 
+                   'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    
+    body {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    /* Slide card styling */
+    .slide-card {
+      background: var(--bg-primary);
+      border-radius: 16px;
+      box-shadow: 0 2px 12px var(--shadow);
+      transition: all 0.2s ease;
+    }
+    
+    .slide-card:hover {
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    }
+    
+    .slide-card.disabled {
+      opacity: 0.4;
+      filter: grayscale(1);
+    }
+    
+    .slide-card.sortable-ghost {
+      opacity: 0.5;
+      background: var(--bg-tertiary);
+    }
+    
+    .slide-card.sortable-drag {
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Drag handle */
+    .drag-handle {
+      cursor: grab;
+      color: var(--text-tertiary);
+      transition: color 0.2s;
+    }
+    
+    .drag-handle:hover {
+      color: var(--text-secondary);
+    }
+    
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 26px;
+      border-radius: 13px;
+      background: var(--bg-tertiary);
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    
+    .toggle.active {
+      background: var(--success);
+    }
+    
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: white;
+      top: 2px;
+      left: 2px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease;
+    }
+    
+    .toggle.active::after {
+      transform: translateX(18px);
+    }
+    
+    /* Type badges */
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    
+    .type-cover { background: #FFE5E5; color: #C53030; }
+    .type-text { background: #E5F0FF; color: #2B6CB0; }
+    .type-photo { background: #E5FFE5; color: #276749; }
+    
+    /* Template preview container */
+    .template-preview {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4/5;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .template-preview iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1080px;
+      height: 1350px;
+      transform-origin: top left;
+      border: none;
+      pointer-events: none;
+    }
+    
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+    
+    .btn-secondary:hover {
+      background: #D8D8DC;
+    }
+    
+    /* Unsaved indicator */
+    .unsaved-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* Sidebar */
+    .sidebar {
+      background: var(--bg-primary);
+      border-radius: 16px;
+      box-shadow: 0 2px 12px var(--shadow);
+    }
+    
+    /* Radio options */
+    .radio-option {
+      padding: 12px;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .radio-option:hover {
+      background: var(--bg-secondary);
+    }
+    
+    .radio-option.selected {
+      border-color: var(--accent);
+      background: rgba(0, 122, 255, 0.05);
+    }
+    
+    /* Thumbnail option */
+    .thumb-option {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .thumb-option:hover {
+      transform: scale(1.02);
+    }
+    
+    .thumb-option.selected {
+      border-color: var(--accent);
+    }
+    
+    .thumb-option img {
+      width: 100%;
+      aspect-ratio: 4/5;
+      object-fit: cover;
+    }
+    
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 14px 20px;
+      border-radius: 12px;
+      background: var(--text-primary);
+      color: white;
+      font-weight: 500;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    
+    .toast.success {
+      background: var(--success);
+    }
+    
+    .toast.error {
+      background: var(--danger);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+  
+  <div x-data="editor()" x-init="init()" class="min-h-screen flex flex-col">
+    
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-6 py-4">
+        <div class="flex items-center justify-between">
+          <!-- Back button + Title -->
+          <div class="flex items-center gap-4">
+            <a href="/" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+            </a>
+            <div>
+              <h1 class="text-lg font-semibold text-gray-900 line-clamp-1" x-text="story?.hook_title || 'Loading...'"></h1>
+              <p class="text-sm text-gray-500" x-text="story?.domain_tag"></p>
+            </div>
+          </div>
+          
+          <!-- Actions -->
+          <div class="flex items-center gap-3">
+            <!-- Unsaved indicator -->
+            <div x-show="hasUnsavedChanges" class="flex items-center gap-2 text-sm text-gray-500">
+              <span class="unsaved-dot"></span>
+              <span>Unsaved changes</span>
+            </div>
+            
+            <!-- Save button -->
+            <button 
+              @click="saveAssembly()" 
+              class="btn btn-primary"
+              :disabled="saving || !hasUnsavedChanges"
+              :class="{ 'opacity-50 cursor-not-allowed': saving || !hasUnsavedChanges }"
+            >
+              <template x-if="saving">
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+              </template>
+              <template x-if="!saving">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </template>
+              <span x-text="saving ? 'Saving...' : 'Save'"></span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="flex-1 flex">
+      
+      <!-- Loading State -->
+      <div x-show="loading" class="flex-1 flex items-center justify-center">
+        <div class="text-center">
+          <svg class="w-12 h-12 text-gray-400 animate-spin mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+          <p class="text-gray-500">Loading story...</p>
+        </div>
+      </div>
+      
+      <!-- Error State -->
+      <div x-show="error && !loading" class="flex-1 flex items-center justify-center p-8">
+        <div class="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md text-center">
+          <svg class="w-12 h-12 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          <h3 class="text-lg font-semibold text-red-800 mb-2">Error Loading Story</h3>
+          <p class="text-red-600 mb-4" x-text="error"></p>
+          <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+      </div>
+      
+      <!-- Editor Layout -->
+      <div x-show="!loading && !error" class="flex-1 flex">
+        
+        <!-- Sidebar -->
+        <aside class="w-80 flex-shrink-0 p-6 overflow-y-auto">
+          <div class="sidebar p-5 space-y-6">
+            
+            <!-- Assembly Stats -->
+            <div>
+              <h3 class="text-sm font-semibold text-gray-900 mb-3">Assembly Stats</h3>
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-gray-500">Total slides</span>
+                  <span class="font-medium" x-text="slides.length"></span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-500">Enabled</span>
+                  <span class="font-medium" x-text="enabledSlideCount"></span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-gray-500">Photos</span>
+                  <span class="font-medium" x-text="slides.filter(s => s.type === 'photo' && s.visible).length"></span>
+                </div>
+              </div>
+            </div>
+            
+            <hr class="border-gray-200">
+            
+            <!-- Title/Subtitle Options -->
+            <div x-show="generations.length > 1">
+              <h3 class="text-sm font-semibold text-gray-900 mb-3">Title Options</h3>
+              <div class="space-y-2">
+                <template x-for="gen in generations" :key="gen.id">
+                  <div 
+                    class="radio-option"
+                    :class="{ 'selected': selectedGenerationId === gen.id }"
+                    @click="selectGeneration(gen.id)"
+                  >
+                    <p class="font-medium text-sm line-clamp-2" x-text="gen.hook_title"></p>
+                    <p class="text-xs text-gray-500 line-clamp-1 mt-1" x-text="gen.subtitle"></p>
+                  </div>
+                </template>
+              </div>
+            </div>
+            
+            <hr class="border-gray-200" x-show="generations.length > 1">
+            
+            <!-- Thumbnail Options -->
+            <div x-show="thumbnails.length > 0">
+              <h3 class="text-sm font-semibold text-gray-900 mb-3">Cover Thumbnail</h3>
+              <div class="grid grid-cols-3 gap-2">
+                <template x-for="thumb in thumbnails" :key="thumb.id">
+                  <div 
+                    class="thumb-option"
+                    :class="{ 'selected': selectedThumbnailId === thumb.id }"
+                    @click="selectThumbnail(thumb.id)"
+                    :title="thumb.concept_type"
+                  >
+                    <img :src="thumb.image_url" :alt="thumb.concept_type">
+                  </div>
+                </template>
+              </div>
+              <p class="text-xs text-gray-400 mt-2">
+                Selected: <span class="capitalize" x-text="thumbnails.find(t => t.id === selectedThumbnailId)?.concept_type || 'none'"></span>
+              </p>
+            </div>
+            
+          </div>
+        </aside>
+        
+        <!-- Slides Preview Area -->
+        <div class="flex-1 p-6 overflow-y-auto">
+          <div class="max-w-md mx-auto space-y-6" x-ref="slidesContainer">
+            
+            <template x-for="(slide, index) in slides" :key="slide.id">
+              <div 
+                class="slide-card"
+                :class="{ 'disabled': !slide.visible }"
+                :data-slide-id="slide.id"
+              >
+                <!-- Slide Header -->
+                <div class="flex items-center justify-between p-4 border-b border-gray-100">
+                  <!-- Drag Handle + Type -->
+                  <div class="flex items-center gap-3">
+                    <div class="drag-handle p-1">
+                      <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z"></path>
+                      </svg>
+                    </div>
+                    <span class="type-badge" :class="'type-' + slide.type" x-text="slide.type.toUpperCase()"></span>
+                    <span class="text-sm text-gray-400" x-text="getPageNumber(index)"></span>
+                  </div>
+                  
+                  <!-- Toggle + Edit -->
+                  <div class="flex items-center gap-3">
+                    <button 
+                      @click="editSlide(slide)" 
+                      class="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
+                      title="Edit"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                      </svg>
+                    </button>
+                    <div 
+                      class="toggle"
+                      :class="{ 'active': slide.visible }"
+                      @click="toggleSlide(slide)"
+                    ></div>
+                  </div>
+                </div>
+                
+                <!-- Template Preview -->
+                <div class="p-4">
+                  <div class="template-preview" :id="'preview-' + slide.id">
+                    <!-- Iframe will be inserted here by JavaScript -->
+                    <div class="w-full h-full flex items-center justify-center text-white/50 text-sm">
+                      <span x-text="slide.type === 'cover' ? 'Cover Template' : slide.type === 'photo' ? 'Photo Template' : 'Text Template'"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+            
+          </div>
+        </div>
+        
+      </div>
+      
+    </main>
+    
+    <!-- Toast Notification -->
+    <div 
+      class="toast"
+      :class="{ 'show': toast.show, 'success': toast.type === 'success', 'error': toast.type === 'error' }"
+      x-text="toast.message"
+    ></div>
+    
+  </div>
+  
+  <!-- Warn before leaving with unsaved changes -->
+  <script>
+    window.addEventListener('beforeunload', (e) => {
+      const editorData = Alpine.$data(document.querySelector('[x-data]'));
+      if (editorData && editorData.hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+  </script>
+  
+  <script>
+    function editor() {
+      return {
+        // Data
+        storyGenerationId: null,
+        story: null,
+        generations: [],
+        slides: [],
+        photos: [],
+        thumbnails: [],
+        
+        // State
+        loading: true,
+        error: null,
+        saving: false,
+        hasUnsavedChanges: false,
+        
+        // Selections
+        selectedGenerationId: null,
+        selectedThumbnailId: null,
+        
+        // Toast
+        toast: { show: false, message: '', type: 'success' },
+        
+        // Sortable instance
+        sortable: null,
+        
+        // Computed
+        get enabledSlideCount() {
+          return this.slides.filter(s => s.visible).length;
+        },
+        
+        // Initialize
+        async init() {
+          // Get story ID from URL
+          const path = window.location.pathname;
+          const match = path.match(/\/editor\/([^\/]+)/);
+          if (!match) {
+            this.error = 'Invalid URL';
+            this.loading = false;
+            return;
+          }
+          
+          this.storyGenerationId = match[1];
+          await this.loadStory();
+          await this.loadAssembly();
+          
+          // Initialize drag-and-drop after DOM updates
+          this.$nextTick(() => {
+            this.initSortable();
+          });
+        },
+        
+        // Load story data
+        async loadStory() {
+          try {
+            const response = await fetch(`/api/stories/${this.storyGenerationId}`);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            this.story = data.story;
+            this.generations = data.generations || [];
+            this.photos = data.photos || [];
+            this.thumbnails = data.thumbnails || [];
+            
+            // Set initial selections
+            this.selectedGenerationId = this.storyGenerationId;
+            const selectedThumb = this.thumbnails.find(t => t.is_selected) || this.thumbnails[0];
+            this.selectedThumbnailId = selectedThumb?.id;
+            
+          } catch (err) {
+            console.error('Failed to load story:', err);
+            this.error = err.message;
+          }
+        },
+        
+        // Load or generate assembly
+        async loadAssembly() {
+          try {
+            const response = await fetch(`/api/stories/${this.storyGenerationId}/assembly`);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            this.slides = data.assembly.assembly_data.slides || [];
+            
+            if (data.assembly.assembly_data.selected_thumbnail_id) {
+              this.selectedThumbnailId = data.assembly.assembly_data.selected_thumbnail_id;
+            }
+            
+            // If this was a default assembly, mark as having changes
+            this.hasUnsavedChanges = data.is_default;
+            
+          } catch (err) {
+            console.error('Failed to load assembly:', err);
+            this.error = err.message;
+          } finally {
+            this.loading = false;
+          }
+        },
+        
+        // Initialize SortableJS
+        initSortable() {
+          const container = this.$refs.slidesContainer;
+          if (!container) return;
+          
+          this.sortable = new Sortable(container, {
+            animation: 200,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            onEnd: (evt) => {
+              // Update slides array order
+              const movedSlide = this.slides.splice(evt.oldIndex, 1)[0];
+              this.slides.splice(evt.newIndex, 0, movedSlide);
+              this.hasUnsavedChanges = true;
+            }
+          });
+        },
+        
+        // Get page number for display (e.g., "01/08")
+        getPageNumber(index) {
+          const enabledBefore = this.slides.slice(0, index + 1).filter(s => s.visible).length;
+          const total = this.enabledSlideCount;
+          
+          if (!this.slides[index].visible) {
+            return '--/--';
+          }
+          
+          return `${String(enabledBefore).padStart(2, '0')}/${String(total).padStart(2, '0')}`;
+        },
+        
+        // Toggle slide visibility
+        toggleSlide(slide) {
+          slide.visible = !slide.visible;
+          this.hasUnsavedChanges = true;
+        },
+        
+        // Edit slide (placeholder - will be expanded in Phase 4)
+        editSlide(slide) {
+          // TODO: Open edit modal
+          console.log('Edit slide:', slide);
+          this.showToast('Edit mode coming soon!', 'success');
+        },
+        
+        // Select generation (title/subtitle)
+        selectGeneration(generationId) {
+          this.selectedGenerationId = generationId;
+          const gen = this.generations.find(g => g.id === generationId);
+          
+          // Update cover slide content
+          const coverSlide = this.slides.find(s => s.type === 'cover');
+          if (coverSlide && gen) {
+            coverSlide.content.title = gen.hook_title;
+            coverSlide.content.subtitle = gen.subtitle;
+            coverSlide.content.domain_tag = gen.domain_tag;
+          }
+          
+          this.hasUnsavedChanges = true;
+        },
+        
+        // Select thumbnail
+        selectThumbnail(thumbnailId) {
+          this.selectedThumbnailId = thumbnailId;
+          const thumb = this.thumbnails.find(t => t.id === thumbnailId);
+          
+          // Update cover slide thumbnail
+          const coverSlide = this.slides.find(s => s.type === 'cover');
+          if (coverSlide && thumb) {
+            coverSlide.content.thumbnail_url = thumb.image_url;
+          }
+          
+          this.hasUnsavedChanges = true;
+        },
+        
+        // Save assembly
+        async saveAssembly() {
+          if (this.saving) return;
+          
+          this.saving = true;
+          
+          try {
+            const assemblyData = {
+              version: 1,
+              story_generation_id: this.storyGenerationId,
+              selected_thumbnail_id: this.selectedThumbnailId,
+              slides: this.slides,
+              metadata: {
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            };
+            
+            const response = await fetch(`/api/stories/${this.storyGenerationId}/assembly`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                assembly_data: assemblyData,
+                status: 'draft'
+              })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            this.hasUnsavedChanges = false;
+            this.showToast('Assembly saved!', 'success');
+            
+          } catch (err) {
+            console.error('Failed to save assembly:', err);
+            this.showToast('Failed to save: ' + err.message, 'error');
+          } finally {
+            this.saving = false;
+          }
+        },
+        
+        // Show toast notification
+        showToast(message, type = 'success') {
+          this.toast = { show: true, message, type };
+          setTimeout(() => {
+            this.toast.show = false;
+          }, 3000);
+        }
+      }
+    }
+  </script>
+  
+</body>
+</html>
