@@ -314,6 +314,23 @@
           
           <!-- Actions -->
           <div class="flex items-center gap-3">
+            <!-- Story enabled toggle -->
+            <div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-200">
+              <span
+                class="text-xs font-medium"
+                :class="(story && story.is_enabled === false) ? 'text-red-600' : 'text-gray-600'"
+                x-text="(story && story.is_enabled === false) ? 'Disabled' : 'Enabled'"
+              ></span>
+              <button
+                type="button"
+                class="toggle"
+                :class="{ 'active': !(story && story.is_enabled === false) }"
+                :disabled="!story || saving"
+                :title="(story && story.is_enabled === false) ? 'Re-enable this story' : 'Disable this story (won\\'t be scheduled later)'"
+                @click="toggleStoryEnabled()"
+              ></button>
+            </div>
+
             <!-- Reset positions -->
             <button
               @click="resetSlidePositions()"
@@ -934,6 +951,12 @@
         get enabledSlideCount() {
           return this.slides.filter(s => s.visible).length;
         },
+
+        // Story-level enablement (persisted to DB immediately)
+        get isStoryEnabled() {
+          // Default to enabled when field isn't present yet.
+          return !(this.story && this.story.is_enabled === false);
+        },
         
         // Initialize
         async init() {
@@ -985,6 +1008,35 @@
           } catch (err) {
             console.error('Failed to load story:', err);
             this.error = err.message;
+          }
+        },
+
+        async toggleStoryEnabled() {
+          if (!this.storyGenerationId) return;
+          if (!this.story) return;
+
+          const prev = (this.story.is_enabled !== false);
+          const next = !prev;
+
+          // Optimistic UI
+          this.story.is_enabled = next;
+
+          try {
+            const response = await fetch(`/api/story-generations/${this.storyGenerationId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ is_enabled: next })
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            this.showToast(next ? 'Story enabled' : 'Story disabled', 'success');
+          } catch (err) {
+            console.error('Failed to toggle story enabled:', err);
+            this.story.is_enabled = prev;
+            this.showToast('Failed to update story: ' + err.message, 'error');
           }
         },
         

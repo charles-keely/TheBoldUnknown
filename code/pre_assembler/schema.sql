@@ -1,6 +1,11 @@
 -- Story assemblies table
 -- Stores the finalized arrangement of slides for Instagram export
 
+-- Story-level enable/disable flag (used by Pre-Assembler + future scheduler)
+ALTER TABLE IF EXISTS public.story_generations
+    ADD COLUMN IF NOT EXISTS is_enabled boolean NOT NULL DEFAULT true;
+CREATE INDEX IF NOT EXISTS idx_story_generations_is_enabled ON public.story_generations(is_enabled);
+
 CREATE TABLE IF NOT EXISTS public.story_assemblies (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     story_generation_id uuid NOT NULL,

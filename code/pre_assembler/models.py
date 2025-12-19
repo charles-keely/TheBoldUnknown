@@ -42,6 +42,8 @@ class StorySummary(BaseModel):
     hook_title: str
     subtitle: str
     domain_tag: str
+    # When false, this story should not be scheduled/published.
+    is_enabled: bool = True
     instagram_caption: Optional[str] = None
     hashtags: Optional[List[str]] = None
     slide_count: int
@@ -72,10 +74,11 @@ class StoryGeneration(BaseModel):
 
 
 class UpdateStoryGenerationRequest(BaseModel):
-    """Patch a story generation's title/subtitle fields."""
+    """Patch a story generation's title/subtitle fields and publish eligibility."""
     hook_title: Optional[str] = None
     subtitle: Optional[str] = None
     domain_tag: Optional[str] = None
+    is_enabled: Optional[bool] = None
 
 
 class StorySlide(BaseModel):
@@ -113,6 +116,8 @@ class StoryInfo(BaseModel):
     hook_title: str
     subtitle: str
     domain_tag: str
+    # When false, this story should not be scheduled/published.
+    is_enabled: bool = True
     instagram_caption: Optional[str] = None
     hashtags: Optional[List[str]] = None
     created_at: datetime

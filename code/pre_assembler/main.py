@@ -184,6 +184,7 @@ async def list_stories():
             hook_title=row['hook_title'],
             subtitle=row['subtitle'],
             domain_tag=row['domain_tag'],
+            is_enabled=bool(row.get('is_enabled', True)),
             instagram_caption=row.get('instagram_caption'),
             hashtags=row.get('hashtags'),
             slide_count=row['slide_count'],
@@ -231,6 +232,7 @@ async def patch_story_generation(story_generation_id: str, request: UpdateStoryG
             hook_title=request.hook_title,
             subtitle=request.subtitle,
             domain_tag=request.domain_tag,
+            is_enabled=request.is_enabled,
         )
         if not updated:
             raise HTTPException(status_code=404, detail="Story generation not found")

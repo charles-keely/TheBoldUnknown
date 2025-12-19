@@ -54,6 +54,44 @@
       transform: translateY(-4px);
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
     }
+
+    .card.disabled {
+      opacity: 0.5;
+      filter: grayscale(1);
+    }
+
+    /* Toggle switch (matches editor) */
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 26px;
+      border-radius: 13px;
+      background: var(--bg-tertiary);
+      cursor: pointer;
+      transition: background 0.3s ease;
+      flex: 0 0 auto;
+    }
+
+    .toggle.active {
+      background: var(--success);
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: white;
+      top: 2px;
+      left: 2px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease;
+    }
+
+    .toggle.active::after {
+      transform: translateX(18px);
+    }
     
     .status-badge {
       display: inline-flex;
@@ -212,7 +250,11 @@
     <!-- Stories Grid -->
     <div x-show="!loading && stories.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <template x-for="story in stories" :key="story.story_generation_id">
-        <a :href="'/editor/' + story.story_generation_id" class="card p-5 block cursor-pointer">
+        <a
+          :href="'/editor/' + story.story_generation_id"
+          class="card p-5 block cursor-pointer"
+          :class="{ 'disabled': story.is_enabled === false }"
+        >
           
           <!-- Thumbnail Preview -->
           <div class="thumbnail-preview mb-4 relative">
@@ -247,6 +289,22 @@
             
             <!-- Subtitle -->
             <p class="text-sm text-gray-500 line-clamp-2" x-text="story.subtitle"></p>
+
+            <!-- Enabled / Disabled toggle -->
+            <div class="flex items-center justify-between pt-1">
+              <span
+                class="text-xs font-medium"
+                :class="(story.is_enabled === false) ? 'text-red-600' : 'text-gray-600'"
+                x-text="(story.is_enabled === false) ? 'Disabled' : 'Enabled'"
+              ></span>
+              <button
+                type="button"
+                class="toggle"
+                :class="{ 'active': (story.is_enabled !== false) }"
+                @click.prevent.stop="toggleStoryEnabled(story)"
+                :title="(story.is_enabled === false) ? 'Re-enable this story' : 'Disable this story (won\\'t be scheduled later)'"
+              ></button>
+            </div>
             
             <!-- Stats -->
             <div class="flex items-center gap-2 pt-2">
@@ -308,6 +366,30 @@
             this.error = err.message;
           } finally {
             this.loading = false;
+          }
+        },
+
+        async toggleStoryEnabled(story) {
+          if (!story || !story.story_generation_id) return;
+          const prev = (story.is_enabled !== false);
+          const next = !prev;
+
+          // Optimistic UI
+          story.is_enabled = next;
+
+          try {
+            const response = await fetch(`/api/story-generations/${story.story_generation_id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ is_enabled: next })
+            });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+          } catch (err) {
+            console.error('Failed to toggle story enabled:', err);
+            story.is_enabled = prev;
+            this.error = err.message;
           }
         },
         

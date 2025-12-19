@@ -102,6 +102,7 @@ def get_stories_ready_for_assembly():
                         sg.hook_title,
                         sg.subtitle,
                         sg.domain_tag,
+                        COALESCE(sg.is_enabled, TRUE) as is_enabled,
                         sg.instagram_caption,
                         sg.hashtags,
                         sg.created_at,
@@ -148,6 +149,7 @@ def get_stories_ready_for_assembly():
                     hook_title,
                     subtitle,
                     domain_tag,
+                    is_enabled,
                     instagram_caption,
                     hashtags,
                     slide_count,
@@ -162,6 +164,7 @@ def get_stories_ready_for_assembly():
                   AND thumbnail_count > 0
                   AND (assembly_status IS NULL OR assembly_status != 'finalized')
                 ORDER BY 
+                    is_enabled DESC,
                     CASE 
                         WHEN assembly_status = 'in_progress' THEN 1
                         WHEN assembly_status = 'draft' THEN 2
@@ -198,6 +201,7 @@ def get_story_full_data(story_generation_id: str):
                     sg.hook_title,
                     sg.subtitle,
                     sg.domain_tag,
+                    COALESCE(sg.is_enabled, TRUE) as is_enabled,
                     sg.generation_metadata,
                     sg.instagram_caption,
                     sg.hashtags,
@@ -328,19 +332,20 @@ def update_story_generation(
     hook_title: str | None = None,
     subtitle: str | None = None,
     domain_tag: str | None = None,
+    is_enabled: bool | None = None,
 ) -> dict | None:
     """
-    Update a story_generations row (title/subtitle/domain_tag).
+    Update a story_generations row (title/subtitle/domain_tag/is_enabled).
     Returns the updated row fields we care about, or None if not found.
     """
     # Nothing to update
-    if hook_title is None and subtitle is None and domain_tag is None:
+    if hook_title is None and subtitle is None and domain_tag is None and is_enabled is None:
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, hook_title, subtitle, domain_tag
+                    SELECT id, hook_title, subtitle, domain_tag, COALESCE(is_enabled, TRUE) as is_enabled
                     FROM story_generations
                     WHERE id = %s
                     """,
@@ -363,6 +368,9 @@ def update_story_generation(
     if domain_tag is not None:
         sets.append("domain_tag = %s")
         params.append(domain_tag)
+    if is_enabled is not None:
+        sets.append("is_enabled = %s")
+        params.append(is_enabled)
 
     params.append(story_generation_id)
 
@@ -374,7 +382,7 @@ def update_story_generation(
                 UPDATE story_generations
                 SET {", ".join(sets)}
                 WHERE id = %s
-                RETURNING id, hook_title, subtitle, domain_tag
+                RETURNING id, hook_title, subtitle, domain_tag, COALESCE(is_enabled, TRUE) as is_enabled
                 """,
                 tuple(params),
             )
