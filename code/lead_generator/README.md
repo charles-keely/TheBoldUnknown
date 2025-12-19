@@ -26,12 +26,12 @@ Raw leads must survive a gauntlet of filters to reach the database:
 3.  **Semantic Deduplication:**
     *   Generates vector embeddings for Title + Summary.
     *   Checks if story is too similar to existing leads.
-    *   **Threshold:** 85% similarity = duplicate (strict policy).
+    *   **Threshold:** 75% similarity = duplicate.
 
 4.  **Virality Check:**
     *   Scores the story's viral potential (0-100).
     *   **Criteria:** Curiosity gaps, counterintuitive hooks, "wait, what?" moments.
-    *   **Pass Threshold:** Must score ≥ 80/100 to proceed.
+    *   **Pass Threshold:** Must score ≥ 78/100 to proceed.
 
 5.  **Brand Lens Check:**
     *   Deep analysis of brand alignment (Title + Summary).
@@ -49,7 +49,7 @@ Raw leads must survive a gauntlet of filters to reach the database:
 ### 1. Prerequisites
 *   Python 3.10+
 *   PostgreSQL Database (Supabase)
-*   API Keys for OpenAI (`gpt-5`) and Perplexity.
+*   API Keys for OpenAI (`gpt-4o`) and Perplexity.
 
 ### 2. Install Dependencies
 It is recommended to use a virtual environment:

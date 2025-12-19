@@ -1,6 +1,8 @@
-## Curator Agent
+# Curator Agent
 
 This directory contains the Curator Agent for TheBoldUnknown. It selects weekly stories from your `leads` table and queues them for research in `story_research`.
+
+**Model Used:** GPT-5.1
 
 ### Prerequisites (macOS)
 

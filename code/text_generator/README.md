@@ -5,6 +5,8 @@ This service generates the final text content for TheBoldUnknown Instagram stori
 2.  **Cover Options**: 6 viral hook options derived from the generated story.
 3.  **Photo Captions**: Documentary-style captions for approved photos.
 
+**Model Used:** GPT-5.2
+
 ## Setup
 
 1.  **Install Dependencies**:
