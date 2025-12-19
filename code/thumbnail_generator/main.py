@@ -98,20 +98,38 @@ def process_story(story, use_pro=False, simple_prompt=False, skip_db=False):
         # Save to database (unless skip_db)
         if not skip_db and generation_id:
             try:
-                thumbnail_id = db.save_thumbnail(
-                    generation_id=generation_id,
-                    concept_number=concept_num,
-                    concept_type=concept_type,
-                    scene_description=scene_description,
-                    full_prompt=full_prompt,
-                    generation_metadata={
-                        'concept': concept,
-                        'model_used': 'gpt-5.2',
-                        'prompt_type': 'simple' if simple_prompt else 'full'
-                    }
-                )
-                thumbnail_ids.append(thumbnail_id)
-                logger.info(f"Created thumbnail record {thumbnail_id} (concept {concept_num}: {concept_type})")
+                metadata = {
+                    'concept': concept,
+                    'model_used': 'gpt-5.2',
+                    'prompt_type': 'simple' if simple_prompt else 'full'
+                }
+
+                # Idempotent behavior: reuse existing row for this concept number if present,
+                # rather than creating duplicates on rerun.
+                existing = db.get_thumbnail_for_story_concept(generation_id, concept_num)
+                if existing and existing.get("id"):
+                    thumbnail_id = existing["id"]
+                    db.update_thumbnail_content(
+                        thumbnail_id,
+                        concept_type=concept_type,
+                        scene_description=scene_description,
+                        full_prompt=full_prompt,
+                        generation_metadata=metadata,
+                        reset_image=True,
+                    )
+                    thumbnail_ids.append(thumbnail_id)
+                    logger.info(f"Reused thumbnail record {thumbnail_id} (concept {concept_num}: {concept_type})")
+                else:
+                    thumbnail_id = db.save_thumbnail(
+                        generation_id=generation_id,
+                        concept_number=concept_num,
+                        concept_type=concept_type,
+                        scene_description=scene_description,
+                        full_prompt=full_prompt,
+                        generation_metadata=metadata,
+                    )
+                    thumbnail_ids.append(thumbnail_id)
+                    logger.info(f"Created thumbnail record {thumbnail_id} (concept {concept_num}: {concept_type})")
                 
             except Exception as e:
                 logger.error(f"Failed to save thumbnail record: {e}")
@@ -123,8 +141,6 @@ def process_story(story, use_pro=False, simple_prompt=False, skip_db=False):
     logger.info("Step 3: Generating images with Nano Banana...")
     nano_client = NanoBananaClient(use_pro=use_pro)
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
     for i, prompt in enumerate(prompts):
         concept_num = i + 1
         thumbnail_id = thumbnail_ids[i] if i < len(thumbnail_ids) else None
@@ -133,20 +149,18 @@ def process_story(story, use_pro=False, simple_prompt=False, skip_db=False):
         if thumbnail_id and not skip_db:
             db.update_thumbnail_status(thumbnail_id, 'generating')
         
-        # Generate filename
-        safe_title = "".join(c for c in hook_title[:30] if c.isalnum() or c in ' -_').strip()
-        safe_title = safe_title.replace(' ', '_')
-        filename = f"{safe_title}_{timestamp}_c{concept_num}.png"
-        save_path = os.path.join(config.OUTPUT_DIR, filename)
+        # Use a stable remote object path so reruns overwrite rather than littering local files.
+        object_path = f"{generation_id}/c{concept_num}.png" if generation_id else f"adhoc/c{concept_num}.png"
         
         logger.info(f"Generating image {concept_num}/3...")
         
         try:
-            result = nano_client.generate_image(prompt, save_path)
+            result = nano_client.generate_image(prompt, object_path=object_path)
             
             if result['success']:
                 # Update thumbnail data
-                thumbnails_data[i]['image_url'] = result['image_path']
+                if result.get("image_url"):
+                    thumbnails_data[i]['image_url'] = result['image_url']
                 thumbnails_data[i]['status'] = 'generated'
                 
                 # Update database
@@ -154,9 +168,15 @@ def process_story(story, use_pro=False, simple_prompt=False, skip_db=False):
                     db.update_thumbnail_status(
                         thumbnail_id, 
                         'generated', 
-                        image_url=result['image_path']
+                        image_url=result.get('image_url'),
+                        metadata_update={
+                            "storage_mode": result.get("storage_mode"),
+                            "object_path": object_path,
+                            "mime_type": result.get("mime_type"),
+                            "image_base64": result.get("image_base64"),
+                        },
                     )
-                logger.info(f"✓ Image {concept_num} generated: {result['image_path']}")
+                logger.info(f"✓ Image {concept_num} generated ({result.get('storage_mode')}): {result.get('image_url') or '[stored in DB metadata]'}")
             else:
                 thumbnails_data[i]['status'] = 'failed'
                 thumbnails_data[i]['error'] = result['error']
@@ -165,7 +185,11 @@ def process_story(story, use_pro=False, simple_prompt=False, skip_db=False):
                     db.update_thumbnail_status(
                         thumbnail_id, 
                         'failed', 
-                        error_message=result['error']
+                        error_message=result['error'],
+                        metadata_update={
+                            "storage_mode": result.get("storage_mode"),
+                            "object_path": object_path,
+                        },
                     )
                 logger.error(f"✗ Image {concept_num} failed: {result['error']}")
                 
@@ -174,7 +198,12 @@ def process_story(story, use_pro=False, simple_prompt=False, skip_db=False):
             thumbnails_data[i]['error'] = str(e)
             
             if thumbnail_id and not skip_db:
-                db.update_thumbnail_status(thumbnail_id, 'failed', error_message=str(e))
+                db.update_thumbnail_status(
+                    thumbnail_id,
+                    'failed',
+                    error_message=str(e),
+                    metadata_update={"object_path": object_path},
+                )
             logger.error(f"✗ Image {concept_num} exception: {e}")
     
     return {

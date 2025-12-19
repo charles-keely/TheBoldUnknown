@@ -19,6 +19,25 @@ class Config:
 
     # Google/Gemini (Nano Banana) for image generation
     GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+
+    # Storage for generated images
+    # - "supabase": upload to Supabase Storage and store a public URL in DB
+    # - "db_base64": store base64 PNG in story_thumbnails.generation_metadata (no local files)
+    # - "auto": prefer supabase when configured, else db_base64
+    THUMBNAIL_STORAGE_MODE = os.getenv("THUMBNAIL_STORAGE_MODE", "auto").lower()
+
+    # Supabase Storage (optional, used when THUMBNAIL_STORAGE_MODE is "supabase" or auto)
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    # Accept several common names so we don't require env renames
+    SUPABASE_SERVICE_ROLE_KEY = (
+        os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        or os.getenv("SUPABASE_SERVICE_KEY")
+        or os.getenv("SUPABASE_KEY")
+    )
+    SUPABASE_STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "story-thumbnails")
+    # If bucket is public we can construct a stable public URL.
+    # If false and you need private objects, we'd need to mint signed URLs.
+    SUPABASE_STORAGE_PUBLIC = os.getenv("SUPABASE_STORAGE_PUBLIC", "true").lower() in ("1", "true", "yes", "y", "on")
     
     # Nano Banana = gemini-2.5-flash-image (fast)
     # Nano Banana Pro = gemini-3-pro-image-preview (advanced, supports 4K)
@@ -34,6 +53,14 @@ class Config:
     # Paths
     BRAND_GUIDE_PATH = os.path.join(os.path.dirname(__file__), '..', 'brand-guide2.md')
     OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'output')
+
+    def resolved_storage_mode(self) -> str:
+        mode = (self.THUMBNAIL_STORAGE_MODE or "auto").lower()
+        if mode != "auto":
+            return mode
+        if self.SUPABASE_URL and self.SUPABASE_SERVICE_ROLE_KEY:
+            return "supabase"
+        return "db_base64"
 
 
 config = Config()

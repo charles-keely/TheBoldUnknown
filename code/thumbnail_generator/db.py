@@ -146,35 +146,122 @@ def save_thumbnail(generation_id, concept_number, concept_type, scene_descriptio
         conn.close()
 
 
-def update_thumbnail_status(thumbnail_id, status, image_url=None, error_message=None):
+def get_thumbnail_for_story_concept(generation_id, concept_number):
+    """
+    Fetch the most recent thumbnail row for a given story + concept_number.
+    (If duplicates exist from older runs, we prefer the newest.)
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            query = """
+                SELECT *
+                FROM story_thumbnails
+                WHERE story_generation_id = %s AND concept_number = %s
+                ORDER BY created_at DESC
+                LIMIT 1
+            """
+            cur.execute(query, (generation_id, concept_number))
+            return cur.fetchone()
+    except Exception as e:
+        logger.error(f"Error fetching thumbnail for generation {generation_id} concept {concept_number}: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def update_thumbnail_content(
+    thumbnail_id,
+    *,
+    concept_type=None,
+    scene_description=None,
+    full_prompt=None,
+    generation_metadata=None,
+    reset_image=True,
+):
+    """
+    Update the "content" fields for an existing thumbnail row (prompt/metadata/etc).
+    Used to make reruns idempotent instead of creating duplicate rows.
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            set_clauses = []
+            params = []
+
+            if concept_type is not None:
+                set_clauses.append("concept_type = %s")
+                params.append(concept_type)
+            if scene_description is not None:
+                set_clauses.append("scene_description = %s")
+                params.append(scene_description)
+            if full_prompt is not None:
+                set_clauses.append("full_prompt = %s")
+                params.append(full_prompt)
+            if generation_metadata is not None:
+                set_clauses.append("generation_metadata = %s")
+                params.append(Json(generation_metadata))
+
+            # On rerun, we want to regenerate, so clear out old image + timestamps.
+            set_clauses.append("status = 'pending'")
+            if reset_image:
+                set_clauses.append("image_url = NULL")
+                set_clauses.append("generated_at = NULL")
+
+            if not set_clauses:
+                return
+
+            query = f"""
+                UPDATE story_thumbnails
+                SET {", ".join(set_clauses)}
+                WHERE id = %s
+            """
+            params.append(thumbnail_id)
+            cur.execute(query, tuple(params))
+            conn.commit()
+            logger.info(f"Updated thumbnail {thumbnail_id} content (reset pending)")
+    except Exception as e:
+        logger.error(f"Error updating thumbnail {thumbnail_id} content: {e}")
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def update_thumbnail_status(thumbnail_id, status, image_url=None, error_message=None, metadata_update=None):
     """
     Updates the status and optionally the image_url of a thumbnail.
     """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            if image_url:
-                query = """
-                    UPDATE story_thumbnails
-                    SET status = %s, image_url = %s, generated_at = NOW()
-                    WHERE id = %s
-                """
-                cur.execute(query, (status, image_url, thumbnail_id))
-            elif error_message:
-                query = """
-                    UPDATE story_thumbnails
-                    SET status = %s, 
-                        generation_metadata = COALESCE(generation_metadata, '{}'::jsonb) || %s
-                    WHERE id = %s
-                """
-                cur.execute(query, (status, Json({'error': error_message}), thumbnail_id))
-            else:
-                query = """
-                    UPDATE story_thumbnails
-                    SET status = %s
-                    WHERE id = %s
-                """
-                cur.execute(query, (status, thumbnail_id))
+            # Build a single UPDATE based on which optional fields are present.
+            set_clauses = ["status = %s"]
+            params = [status]
+
+            if image_url is not None:
+                set_clauses.append("image_url = %s")
+                params.append(image_url)
+                if status == "generated":
+                    set_clauses.append("generated_at = NOW()")
+
+            meta_patch = {}
+            if error_message:
+                meta_patch["error"] = error_message
+            if metadata_update:
+                meta_patch.update(metadata_update)
+
+            if meta_patch:
+                set_clauses.append("generation_metadata = COALESCE(generation_metadata, '{}'::jsonb) || %s")
+                params.append(Json(meta_patch))
+
+            query = f"""
+                UPDATE story_thumbnails
+                SET {", ".join(set_clauses)}
+                WHERE id = %s
+            """
+            params.append(thumbnail_id)
+            cur.execute(query, tuple(params))
             
             conn.commit()
             logger.info(f"Updated thumbnail {thumbnail_id} status to {status}")
