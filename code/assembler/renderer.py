@@ -21,27 +21,39 @@ class Renderer:
         if self.playwright:
             await self.playwright.stop()
 
-    async def render(self, html_content: str, output_path: str):
+    async def render_png_bytes(self, html_content: str) -> bytes:
         """
-        Renders HTML string to a PNG file at output_path.
+        Render HTML string to PNG bytes (no filesystem writes).
         """
         page = None
         try:
             # Create page with specific viewport for Instagram Story/Carousel
             page = await self.browser.new_page(viewport={"width": 1080, "height": 1350})
-            
+
             # Set content and wait for network idle (images/fonts loaded)
-            # 'networkidle' is usually sufficient for static assets.
             await page.set_content(html_content, wait_until="networkidle")
-            
-            # Take screenshot
-            await page.screenshot(path=output_path, type="png")
-            logger.info(f"Rendered: {output_path}")
-            
+
+            png_bytes = await page.screenshot(type="png")
+            return png_bytes
         except Exception as e:
             logger.error(f"Failed to render slide: {e}")
             raise
         finally:
             if page:
                 await page.close()
+
+    async def render(self, html_content: str, output_path: str):
+        """
+        Renders HTML string to a PNG file at output_path.
+        """
+        try:
+            png_bytes = await self.render_png_bytes(html_content)
+            with open(output_path, "wb") as f:
+                f.write(png_bytes)
+            logger.info(f"Rendered: {output_path}")
+        except Exception:
+            # render_png_bytes already logged context
+            raise
+
+
 

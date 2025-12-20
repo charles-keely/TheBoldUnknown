@@ -55,16 +55,25 @@ python assembler/main.py
 1.  **Fetch**: The script queries the database for stories with `approved_for_assembly=True` that haven't been finalized yet.
 2.  **Build**: For each story slide, `builder.py` injects the text, images, and metadata into the corresponding HTML template (`template_design/chosen_templates/`).
     *   It resolves local assets (e.g., logos) to absolute file paths.
-    *   It extracts base64 thumbnails from the DB and saves them as temporary files.
+    *   It avoids writing any temporary image files by default.
 3.  **Render**: `renderer.py` loads the HTML in a headless browser (1080x1350 viewport) and takes a screenshot.
-4.  **Save**: The resulting PNGs are saved to `assembler/output/<story_uuid>/`.
+4.  **Save**: By default, the assembler does **not** save PNGs locally. You can opt-in to local output for debugging.
 5.  **Finalize**: The `story_assemblies` table is updated:
     *   `status` -> `finalized`
-    *   `rendered_files` -> JSON list of the generated PNG paths.
+    *   `rendered_files` -> JSON list of rendered artifacts (paths when keeping output; otherwise metadata like filename/hash/size).
+
+## Output Storage (Important)
+
+By default, the assembler is configured to **avoid storing any rendered PNGs locally**.
+
+- **Default**: No local files written; `rendered_files` stores per-slide metadata (`filename`, `sha256`, `bytes_len`).
+- **Opt-in local output**: Set `ASSEMBLER_KEEP_OUTPUT=1` to write PNGs under `assembler/output/<story_uuid>/`.
 
 ## Troubleshooting
 
 *   **Missing Fonts**: The templates use Google Fonts (Montserrat). Ensure the machine running the assembler has internet access to fetch these fonts during rendering.
 *   **Database Connection**: If the script fails to connect, check your `DATABASE_URL` and ensure you are whitelisted if using a cloud DB (e.g., Supabase).
 *   **Playwright Errors**: If you see "Executable doesn't exist", run `playwright install chromium` again.
+
+
 

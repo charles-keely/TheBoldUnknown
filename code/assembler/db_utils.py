@@ -1,125 +1,89 @@
+"""
+Database helpers for the batch Assembler.
+
+The assembler:
+- Pulls the latest non-finalized assembly for stories approved_for_assembly
+- Marks an assembly as finalized after rendering completes
+"""
+
 import os
-import logging
 import json
+import logging
 import psycopg
 from psycopg.rows import dict_row
-from contextlib import contextmanager
 from dotenv import load_dotenv
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Load environment variables
+# Load environment variables (.env in assembler/ or repo root, plus process env)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
-
-load_dotenv(os.path.join(current_dir, '.env'))
-load_dotenv(os.path.join(root_dir, '.env'))
+load_dotenv(os.path.join(current_dir, ".env"))
+load_dotenv(os.path.join(root_dir, ".env"))
 load_dotenv()
 
+
 def get_db_connection():
-    """Establishes and returns a database connection."""
-    try:
-        db_url = os.getenv("DATABASE_URL")
-        connect_timeout = int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "5"))
-        statement_timeout_ms = int(os.getenv("POSTGRES_STATEMENT_TIMEOUT_MS", "15000"))
-        
-        if not db_url:
-            host = os.getenv("POSTGRES_HOST")
-            port = os.getenv("POSTGRES_PORT", "5432")
-            dbname = os.getenv("POSTGRES_DB")
-            user = os.getenv("POSTGRES_USER")
-            password = os.getenv("POSTGRES_PASSWORD")
-            
-            if host and dbname and user and password:
-                db_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
-            
-        if not db_url:
-            raise ValueError("DATABASE_URL environment variable is not set")
+    db_url = os.getenv("DATABASE_URL")
+    connect_timeout = int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "5"))  # seconds
+    statement_timeout_ms = int(os.getenv("POSTGRES_STATEMENT_TIMEOUT_MS", "15000"))
 
-        conn = psycopg.connect(
-            db_url,
-            connect_timeout=connect_timeout,
-            options=f"-c statement_timeout={statement_timeout_ms}",
-            row_factory=dict_row,
-        )
-        return conn
-    except Exception as e:
-        logger.error(f"Failed to connect to database: {e}")
-        raise
+    # Fallback: construct from POSTGRES_* vars
+    if not db_url:
+        host = os.getenv("POSTGRES_HOST")
+        port = os.getenv("POSTGRES_PORT", "5432")
+        dbname = os.getenv("POSTGRES_DB")
+        user = os.getenv("POSTGRES_USER")
+        password = os.getenv("POSTGRES_PASSWORD")
+        if host and dbname and user and password:
+            db_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
 
-@contextmanager
-def get_db_cursor():
-    """Context manager for database cursor with automatic cleanup."""
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cur:
-            yield cur
-            conn.commit()
-    except Exception as e:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    if not db_url:
+        raise ValueError("DATABASE_URL environment variable is not set")
 
-def get_pending_assemblies(*, story_generation_id: str | None = None, limit: int | None = None):
+    return psycopg.connect(
+        db_url,
+        connect_timeout=connect_timeout,
+        options=f"-c statement_timeout={statement_timeout_ms}",
+        row_factory=dict_row,
+    )
+
+
+def get_pending_assemblies():
     """
-    Fetch stories that are approved for assembly but not yet finalized.
-    Also fetches the assembly_data if it exists.
+    Return the latest assembly row (assembly_data) for each story_generation_id where:
+    - story_generations.approved_for_assembly = true
+    - story_assemblies.status != 'finalized'
+    - story_generations.is_enabled = true (default true)
     """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # We want stories that are approved_for_assembly = true
-            # AND either don't have an assembly entry, or have one that isn't finalized.
-            # Ideally, the pre-assembler creates the assembly record.
-            # So we join story_generations with story_assemblies.
-            
-            where_extra = ""
-            params: list[object] = []
-            if story_generation_id:
-                where_extra = " AND sg.id = %s"
-                params.append(story_generation_id)
-
-            limit_sql = ""
-            if isinstance(limit, int) and limit > 0:
-                limit_sql = f" LIMIT {int(limit)}"
-
-            # IMPORTANT:
-            # A story can have multiple rows in story_assemblies over time (draft saves, retries, etc).
-            # We must always take the *latest* one, otherwise we can render stale data and even
-            # finalize the wrong version.
-            #
-            # We use a LATERAL join to select the most recently updated assembly row per story.
-            query = f"""
+            cur.execute(
+                """
                 SELECT
                     sg.id as story_generation_id,
                     sg.hook_title,
+                    sg.subtitle,
+                    sg.domain_tag,
                     sa.id as assembly_id,
                     sa.assembly_data,
-                    sa.status as assembly_status
+                    sa.status as assembly_status,
+                    sa.updated_at as assembly_updated_at
                 FROM story_generations sg
-                LEFT JOIN LATERAL (
-                    SELECT
-                        id,
-                        assembly_data,
-                        status,
-                        updated_at
-                    FROM story_assemblies
-                    WHERE story_generation_id = sg.id
-                    ORDER BY updated_at DESC
+                JOIN LATERAL (
+                    SELECT sa2.id, sa2.assembly_data, sa2.status, sa2.updated_at
+                    FROM story_assemblies sa2
+                    WHERE sa2.story_generation_id = sg.id
+                    ORDER BY sa2.updated_at DESC
                     LIMIT 1
                 ) sa ON TRUE
-                WHERE sg.approved_for_assembly = TRUE
-                  AND COALESCE(sg.is_enabled, TRUE) = TRUE
-                  AND sa.id IS NOT NULL
-                  AND (sa.status IS NULL OR sa.status != 'finalized')
-                {where_extra}
-                ORDER BY sg.created_at ASC
-                {limit_sql}
-            """
-            cur.execute(query, tuple(params))
+                WHERE COALESCE(sg.is_enabled, TRUE) = TRUE
+                  AND COALESCE(sg.approved_for_assembly, FALSE) = TRUE
+                  AND COALESCE(sa.status, 'draft') != 'finalized'
+                ORDER BY sa.updated_at ASC
+                """
+            )
             return cur.fetchall()
     except Exception as e:
         logger.error(f"Error fetching pending assemblies: {e}")
@@ -127,68 +91,39 @@ def get_pending_assemblies(*, story_generation_id: str | None = None, limit: int
     finally:
         conn.close()
 
-def mark_assembly_finalized(story_generation_id: str, file_paths: list[str], *, assembly_id: str | None = None):
+
+def mark_assembly_finalized(story_generation_id: str, rendered_files):
     """
-    Update the assembly status to finalized and save the rendered file paths.
+    Mark the latest assembly for story_generation_id as finalized and store rendered_files.
+
+    rendered_files should be JSON-serializable. (e.g., list of filenames, or list of paths)
     """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # Prefer updating the exact assembly row we rendered.
-            if assembly_id:
-                cur.execute(
-                    """
-                    UPDATE story_assemblies
-                    SET status = 'finalized',
-                        rendered_files = %s::jsonb,
-                        updated_at = NOW()
-                    WHERE id = %s
-                    """,
-                    (json.dumps(file_paths), assembly_id),
+            # Update the most recent assembly row for this story.
+            cur.execute(
+                """
+                UPDATE story_assemblies
+                SET status = 'finalized',
+                    rendered_files = %s::jsonb,
+                    updated_at = NOW()
+                WHERE id = (
+                    SELECT id
+                    FROM story_assemblies
+                    WHERE story_generation_id = %s
+                    ORDER BY updated_at DESC
+                    LIMIT 1
                 )
-                if cur.rowcount == 0:
-                    logger.warning(f"No assembly row found for id={assembly_id} (story_generation_id={story_generation_id}).")
-            else:
-                # Fallback: update by story_generation_id (legacy behavior).
-                cur.execute("SELECT id FROM story_assemblies WHERE story_generation_id = %s", (story_generation_id,))
-                existing = cur.fetchone()
-                if existing:
-                    cur.execute(
-                        """
-                        UPDATE story_assemblies
-                        SET status = 'finalized',
-                            rendered_files = %s::jsonb,
-                            updated_at = NOW()
-                        WHERE story_generation_id = %s
-                        """,
-                        (json.dumps(file_paths), story_generation_id),
-                    )
-                else:
-                    logger.warning(f"No assembly found for {story_generation_id} when marking finalized.")
-                
+                """,
+                (json.dumps(rendered_files), story_generation_id),
+            )
             conn.commit()
     except Exception as e:
-        logger.error(f"Error marking assembly finalized: {e}")
         conn.rollback()
+        logger.error(f"Error finalizing assembly for {story_generation_id}: {e}")
         raise
     finally:
         conn.close()
 
-def get_thumbnail_data(thumbnail_id: str):
-    """
-    Fetch thumbnail base64 data from the database.
-    """
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT generation_metadata FROM story_thumbnails WHERE id = %s", (thumbnail_id,))
-            row = cur.fetchone()
-            if row and row['generation_metadata']:
-                return row['generation_metadata'].get('image_base64')
-            return None
-    except Exception as e:
-        logger.error(f"Error fetching thumbnail data: {e}")
-        return None
-    finally:
-        conn.close()
 

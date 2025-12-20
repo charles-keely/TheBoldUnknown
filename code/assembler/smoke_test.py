@@ -7,6 +7,7 @@ OUTPUT_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
 
 async def main():
     story_id = "_smoke_test"
+    # For smoke testing we keep output so you can visually inspect the PNG.
     story_dir = os.path.join(OUTPUT_ROOT, story_id)
     os.makedirs(story_dir, exist_ok=True)
 
@@ -35,4 +36,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
 

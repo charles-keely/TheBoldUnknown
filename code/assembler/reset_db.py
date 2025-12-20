@@ -11,3 +11,4 @@ with get_db_cursor() as cur:
     cur.execute(sql)
 print("Reset complete.")
 
+

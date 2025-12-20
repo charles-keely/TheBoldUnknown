@@ -36,4 +36,5 @@ venv/
 # Project Specific
 test_downloads/
 photo_test_output/
+assembler/output/
 *.log
