@@ -116,12 +116,27 @@ def get_stories_ready_for_assembly():
                          WHERE sp.story_research_id = sg.story_research_id 
                          AND sp.status = 'approved') as photo_count,
                         
-                        -- Get selected or first thumbnail ID (we'll construct URL in app)
-                        (SELECT st.id FROM story_thumbnails st 
-                         WHERE st.story_generation_id = sg.id 
+                        -- Prefer the editor's chosen thumbnail (persisted in the latest assembly JSON),
+                        -- falling back to the thumbnail-generator selection (story_thumbnails.is_selected).
+                        --
+                        -- NOTE: We validate the JSON value with a uuid regex to avoid cast errors.
+                        (SELECT
+                            CASE
+                                WHEN (sa.assembly_data->>'selected_thumbnail_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                                THEN (sa.assembly_data->>'selected_thumbnail_id')::uuid
+                                ELSE NULL
+                            END
+                         FROM story_assemblies sa
+                         WHERE sa.story_generation_id = sg.id
+                         ORDER BY sa.updated_at DESC
+                         LIMIT 1) as assembly_selected_thumbnail_id,
+
+                        -- Fallback thumbnail (selected/most recent generated)
+                        (SELECT st.id FROM story_thumbnails st
+                         WHERE st.story_generation_id = sg.id
                          AND st.status IN ('generated', 'approved')
-                         ORDER BY st.is_selected DESC, st.created_at DESC 
-                         LIMIT 1) as thumbnail_id,
+                         ORDER BY st.is_selected DESC, st.created_at DESC
+                         LIMIT 1) as fallback_thumbnail_id,
                         
                         -- Check thumbnail count
                         (SELECT COUNT(*) FROM story_thumbnails st 
@@ -145,23 +160,30 @@ def get_stories_ready_for_assembly():
                     WHERE sr.status = 'completed'
                 )
                 SELECT 
-                    story_generation_id,
-                    story_research_id,
-                    hook_title,
-                    subtitle,
-                    domain_tag,
-                    is_enabled,
-                    approved_for_assembly,
-                    instagram_caption,
-                    hashtags,
-                    slide_count,
-                    photo_count,
-                    thumbnail_id,
-                    thumbnail_count,
-                    COALESCE(assembly_status, 'new') as assembly_status,
-                    created_at,
-                    assembly_updated_at as updated_at
-                FROM story_stats
+                    ss.story_generation_id,
+                    ss.story_research_id,
+                    ss.hook_title,
+                    ss.subtitle,
+                    ss.domain_tag,
+                    ss.is_enabled,
+                    ss.approved_for_assembly,
+                    ss.instagram_caption,
+                    ss.hashtags,
+                    ss.slide_count,
+                    ss.photo_count,
+                    COALESCE(
+                        (SELECT st2.id
+                         FROM story_thumbnails st2
+                         WHERE st2.story_generation_id = ss.story_generation_id
+                           AND st2.id = ss.assembly_selected_thumbnail_id
+                         LIMIT 1),
+                        ss.fallback_thumbnail_id
+                    ) as thumbnail_id,
+                    ss.thumbnail_count,
+                    COALESCE(ss.assembly_status, 'new') as assembly_status,
+                    ss.created_at,
+                    ss.assembly_updated_at as updated_at
+                FROM story_stats ss
                 WHERE slide_count > 0
                   AND thumbnail_count > 0
                   AND (assembly_status IS NULL OR assembly_status != 'finalized')
