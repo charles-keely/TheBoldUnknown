@@ -45,6 +45,8 @@ class StorySummary(BaseModel):
     domain_tag: str
     # When false, this story should not be scheduled/published.
     is_enabled: bool = True
+    # When true, this story has been approved to proceed to assembly workflow.
+    approved_for_assembly: bool = False
     instagram_caption: Optional[str] = None
     hashtags: Optional[List[str]] = None
     slide_count: int
@@ -80,6 +82,7 @@ class UpdateStoryGenerationRequest(BaseModel):
     subtitle: Optional[str] = None
     domain_tag: Optional[str] = None
     is_enabled: Optional[bool] = None
+    approved_for_assembly: Optional[bool] = None
 
 
 class StorySlide(BaseModel):
@@ -119,6 +122,8 @@ class StoryInfo(BaseModel):
     domain_tag: str
     # When false, this story should not be scheduled/published.
     is_enabled: bool = True
+    # When true, this story has been approved to proceed to assembly workflow.
+    approved_for_assembly: bool = False
     instagram_caption: Optional[str] = None
     hashtags: Optional[List[str]] = None
     created_at: datetime

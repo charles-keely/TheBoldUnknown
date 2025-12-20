@@ -6,6 +6,13 @@ ALTER TABLE IF EXISTS public.story_generations
     ADD COLUMN IF NOT EXISTS is_enabled boolean NOT NULL DEFAULT true;
 CREATE INDEX IF NOT EXISTS idx_story_generations_is_enabled ON public.story_generations(is_enabled);
 
+-- Story-level approval flag (used by Pre-Assembler review workflow)
+ALTER TABLE IF EXISTS public.story_generations
+    ADD COLUMN IF NOT EXISTS approved_for_assembly boolean NOT NULL DEFAULT false;
+ALTER TABLE IF EXISTS public.story_generations
+    ADD COLUMN IF NOT EXISTS approved_for_assembly_at timestamp with time zone;
+CREATE INDEX IF NOT EXISTS idx_story_generations_approved_for_assembly ON public.story_generations(approved_for_assembly);
+
 CREATE TABLE IF NOT EXISTS public.story_assemblies (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
     story_generation_id uuid NOT NULL,

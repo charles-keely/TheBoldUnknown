@@ -103,6 +103,7 @@ def get_stories_ready_for_assembly():
                         sg.subtitle,
                         sg.domain_tag,
                         COALESCE(sg.is_enabled, TRUE) as is_enabled,
+                        COALESCE(sg.approved_for_assembly, FALSE) as approved_for_assembly,
                         sg.instagram_caption,
                         sg.hashtags,
                         sg.created_at,
@@ -150,6 +151,7 @@ def get_stories_ready_for_assembly():
                     subtitle,
                     domain_tag,
                     is_enabled,
+                    approved_for_assembly,
                     instagram_caption,
                     hashtags,
                     slide_count,
@@ -164,6 +166,7 @@ def get_stories_ready_for_assembly():
                   AND thumbnail_count > 0
                   AND (assembly_status IS NULL OR assembly_status != 'finalized')
                 ORDER BY 
+                    approved_for_assembly ASC,
                     is_enabled DESC,
                     CASE 
                         WHEN assembly_status = 'in_progress' THEN 1
@@ -202,6 +205,7 @@ def get_story_full_data(story_generation_id: str):
                     sg.subtitle,
                     sg.domain_tag,
                     COALESCE(sg.is_enabled, TRUE) as is_enabled,
+                    COALESCE(sg.approved_for_assembly, FALSE) as approved_for_assembly,
                     sg.generation_metadata,
                     sg.instagram_caption,
                     sg.hashtags,
@@ -328,6 +332,81 @@ def get_story_caption_and_hashtags(story_generation_id: str) -> dict | None:
         conn.close()
 
 
+def get_story_queue_ids(*, only_unapproved: bool = True) -> list[str]:
+    """
+    Return ordered story_generation_ids for the "ready for assembly" queue.
+
+    Ordering mirrors `get_stories_ready_for_assembly()`.
+    By default, returns only unapproved stories (so the editor can "approve -> next").
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            query = """
+                WITH story_stats AS (
+                    SELECT
+                        sg.id as story_generation_id,
+                        COALESCE(sg.is_enabled, TRUE) as is_enabled,
+                        COALESCE(sg.approved_for_assembly, FALSE) as approved_for_assembly,
+                        sg.created_at,
+                        -- Check thumbnail count
+                        (SELECT COUNT(*) FROM story_thumbnails st
+                         WHERE st.story_generation_id = sg.id
+                         AND st.status IN ('generated', 'approved')) as thumbnail_count,
+                        -- Count slides
+                        (SELECT COUNT(*) FROM story_slides ss WHERE ss.story_generation_id = sg.id) as slide_count,
+                        -- Check assembly status
+                        (SELECT sa.status FROM story_assemblies sa
+                         WHERE sa.story_generation_id = sg.id
+                         ORDER BY sa.updated_at DESC
+                         LIMIT 1) as assembly_status
+                    FROM story_generations sg
+                    JOIN story_research sr ON sg.story_research_id = sr.id
+                    WHERE sr.status = 'completed'
+                )
+                SELECT
+                    story_generation_id
+                FROM story_stats
+                WHERE slide_count > 0
+                  AND thumbnail_count > 0
+                  AND (assembly_status IS NULL OR assembly_status != 'finalized')
+                  AND (%s = FALSE OR approved_for_assembly = FALSE)
+                ORDER BY
+                    approved_for_assembly ASC,
+                    is_enabled DESC,
+                    CASE
+                        WHEN assembly_status = 'in_progress' THEN 1
+                        WHEN assembly_status = 'draft' THEN 2
+                        ELSE 3
+                    END,
+                    created_at DESC
+            """
+            cur.execute(query, (bool(only_unapproved),))
+            rows = cur.fetchall() or []
+            return [str(r["story_generation_id"]) for r in rows if r.get("story_generation_id")]
+    except Exception as e:
+        logger.error(f"Error fetching story queue ids: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_next_story_generation_id(current_story_generation_id: str, *, only_unapproved: bool = True) -> str | None:
+    """
+    Given a current story_generation_id, return the next story_generation_id in the queue.
+    """
+    ids = get_story_queue_ids(only_unapproved=only_unapproved)
+    if not ids:
+        return None
+    try:
+        idx = ids.index(str(current_story_generation_id))
+    except ValueError:
+        # If current isn't in the queue (e.g., already approved), just return the first.
+        return ids[0] if ids else None
+    nxt = idx + 1
+    return ids[nxt] if nxt < len(ids) else None
+
+
 def update_story_generation(
     story_generation_id: str,
     *,
@@ -335,19 +414,27 @@ def update_story_generation(
     subtitle: str | None = None,
     domain_tag: str | None = None,
     is_enabled: bool | None = None,
+    approved_for_assembly: bool | None = None,
 ) -> dict | None:
     """
     Update a story_generations row (title/subtitle/domain_tag/is_enabled).
     Returns the updated row fields we care about, or None if not found.
     """
     # Nothing to update
-    if hook_title is None and subtitle is None and domain_tag is None and is_enabled is None:
+    if hook_title is None and subtitle is None and domain_tag is None and is_enabled is None and approved_for_assembly is None:
         conn = get_db_connection()
         try:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, hook_title, subtitle, domain_tag, COALESCE(is_enabled, TRUE) as is_enabled
+                    SELECT
+                        id,
+                        hook_title,
+                        subtitle,
+                        domain_tag,
+                        COALESCE(is_enabled, TRUE) as is_enabled,
+                        COALESCE(approved_for_assembly, FALSE) as approved_for_assembly,
+                        approved_for_assembly_at
                     FROM story_generations
                     WHERE id = %s
                     """,
@@ -373,6 +460,11 @@ def update_story_generation(
     if is_enabled is not None:
         sets.append("is_enabled = %s")
         params.append(is_enabled)
+    if approved_for_assembly is not None:
+        sets.append("approved_for_assembly = %s")
+        params.append(approved_for_assembly)
+        sets.append("approved_for_assembly_at = CASE WHEN %s THEN NOW() ELSE NULL END")
+        params.append(approved_for_assembly)
 
     params.append(story_generation_id)
 
@@ -384,7 +476,14 @@ def update_story_generation(
                 UPDATE story_generations
                 SET {", ".join(sets)}
                 WHERE id = %s
-                RETURNING id, hook_title, subtitle, domain_tag, COALESCE(is_enabled, TRUE) as is_enabled
+                RETURNING
+                    id,
+                    hook_title,
+                    subtitle,
+                    domain_tag,
+                    COALESCE(is_enabled, TRUE) as is_enabled,
+                    COALESCE(approved_for_assembly, FALSE) as approved_for_assembly,
+                    approved_for_assembly_at
                 """,
                 tuple(params),
             )

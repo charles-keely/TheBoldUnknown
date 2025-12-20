@@ -184,6 +184,36 @@
     .btn-secondary:hover {
       background: #D8D8DC;
     }
+
+    /* Apple-style approval checkmark */
+    .approval-check {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.10);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .approval-check:hover { transform: scale(1.03); }
+    .approval-check:active { transform: scale(0.98); }
+
+    .approval-check.checked {
+      background: var(--success);
+      border-color: rgba(0, 0, 0, 0.08);
+      box-shadow: 0 10px 28px rgba(52, 199, 89, 0.28);
+    }
+
+    .approval-check:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .approval-check svg { width: 18px; height: 18px; }
+    .approval-check .check-stroke { stroke: rgba(29, 29, 31, 0.55); }
+    .approval-check.checked .check-stroke { stroke: rgba(255, 255, 255, 0.98); }
     
     /* Unsaved indicator */
     .unsaved-dot {
@@ -326,10 +356,24 @@
                 class="toggle"
                 :class="{ 'active': !(story && story.is_enabled === false) }"
                 :disabled="!story || saving"
-                :title="(story && story.is_enabled === false) ? 'Re-enable this story' : 'Disable this story (won\\'t be scheduled later)'"
+                :title="(story && story.is_enabled === false) ? 'Re-enable this story' : 'Disable this story (won’t be scheduled later)'"
                 @click="toggleStoryEnabled()"
               ></button>
             </div>
+
+            <!-- Approve-for-assembly check (auto-saves + optionally auto-advances) -->
+            <button
+              type="button"
+              class="approval-check"
+              :class="{ 'checked': !!story?.approved_for_assembly }"
+              :disabled="!story || saving || approving"
+              @click="onApproveCheckClicked()"
+              :title="!!story?.approved_for_assembly ? 'Approved for assembly (click to unapprove)' : 'Approve for assembly (saves + opens next story)'"
+            >
+              <svg viewBox="0 0 24 24" fill="none">
+                <path class="check-stroke" d="M20 6L9 17l-5-5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
 
             <!-- Reset positions -->
             <button
@@ -918,6 +962,7 @@
         loading: true,
         error: null,
         saving: false,
+        approving: false,
         hasUnsavedChanges: false,
         
         // Selections
@@ -1037,6 +1082,100 @@
             console.error('Failed to toggle story enabled:', err);
             this.story.is_enabled = prev;
             this.showToast('Failed to update story: ' + err.message, 'error');
+          }
+        },
+
+        async onApproveCheckClicked() {
+          if (!this.story || !this.storyGenerationId) return;
+          if (this.approving || this.saving) return;
+
+          // If already approved, allow toggling back (no navigation).
+          if (this.story.approved_for_assembly) {
+            await this.setApprovedForAssembly(false);
+            return;
+          }
+
+          await this.approveForAssemblyAndNext();
+        },
+
+        async setApprovedForAssembly(nextValue) {
+          if (!this.storyGenerationId || !this.story) return;
+          const prev = !!this.story.approved_for_assembly;
+          const next = !!nextValue;
+          if (prev === next) return;
+
+          this.approving = true;
+          // Optimistic UI
+          this.story.approved_for_assembly = next;
+
+          try {
+            const response = await fetch(`/api/story-generations/${this.storyGenerationId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ approved_for_assembly: next })
+            });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            this.showToast(next ? 'Approved for assembly' : 'Approval removed', 'success');
+          } catch (err) {
+            console.error('Failed to update approved_for_assembly:', err);
+            this.story.approved_for_assembly = prev;
+            this.showToast('Failed to update approval: ' + err.message, 'error');
+          } finally {
+            this.approving = false;
+          }
+        },
+
+        async approveForAssemblyAndNext() {
+          if (!this.storyGenerationId || !this.story) return;
+          if (this.approving || this.saving) return;
+
+          this.approving = true;
+          try {
+            // If you have unsaved assembly edits, save them first.
+            if (this.hasUnsavedChanges) {
+              await this.saveAssembly();
+              if (this.hasUnsavedChanges) {
+                // Save failed; don't advance.
+                return;
+              }
+            }
+
+            // Compute next story *before* approving so "next" is deterministic.
+            let nextId = null;
+            try {
+              const r = await fetch(`/api/stories/${this.storyGenerationId}/next?only_unapproved=true`);
+              if (r.ok) {
+                const data = await r.json();
+                nextId = data?.next_story_generation_id || null;
+              }
+            } catch (e) {}
+
+            // Persist approval
+            const response = await fetch(`/api/story-generations/${this.storyGenerationId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ approved_for_assembly: true })
+            });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            this.story.approved_for_assembly = true;
+
+            // Auto-advance
+            if (nextId) {
+              window.location.href = `/editor/${nextId}`;
+            } else {
+              this.showToast('Approved — no more stories left in queue.', 'success');
+              setTimeout(() => { window.location.href = '/'; }, 450);
+            }
+          } catch (err) {
+            console.error('Failed to approve and advance:', err);
+            this.showToast('Approve failed: ' + err.message, 'error');
+          } finally {
+            this.approving = false;
           }
         },
         

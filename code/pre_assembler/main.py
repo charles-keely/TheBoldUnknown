@@ -33,6 +33,7 @@ try:
         get_assembly,
         save_assembly,
         update_story_generation,
+        get_next_story_generation_id,
         check_db_connection,
         get_db_fingerprint,
     )
@@ -68,6 +69,7 @@ except ImportError:
         get_assembly,
         save_assembly,
         update_story_generation,
+        get_next_story_generation_id,
         check_db_connection,
         get_db_fingerprint,
     )
@@ -185,6 +187,7 @@ async def list_stories():
             subtitle=row['subtitle'],
             domain_tag=row['domain_tag'],
             is_enabled=bool(row.get('is_enabled', True)),
+            approved_for_assembly=bool(row.get('approved_for_assembly', False)),
             instagram_caption=row.get('instagram_caption'),
             hashtags=row.get('hashtags'),
             slide_count=row['slide_count'],
@@ -220,6 +223,18 @@ async def get_story(story_generation_id: str):
     }
 
 
+@app.get("/api/stories/{story_generation_id}/next")
+async def get_next_story(
+    story_generation_id: str,
+    only_unapproved: bool = Query(True, description="When true, skip stories already approved_for_assembly"),
+):
+    """
+    Get the next story_generation_id in the review queue (for fast 'approve -> next').
+    """
+    next_id = get_next_story_generation_id(story_generation_id, only_unapproved=only_unapproved)
+    return {"current_story_generation_id": story_generation_id, "next_story_generation_id": next_id}
+
+
 @app.patch("/api/story-generations/{story_generation_id}")
 async def patch_story_generation(story_generation_id: str, request: UpdateStoryGenerationRequest):
     """
@@ -233,6 +248,7 @@ async def patch_story_generation(story_generation_id: str, request: UpdateStoryG
             subtitle=request.subtitle,
             domain_tag=request.domain_tag,
             is_enabled=request.is_enabled,
+            approved_for_assembly=request.approved_for_assembly,
         )
         if not updated:
             raise HTTPException(status_code=404, detail="Story generation not found")
@@ -518,7 +534,9 @@ async def save_story_assembly(story_generation_id: str, request: SaveAssemblyReq
     """
     try:
         # Convert to dict for storage
-        assembly_dict = request.assembly_data.model_dump()
+        # IMPORTANT: Use mode="json" so datetimes become ISO strings.
+        # Otherwise json.dumps() will fail with "Object of type datetime is not JSON serializable".
+        assembly_dict = request.assembly_data.model_dump(mode="json")
         
         # Update metadata
         now = datetime.now()
