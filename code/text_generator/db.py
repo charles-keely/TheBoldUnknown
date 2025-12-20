@@ -312,3 +312,73 @@ def get_story_generation_with_slides(generation_id):
         return None
     finally:
         conn.close()
+
+
+def get_stories_with_existing_generations(limit=None):
+    """
+    Fetches story_research items that ALREADY have story_generations.
+    Used for regeneration workflows.
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            query = """
+                SELECT sr.id, sr.research_data, l.url as lead_url,
+                       sg.id as generation_id
+                FROM story_research sr
+                JOIN leads l ON sr.lead_id = l.id
+                JOIN story_generations sg ON sr.id = sg.story_research_id
+                WHERE sr.status = 'completed'
+                AND sg.is_enabled = true
+                ORDER BY sg.created_at ASC
+            """
+            if limit:
+                query += f" LIMIT {int(limit)}"
+            cur.execute(query)
+            return cur.fetchall()
+    except Exception as e:
+        logger.error(f"Error fetching stories with existing generations: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def delete_generation_and_slides(generation_id):
+    """
+    Deletes a story_generation and its associated slides.
+    Used before regenerating text content.
+    Checks for assemblies/thumbnails first and skips if they exist.
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Check for story_assemblies that reference this generation
+            cur.execute("SELECT COUNT(*) as count FROM story_assemblies WHERE story_generation_id = %s", (generation_id,))
+            assembly_count = cur.fetchone()['count']
+            if assembly_count > 0:
+                logger.warning(f"Generation {generation_id} has {assembly_count} assembly(ies) - skipping deletion")
+                return False
+            
+            # Check for story_thumbnails that reference this generation
+            cur.execute("SELECT COUNT(*) as count FROM story_thumbnails WHERE story_generation_id = %s", (generation_id,))
+            thumbnail_count = cur.fetchone()['count']
+            if thumbnail_count > 0:
+                logger.warning(f"Generation {generation_id} has {thumbnail_count} thumbnail(s) - skipping deletion")
+                return False
+            
+            # First delete slides (foreign key constraint)
+            cur.execute("DELETE FROM story_slides WHERE story_generation_id = %s", (generation_id,))
+            slides_deleted = cur.rowcount
+            
+            # Then delete the generation
+            cur.execute("DELETE FROM story_generations WHERE id = %s", (generation_id,))
+            
+            conn.commit()
+            logger.info(f"Deleted generation {generation_id} and {slides_deleted} slides")
+            return True
+    except Exception as e:
+        logger.error(f"Error deleting generation {generation_id}: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()

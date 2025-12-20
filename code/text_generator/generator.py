@@ -156,11 +156,14 @@ WHAT TO AVOID:
 
 ---
 
-SLIDE COUNT: TARGET 7-9 SLIDES (8 is ideal)
+SLIDE COUNT: TARGET 7 SLIDES (7 is the hard max)
 
-- Long enough to feel substantial, and to tell the whole story.
-- Short enough that people finish
-- Only go 10+ slides if every slide delivers something new
+- Instagram carousels have 10 slides max; we need 1 cover + 1 CTA + potentially 1 photo
+- That leaves 7 text slides to tell the whole story
+- USE ALL 7 SLIDES. Don't compress the story into fewer slides—expand to fill the space.
+- Each slide should breathe. Add supporting details, specific examples, or context that enriches the narrative.
+- Think of it like a documentary: you have 7 scenes to tell this story thoroughly. Use them all.
+- Make every slide count—no filler, but also no rushing. The goal is a complete, satisfying narrative.
 
 ---
 
@@ -183,7 +186,8 @@ VOICE: Calm, intelligent, genuinely curious. Not academic. Not clickbait. No "Yo
 
 CONSTRAINTS:
 
-- Target 7-9 slides. Maximum 12 only if justified.
+- Write exactly 7 slides. This is both the target and the maximum.
+- Don't compress—use the full 7 slides to tell a rich, detailed story.
 - Each slide: 1-2 paragraphs
 - Character limits (strict):
   - 1 paragraph: MAX 549 characters
@@ -230,7 +234,7 @@ OUTPUT FORMAT (JSON):
     ]
 }}"""
     
-    prompt_content = f"Find the 'wait, what?' moments in this research and build a 7-9 slide story around them:\n\n{research_text}"
+    prompt_content = f"Find the 'wait, what?' moments in this research and build a thorough 7-slide story around them. Use all 7 slides to tell the story completely—don't compress or rush:\n\n{research_text}"
     if source_content:
         prompt_content = f"Source Article Content:\n{source_content}\n\n" + prompt_content
 
