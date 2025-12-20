@@ -1,0 +1,65 @@
+{
+  "story_generation_id": "678da029-ac44-4cb9-924d-b79b6906b9b6",
+  "assembly_id": "29bc834e-2b00-4ce1-bbd4-bf6bd4f345bb",
+  "assembly_status": "finalized",
+  "slides": [
+    {
+      "filename": "01_cover.png",
+      "sha256": "c981716a139077945df1b6e1aa5caa940d977d7fdf0ddb0158d0d6afc8925fd2",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/01_cover.png"
+    },
+    {
+      "filename": "02_text.png",
+      "sha256": "8bafc624be8178f1c84d4c31660c7ab3006683bea8be0bd399545da3fa4df746",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/02_text.png"
+    },
+    {
+      "filename": "03_text.png",
+      "sha256": "98fecbea1d10a09c62246b21cbf266eabd1b51a933fb954c1eac10f018eaaf0b",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/03_text.png"
+    },
+    {
+      "filename": "04_text.png",
+      "sha256": "b6bd38ec45138951b0afeb1c6f7487ca5bdc2154676b2dc9edec1cd50c8a10f1",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/04_text.png"
+    },
+    {
+      "filename": "05_text.png",
+      "sha256": "9473777dcec81d8399c1dbcf33096e80510a648d2c5e9c829779f3459dccd9af",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/05_text.png"
+    },
+    {
+      "filename": "06_text.png",
+      "sha256": "4a79f57aef889b02ba125d20635c18dcdf4e38b26981f97c7f7d8f0dca99dd93",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/06_text.png"
+    },
+    {
+      "filename": "07_text.png",
+      "sha256": "e841b60a746301681f9820e4e54aeccd08a1ab7abded1175e11a599b299d5388",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/07_text.png"
+    },
+    {
+      "filename": "08_text.png",
+      "sha256": "00a37a1858e1bcddfc9db71b0021bd362b48c96ccd4524304f6d9fdad13bb458",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/08_text.png"
+    },
+    {
+      "filename": "09_text.png",
+      "sha256": "8f7a39ed53a995894c7eb0c4e9d99bdc996181a25f973adfaef5ec2b78fbc1bd",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/09_text.png"
+    },
+    {
+      "filename": "10_text.png",
+      "sha256": "29ed0472b362daef877550bd3feed4a02690d9b43063fad9a264e4ea319f505b",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/10_text.png"
+    },
+    {
+      "filename": "11_text.png",
+      "sha256": "fdaa43df6a229066691c81c6d7834605b1410bcebc89631d9d3ab95bf4fee158",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/678da029-ac44-4cb9-924d-b79b6906b9b6/20251220_070430/11_text.png"
+    }
+  ],
+  "caption": "Episodic memory is less like playback and more like reconstruction.\n\nA major review in *Neuroscience & Biobehavioral Reviews* synthesizing nearly 200 papers argues that recall assembles an event from distributed fragments, knowledge, and present context.\n\nThe unsettling detail is that the reconstructed version can be saved back in, so what you remember later may be the edited cut, not the original.\n\nMore inside.\n\n#TheBoldUnknown #TheUnknownExplained #Curiosity #HumanBehavior #Neuroscience #CognitiveScience #MemoryResearch #Memory #EpisodicMemory #CognitiveBias",
+  "dry_run_publish": true,
+  "db_writes": "disabled (read-only connection + no UPDATEs executed)"
+}

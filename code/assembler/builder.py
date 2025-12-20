@@ -3,6 +3,8 @@ import logging
 from typing import Optional, Any, Dict
 
 from bs4 import BeautifulSoup
+import re
+import base64
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +42,80 @@ def _normalize_src(src: str, template_dir: str, repo_root: str) -> str:
         abs_path = os.path.join(repo_root, s.lstrip("/"))
         return f"file://{abs_path}"
 
-    # Relative paths like ../img/TBU_Logo4.png should resolve via <base href="...chosen_templates/">
-    return s
+    # Relative paths like ../img/TBU_Logo4.png:
+    # In practice, Chromium + page.set_content can be finicky about resolving
+    # relative URLs (even with a <base href="file://..."> tag), so we eagerly
+    # convert to absolute file:// URLs.
+    abs_path = os.path.normpath(os.path.join(template_dir, s))
+    return f"file://{abs_path}"
+
+
+_CSS_URL_RE = re.compile(r"url\(\s*(['\"]?)(?P<url>[^'\"\)]+)\1\s*\)", re.IGNORECASE)
+
+
+def _guess_mime_type(path: str) -> str:
+    ext = (os.path.splitext(path)[1] or "").lower()
+    if ext == ".png":
+        return "image/png"
+    if ext in (".jpg", ".jpeg"):
+        return "image/jpeg"
+    if ext == ".webp":
+        return "image/webp"
+    if ext == ".gif":
+        return "image/gif"
+    if ext == ".svg":
+        return "image/svg+xml"
+    return "application/octet-stream"
+
+
+def _file_url_to_data_url(url: str) -> str | None:
+    """
+    Convert file:// URLs into data: URLs.
+
+    Why:
+    Chromium + Playwright `page.set_content()` can be inconsistent about loading file:// resources
+    referenced by <img src="file://..."> or CSS url(file://...). Inlining template assets
+    (logos/arrows/overlays) makes rendering deterministic.
+    """
+    if not url or not isinstance(url, str) or not url.startswith("file://"):
+        return None
+    path = url[len("file://") :]
+    if not path or not os.path.exists(path) or not os.path.isfile(path):
+        return None
+    try:
+        with open(path, "rb") as f:
+            data = f.read()
+        mime = _guess_mime_type(path)
+        b64 = base64.b64encode(data).decode("ascii")
+        return f"data:{mime};base64,{b64}"
+    except Exception:
+        return None
+
+
+def _normalize_css_urls(css_text: str, template_dir: str, repo_root: str) -> str:
+    """
+    Normalize url(...) references inside CSS strings (style tags and inline style attrs).
+
+    We only rewrite absolute-like paths that Playwright cannot resolve under page.set_content:
+    - /template-assets/... -> file://<repo_root>/template_design/...
+    - /... -> file://<repo_root>/...
+
+    We leave relative urls alone so they resolve via <base href="file://...chosen_templates/">.
+    """
+    if not css_text:
+        return css_text
+
+    def _repl(m: re.Match) -> str:
+        raw = (m.group("url") or "").strip()
+        normalized = _normalize_src(raw, template_dir, repo_root)
+        inlined = _file_url_to_data_url(normalized)
+        if inlined:
+            normalized = inlined
+        # Preserve original quoting style
+        q = m.group(1) or ""
+        return f"url({q}{normalized}{q})"
+
+    return _CSS_URL_RE.sub(_repl, css_text)
 
 
 class SlideBuilder:
@@ -75,6 +149,38 @@ class SlideBuilder:
         if soup.head and not soup.head.find("base"):
             base = soup.new_tag("base", href=f"file://{self.template_dir}/")
             soup.head.insert(0, base)
+
+        # Normalize static asset references inside the template (logos, overlays, etc.)
+        # Many templates use absolute paths like /template-assets/img/... which will NOT
+        # resolve under page.set_content unless we rewrite them to file:// paths.
+        for tag in soup.find_all(src=True):
+            try:
+                normalized = _normalize_src(str(tag.get("src", "")), self.template_dir, self.repo_root)
+                # Inline local template assets (logos/arrows/etc.) so they always render.
+                inlined = _file_url_to_data_url(normalized)
+                tag["src"] = inlined or normalized
+            except Exception:
+                # best-effort; don't fail rendering due to a single bad src
+                continue
+
+        for tag in soup.find_all(href=True):
+            try:
+                tag["href"] = _normalize_src(str(tag.get("href", "")), self.template_dir, self.repo_root)
+            except Exception:
+                continue
+
+        # Normalize CSS url(...) references for absolute paths
+        for style_tag in soup.find_all("style"):
+            if style_tag.string:
+                style_tag.string.replace_with(
+                    _normalize_css_urls(str(style_tag.string), self.template_dir, self.repo_root)
+                )
+
+        for tag in soup.find_all(style=True):
+            try:
+                tag["style"] = _normalize_css_urls(str(tag.get("style", "")), self.template_dir, self.repo_root)
+            except Exception:
+                continue
 
         content = (slide or {}).get("content") or {}
         slide_type = (slide or {}).get("type") or ""
