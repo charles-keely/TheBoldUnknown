@@ -165,20 +165,34 @@ class NanoBananaClient:
 
                     storage_mode = config.resolved_storage_mode()
                     if storage_mode == "supabase":
-                        image_url = self._upload_bytes_to_supabase(
-                            data=image_bytes,
-                            content_type=mime_type,
-                            object_path=object_path,
-                        )
-                        logger.info(f"Image uploaded: {image_url}")
-                        return {
-                            "success": True,
-                            "image_url": image_url,
-                            "image_base64": None,  # stored remotely
-                            "mime_type": mime_type,
-                            "storage_mode": "supabase",
-                            "error": None,
-                        }
+                        try:
+                            image_url = self._upload_bytes_to_supabase(
+                                data=image_bytes,
+                                content_type=mime_type,
+                                object_path=object_path,
+                            )
+                            logger.info(f"Image uploaded: {image_url}")
+                            return {
+                                "success": True,
+                                "image_url": image_url,
+                                "image_base64": None,  # stored remotely
+                                "mime_type": mime_type,
+                                "storage_mode": "supabase",
+                                "error": None,
+                            }
+                        except Exception as e:
+                            # Critical fallback: if Supabase upload fails (e.g., bucket missing),
+                            # store the image in DB as base64 so the pre-assembler can serve it.
+                            logger.warning(f"Supabase upload failed; falling back to db_base64: {e}")
+                            b64 = base64.b64encode(image_bytes).decode("ascii")
+                            return {
+                                "success": True,
+                                "image_url": None,
+                                "image_base64": b64,
+                                "mime_type": mime_type,
+                                "storage_mode": "db_base64",
+                                "error": None,
+                            }
 
                     if storage_mode == "db_base64":
                         b64 = base64.b64encode(image_bytes).decode("ascii")
@@ -308,14 +322,20 @@ class NanoBananaClient:
 
                     storage_mode = config.resolved_storage_mode()
                     if storage_mode == "supabase":
-                        image_url = self._upload_bytes_to_supabase(
-                            data=image_bytes,
-                            content_type=mime_type,
-                            object_path=object_path,
-                        )
-                        result["success"] = True
-                        result["image_url"] = image_url
-                        result["mime_type"] = mime_type
+                        try:
+                            image_url = self._upload_bytes_to_supabase(
+                                data=image_bytes,
+                                content_type=mime_type,
+                                object_path=object_path,
+                            )
+                            result["success"] = True
+                            result["image_url"] = image_url
+                            result["mime_type"] = mime_type
+                        except Exception as e:
+                            logger.warning(f"Supabase upload failed; falling back to db_base64: {e}")
+                            result["success"] = True
+                            result["image_base64"] = base64.b64encode(image_bytes).decode("ascii")
+                            result["mime_type"] = mime_type
                     elif storage_mode == "db_base64":
                         result["success"] = True
                         result["image_base64"] = base64.b64encode(image_bytes).decode("ascii")

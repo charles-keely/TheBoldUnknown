@@ -343,30 +343,43 @@ def get_stories_with_existing_generations(limit=None):
         conn.close()
 
 
-def delete_generation_and_slides(generation_id):
+def delete_generation_and_slides(generation_id, force=False):
     """
     Deletes a story_generation and its associated slides.
     Used before regenerating text content.
-    Checks for assemblies/thumbnails first and skips if they exist.
+    If force=False, checks for assemblies/thumbnails first and skips if they exist.
+    If force=True, deletes assemblies and thumbnails too.
     """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # Check for story_assemblies that reference this generation
-            cur.execute("SELECT COUNT(*) as count FROM story_assemblies WHERE story_generation_id = %s", (generation_id,))
-            assembly_count = cur.fetchone()['count']
-            if assembly_count > 0:
-                logger.warning(f"Generation {generation_id} has {assembly_count} assembly(ies) - skipping deletion")
-                return False
+            if not force:
+                # Check for story_assemblies that reference this generation
+                cur.execute("SELECT COUNT(*) as count FROM story_assemblies WHERE story_generation_id = %s", (generation_id,))
+                assembly_count = cur.fetchone()['count']
+                if assembly_count > 0:
+                    logger.warning(f"Generation {generation_id} has {assembly_count} assembly(ies) - skipping deletion (use --force to override)")
+                    return False
+                
+                # Check for story_thumbnails that reference this generation
+                cur.execute("SELECT COUNT(*) as count FROM story_thumbnails WHERE story_generation_id = %s", (generation_id,))
+                thumbnail_count = cur.fetchone()['count']
+                if thumbnail_count > 0:
+                    logger.warning(f"Generation {generation_id} has {thumbnail_count} thumbnail(s) - skipping deletion (use --force to override)")
+                    return False
+            else:
+                # Force mode: delete assemblies and thumbnails first
+                cur.execute("DELETE FROM story_assemblies WHERE story_generation_id = %s", (generation_id,))
+                assemblies_deleted = cur.rowcount
+                if assemblies_deleted > 0:
+                    logger.info(f"Force-deleted {assemblies_deleted} assembly(ies) for generation {generation_id}")
+                
+                cur.execute("DELETE FROM story_thumbnails WHERE story_generation_id = %s", (generation_id,))
+                thumbnails_deleted = cur.rowcount
+                if thumbnails_deleted > 0:
+                    logger.info(f"Force-deleted {thumbnails_deleted} thumbnail(s) for generation {generation_id}")
             
-            # Check for story_thumbnails that reference this generation
-            cur.execute("SELECT COUNT(*) as count FROM story_thumbnails WHERE story_generation_id = %s", (generation_id,))
-            thumbnail_count = cur.fetchone()['count']
-            if thumbnail_count > 0:
-                logger.warning(f"Generation {generation_id} has {thumbnail_count} thumbnail(s) - skipping deletion")
-                return False
-            
-            # First delete slides (foreign key constraint)
+            # Delete slides (foreign key constraint)
             cur.execute("DELETE FROM story_slides WHERE story_generation_id = %s", (generation_id,))
             slides_deleted = cur.rowcount
             

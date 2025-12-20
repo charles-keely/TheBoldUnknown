@@ -46,7 +46,10 @@ def get_db_connection():
 
 def get_stories_needing_thumbnails(limit=None):
     """
-    Fetches story_generations that don't have any thumbnails yet.
+    Fetches story_generations that don't have any usable thumbnails yet.
+    "Usable" means at least one thumbnail in status ('generated', 'approved').
+    This includes stories where thumbnails exist but are all 'failed' (or otherwise non-usable),
+    so reruns can recover.
     Returns list of dicts with generation info and research data.
     """
     conn = get_db_connection()
@@ -64,7 +67,9 @@ def get_stories_needing_thumbnails(limit=None):
                 FROM story_generations sg
                 JOIN story_research sr ON sg.story_research_id = sr.id
                 JOIN leads l ON sr.lead_id = l.id
-                LEFT JOIN story_thumbnails st ON sg.id = st.story_generation_id
+                LEFT JOIN story_thumbnails st
+                  ON sg.id = st.story_generation_id
+                 AND st.status IN ('generated', 'approved')
                 WHERE st.id IS NULL
                 ORDER BY sg.created_at DESC
             """

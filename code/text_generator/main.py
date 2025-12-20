@@ -188,12 +188,12 @@ def run_regenerate(args):
         try:
             # Delete old generation and slides
             if not args.dry_run:
-                success = delete_generation_and_slides(old_generation_id)
+                success = delete_generation_and_slides(old_generation_id, force=args.force)
                 if not success:
                     logger.error(f"Failed to delete old generation for story {story_id}, skipping...")
                     continue
             else:
-                logger.info(f"[DRY RUN] Would delete generation {old_generation_id}")
+                logger.info(f"[DRY RUN] Would delete generation {old_generation_id}" + (" (with --force)" if args.force else ""))
             
             # Prepare Research Text
             research_data = story.get('research_data', {})
@@ -321,6 +321,7 @@ def main():
     parser.add_argument("--out", type=str, help="Write output to a file (Markdown). Recommended with --dry-run.")
     parser.add_argument("--backfill-captions", action="store_true", help="Backfill captions/hashtags for existing stories")
     parser.add_argument("--regenerate", action="store_true", help="Regenerate text for stories that already have generations (deletes old, creates new)")
+    parser.add_argument("--force", action="store_true", help="Force regeneration even if assemblies/thumbnails exist (deletes them too)")
     args = parser.parse_args()
 
     # Handle backfill mode
