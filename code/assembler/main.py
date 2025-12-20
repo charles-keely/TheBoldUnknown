@@ -99,7 +99,11 @@ async def main():
                     logger.info(f"DRY RUN: would finalize story {story_id} with {len(rendered_files)} slides.")
                     continue
 
-                mark_assembly_finalized(story_id, rendered_files)
+                mark_assembly_finalized(
+                    story_id,
+                    rendered_files,
+                    assembly_id=str(assembly.get("assembly_id")) if assembly.get("assembly_id") else None,
+                )
                 logger.info(f"Finalized story {story_id} with {len(rendered_files)} slides.")
             except Exception as e:
                 logger.error(f"Error processing assembly {assembly.get('story_generation_id')}: {e}")

@@ -86,16 +86,34 @@ def get_pending_assemblies(*, story_generation_id: str | None = None, limit: int
             if isinstance(limit, int) and limit > 0:
                 limit_sql = f" LIMIT {int(limit)}"
 
+            # IMPORTANT:
+            # A story can have multiple rows in story_assemblies over time (draft saves, retries, etc).
+            # We must always take the *latest* one, otherwise we can render stale data and even
+            # finalize the wrong version.
+            #
+            # We use a LATERAL join to select the most recently updated assembly row per story.
             query = f"""
-                SELECT 
+                SELECT
                     sg.id as story_generation_id,
                     sg.hook_title,
                     sa.id as assembly_id,
                     sa.assembly_data,
                     sa.status as assembly_status
                 FROM story_generations sg
-                LEFT JOIN story_assemblies sa ON sg.id = sa.story_generation_id
+                LEFT JOIN LATERAL (
+                    SELECT
+                        id,
+                        assembly_data,
+                        status,
+                        updated_at
+                    FROM story_assemblies
+                    WHERE story_generation_id = sg.id
+                    ORDER BY updated_at DESC
+                    LIMIT 1
+                ) sa ON TRUE
                 WHERE sg.approved_for_assembly = TRUE
+                  AND COALESCE(sg.is_enabled, TRUE) = TRUE
+                  AND sa.id IS NOT NULL
                   AND (sa.status IS NULL OR sa.status != 'finalized')
                 {where_extra}
                 ORDER BY sg.created_at ASC
@@ -109,29 +127,44 @@ def get_pending_assemblies(*, story_generation_id: str | None = None, limit: int
     finally:
         conn.close()
 
-def mark_assembly_finalized(story_generation_id: str, file_paths: list[str]):
+def mark_assembly_finalized(story_generation_id: str, file_paths: list[str], *, assembly_id: str | None = None):
     """
     Update the assembly status to finalized and save the rendered file paths.
     """
     conn = get_db_connection()
     try:
         with conn.cursor() as cur:
-            # First check if assembly exists, if not create it (though unusual for this flow)
-            cur.execute("SELECT id FROM story_assemblies WHERE story_generation_id = %s", (story_generation_id,))
-            existing = cur.fetchone()
-            
-            if existing:
-                cur.execute("""
+            # Prefer updating the exact assembly row we rendered.
+            if assembly_id:
+                cur.execute(
+                    """
                     UPDATE story_assemblies
-                    SET status = 'finalized', 
+                    SET status = 'finalized',
                         rendered_files = %s::jsonb,
                         updated_at = NOW()
-                    WHERE story_generation_id = %s
-                """, (json.dumps(file_paths), story_generation_id))
+                    WHERE id = %s
+                    """,
+                    (json.dumps(file_paths), assembly_id),
+                )
+                if cur.rowcount == 0:
+                    logger.warning(f"No assembly row found for id={assembly_id} (story_generation_id={story_generation_id}).")
             else:
-                # Should have been created by pre-assembler, but handle gracefully?
-                # For now assuming it exists or we skip.
-                logger.warning(f"No assembly found for {story_generation_id} when marking finalized.")
+                # Fallback: update by story_generation_id (legacy behavior).
+                cur.execute("SELECT id FROM story_assemblies WHERE story_generation_id = %s", (story_generation_id,))
+                existing = cur.fetchone()
+                if existing:
+                    cur.execute(
+                        """
+                        UPDATE story_assemblies
+                        SET status = 'finalized',
+                            rendered_files = %s::jsonb,
+                            updated_at = NOW()
+                        WHERE story_generation_id = %s
+                        """,
+                        (json.dumps(file_paths), story_generation_id),
+                    )
+                else:
+                    logger.warning(f"No assembly found for {story_generation_id} when marking finalized.")
                 
             conn.commit()
     except Exception as e:

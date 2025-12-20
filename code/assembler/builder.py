@@ -91,6 +91,15 @@ class SlideBuilder:
             
         return url_or_id
 
+    def _clamp_number(self, value, min_v: float, max_v: float, fallback: float) -> float:
+        try:
+            n = float(value)
+        except Exception:
+            return fallback
+        if n != n:  # NaN
+            return fallback
+        return max(min_v, min(max_v, n))
+
     def build_slide(self, slide_data: dict, index: int, *, slide_number: int, total_slides: int) -> str:
         """
         Injects content into template and returns the HTML string.
@@ -129,13 +138,13 @@ class SlideBuilder:
             # Prefer templates that expose a dedicated span for domain tag
             domain_span = soup.select_one(".domain-tag-line")
             if domain_span:
-                domain_span.string = domain
+                domain_span.string = str(domain).upper()
             else:
                 meta = soup.select_one(".meta-data")
                 if meta:
                     # Replace existing content (usually comments)
                     meta.clear()
-                    meta.string = domain
+                    meta.string = str(domain).upper()
 
         # Page Number (Common)
         # Pre-assembler sets these dynamically in the browser; for server-side rendering
@@ -208,46 +217,55 @@ class SlideBuilder:
         if slide_data.get("type") == "text":
             text_body = content.get("text")
             if text_body:
-                # Editorial3 uses .text-column
-                # Editorial1/2 might use .content-body or .content-text
-                target = (
-                    soup.select_one(".text-column") or 
-                    soup.select_one(".content-text") or 
-                    soup.select_one("p.body") or 
-                    soup.find("p")
-                )
-                
-                if target:
-                    # Preserve newlines as <br>
-                    html_content = text_body.replace("\n", "<br>")
-                    target.clear()
-                    # If target is a div (like text-column), wrap text in <p>
-                    if target.name == "div":
+                # Match the pre-assembler wrapper behavior:
+                # - Prefer .text-column (editorial3) and render paragraphs split on double newlines.
+                # - Fallback: inject with <br> if we only have a single <p>-style container.
+                col = soup.select_one(".text-column")
+                if col:
+                    col.clear()
+                    raw = str(text_body)
+                    paragraphs = [p.strip() for p in re.split(r"\n\n+", raw) if p.strip()]
+                    for para in paragraphs:
                         p = soup.new_tag("p")
-                        p.append(BeautifulSoup(html_content, "html.parser"))
-                        target.append(p)
-                    else:
-                        target.append(BeautifulSoup(html_content, "html.parser"))
+                        p.string = para
+                        col.append(p)
                 else:
-                    logger.warning(f"Could not find text container for template {template_name}")
+                    # Editorial1/2 might use .content-body or .content-text
+                    target = (
+                        soup.select_one(".content-text")
+                        or soup.select_one("p.body")
+                        or soup.find("p")
+                    )
+                    if target:
+                        html_content = str(text_body).replace("\n", "<br>")
+                        target.clear()
+                        target.append(BeautifulSoup(html_content, "html.parser"))
+                    else:
+                        logger.warning(f"Could not find text container for template {template_name}")
 
         # COVER Slides
         elif slide_data.get("type") == "cover":
             title = content.get("title")
             subtitle = content.get("subtitle")
             thumb_url = content.get("thumbnail_url")
+            zoom_raw = content.get("thumbnail_zoom")
+            x_raw = content.get("thumbnail_offset_x")
+            y_raw = content.get("thumbnail_offset_y")
 
             if title:
                 h1 = soup.select_one("h1.main-title")
                 if h1:
-                    h1.string = title
+                    # Match the in-browser wrapper behavior: allow newlines.
+                    h1.clear()
+                    title_html = str(title).replace("\n", "<br>")
+                    h1.append(BeautifulSoup(title_html, "html.parser"))
                 else:
                     logger.warning(f"Could not find h1.main-title in {template_name}")
             
-            if subtitle:
+            if subtitle is not None:
                 p = soup.select_one("p.subtitle")
                 if p:
-                    p.string = subtitle
+                    p.string = str(subtitle)
             
             if thumb_url:
                 bg = soup.select_one("img.bg-image")
@@ -255,6 +273,17 @@ class SlideBuilder:
                     abs_url = self._save_image_asset(thumb_url)
                     if abs_url:
                         bg["src"] = abs_url
+
+                    # Apply non-destructive "crop" controls (zoom + pan) exactly like the
+                    # pre-assembler iframe wrapper does.
+                    zoom = self._clamp_number(zoom_raw, 1.0, 4.0, 1.0)
+                    x = self._clamp_number(x_raw, -2000.0, 2000.0, 0.0)
+                    y = self._clamp_number(y_raw, -2000.0, 2000.0, 0.0)
+                    # NOTE: CSS transform functions are applied right-to-left; this ordering keeps
+                    # translate values from being scaled.
+                    extra_style = f"transform-origin: center center; transform: translate({x}px, {y}px) scale({zoom}); will-change: transform;"
+                    existing_style = bg.get("style", "")
+                    bg["style"] = (existing_style + ("; " if existing_style else "") + extra_style).strip()
 
         # PHOTO Slides
         elif slide_data.get("type") == "photo":
