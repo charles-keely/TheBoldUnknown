@@ -160,10 +160,29 @@ SLIDE COUNT: TARGET 7 SLIDES (7 is the hard max)
 
 - Instagram carousels have 10 slides max; we need 1 cover + 1 CTA + potentially 1 photo
 - That leaves 7 text slides to tell the whole story
-- USE ALL 7 SLIDES. Don't compress the story into fewer slides—expand to fill the space.
-- Each slide should breathe. Add supporting details, specific examples, or context that enriches the narrative.
-- Think of it like a documentary: you have 7 scenes to tell this story thoroughly. Use them all.
-- Make every slide count—no filler, but also no rushing. The goal is a complete, satisfying narrative.
+- USE ALL 7 SLIDES. Do not cut the story short at 5 or 6 slides.
+- The research contains depth—expand on it. Give context, evidence, implications.
+- Pace the narrative: hook → evidence → expansion → turn → conclusion
+- Make every slide count—no filler, no padding, but also no rushing
+
+STORY DEPTH GUIDANCE:
+
+You have 7 slides. Use them to THOROUGHLY explore the topic:
+- Don't just state facts—explain WHY they matter
+- Include specific details: names, dates, numbers, quotes when available
+- Show multiple angles or examples if the research supports it
+- Let the story breathe—each slide should feel complete, not rushed
+- If you find yourself finishing in 5 slides, you're probably skipping interesting details
+
+SLIDE 7 MUST BE A CONCLUSION:
+
+The final slide should land the story with resonance. Options:
+- A lingering question or implication that stays with the reader
+- The "so what"—why this matters beyond the facts
+- A final twist, irony, or unexpected angle
+- A quiet observation that reframes everything before it
+
+Do NOT end with just another fact. End with MEANING.
 
 ---
 
@@ -186,8 +205,7 @@ VOICE: Calm, intelligent, genuinely curious. Not academic. Not clickbait. No "Yo
 
 CONSTRAINTS:
 
-- Write exactly 7 slides. This is both the target and the maximum.
-- Don't compress—use the full 7 slides to tell a rich, detailed story.
+- Target 7 slides. Maximum 7 (hard limit due to Instagram carousel constraints).
 - Each slide: 1-2 paragraphs
 - Character limits (strict):
   - 1 paragraph: MAX 549 characters
@@ -234,7 +252,7 @@ OUTPUT FORMAT (JSON):
     ]
 }}"""
     
-    prompt_content = f"Find the 'wait, what?' moments in this research and build a thorough 7-slide story around them. Use all 7 slides to tell the story completely—don't compress or rush:\n\n{research_text}"
+    prompt_content = f"Find the 'wait, what?' moments in this research and build a complete 7-slide story around them. Use all 7 slides to thoroughly explore the topic:\n\n{research_text}"
     if source_content:
         prompt_content = f"Source Article Content:\n{source_content}\n\n" + prompt_content
 
