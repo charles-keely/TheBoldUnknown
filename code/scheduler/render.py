@@ -87,6 +87,7 @@ async def render_assembly_to_png_bytes(assembly_data: dict) -> list[RenderedSlid
 
     async with Renderer() as renderer:
         visible_slides = [s for s in slides if isinstance(s, dict) and s.get("visible", True)]
+        total = len(visible_slides)
         for idx, slide in enumerate(visible_slides):
             # Patch internal Pre-Assembler thumbnail URLs into renderable sources
             # so cover backgrounds render correctly in Playwright.
@@ -100,7 +101,7 @@ async def render_assembly_to_png_bytes(assembly_data: dict) -> list[RenderedSlid
                         content[key] = resolved
             s["content"] = content
 
-            html = builder.build_slide(s, idx)
+            html = builder.build_slide(s, idx, total_slides=total)
             png = await renderer.render_png_bytes(html)
             filename = f"{idx+1:02d}_{slide.get('type') or 'slide'}.png"
             rendered.append(

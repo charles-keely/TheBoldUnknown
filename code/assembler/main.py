@@ -49,7 +49,7 @@ async def process_assembly(renderer: Renderer, assembly: dict):
         logger.info(f"  Building slide {i+1}/{len(slides)} ({slide.get('type')})...")
         
         # Build HTML
-        html_content = builder.build_slide(slide, i)
+        html_content = builder.build_slide(slide, i, total_slides=len(slides))
         if not html_content:
             logger.warning(f"  Failed to build HTML for slide {i}. Skipping.")
             continue

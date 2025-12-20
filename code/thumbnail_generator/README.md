@@ -125,6 +125,12 @@ python main.py --limit 5
 python main.py --select <thumbnail_id>
 ```
 
+### Use simplified prompt format
+
+```bash
+python main.py --simple-prompt
+```
+
 ### Full options
 
 ```bash

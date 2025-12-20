@@ -1,0 +1,55 @@
+{
+  "story_generation_id": "65128f3a-7c0d-4c46-ae78-0fb00859b88b",
+  "assembly_id": "db270813-7048-49a0-ac36-ea1d9914e166",
+  "assembly_status": "draft",
+  "slides": [
+    {
+      "filename": "01_cover.png",
+      "sha256": "dbbf4496a9d5f1724a682902b18a5b2d5ec2c7a2375516c0b16123246c21c401",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/65128f3a-7c0d-4c46-ae78-0fb00859b88b/20251220_204632/01_cover.png"
+    },
+    {
+      "filename": "02_text.png",
+      "sha256": "15ffe1e7f73fdd62b9cea61bbde2167c22a620aeb53dd0342f5e4ae3149ea9eb",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/65128f3a-7c0d-4c46-ae78-0fb00859b88b/20251220_204632/02_text.png"
+    },
+    {
+      "filename": "03_text.png",
+      "sha256": "59090fac67f993cfb5bee50b460c858722f96709a3863795fe6d47018d754af6",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/65128f3a-7c0d-4c46-ae78-0fb00859b88b/20251220_204632/03_text.png"
+    },
+    {
+      "filename": "04_text.png",
+      "sha256": "c7c6649604409961805e18712f9cc58cf2e5221126b9e970d523f53e7fafcda8",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/65128f3a-7c0d-4c46-ae78-0fb00859b88b/20251220_204632/04_text.png"
+    },
+    {
+      "filename": "05_text.png",
+      "sha256": "ba2499e58532999cd63598d96562202c94cefe1c21513fc68cc97e40b9d49d64",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/65128f3a-7c0d-4c46-ae78-0fb00859b88b/20251220_204632/05_text.png"
+    },
+    {
+      "filename": "06_text.png",
+      "sha256": "c66032a79a1c50d276ab906af49f5249b76ab182f4ef11874cccf396a1ae81f1",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/65128f3a-7c0d-4c46-ae78-0fb00859b88b/20251220_204632/06_text.png"
+    },
+    {
+      "filename": "07_text.png",
+      "sha256": "3fd3ed461295bd13c34c14330e467cbb4b52e20f42ece9968b1983b980962c87",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/65128f3a-7c0d-4c46-ae78-0fb00859b88b/20251220_204632/07_text.png"
+    },
+    {
+      "filename": "08_text.png",
+      "sha256": "469a93bf441efb9c0b5ef2ff77445690bfed849a48d871de3ac1c908fcd59659",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/65128f3a-7c0d-4c46-ae78-0fb00859b88b/20251220_204632/08_text.png"
+    },
+    {
+      "filename": "09_text.png",
+      "sha256": "4e2534ba13d794c844e0e8dd9b5e4d53caf0e12d136d402c89fa354b60b6a5d3",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/65128f3a-7c0d-4c46-ae78-0fb00859b88b/20251220_204632/09_text.png"
+    }
+  ],
+  "caption": "A cassette-shaped tape can now store data as synthetic DNA instead of magnetized sound.\n\nIn a reported ~100-meter length, researchers at Southern University of Science and Technology describe ~36 petabytes of capacity\u2014on the order of billions of songs.\n\nThe strangest part isn\u2019t the DNA, but the library system: microscopic barcodes point to where each file lives so retrieval doesn\u2019t require reading the entire archive.\n\nThe story unfolds slide by slide.\n\n#TheBoldUnknown #TheUnknownExplained #Curiosity #ScienceAndSociety #TechnologyAndCulture #EmergingTech #FutureTechnology #Biotechnology #DataStorage #DNADataStorage #SyntheticBiology",
+  "dry_run_publish": false,
+  "db_writes": "disabled (read-only connection + no UPDATEs executed)"
+}

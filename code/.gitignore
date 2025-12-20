@@ -38,3 +38,6 @@ test_downloads/
 photo_test_output/
 assembler/output/
 *.log
+
+# Scheduler secrets / token cache (do not commit)
+scheduler/ig_token.json

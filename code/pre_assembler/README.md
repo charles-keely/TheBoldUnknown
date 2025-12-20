@@ -114,18 +114,17 @@ http://localhost:8000
 
 ```
 pre_assembler/
-├── main.py              # FastAPI entry point
+├── main.py              # FastAPI entry point (routes + business logic)
 ├── config.py            # Environment config
 ├── db.py                # Database queries
 ├── models.py            # Pydantic models
-├── routes/              # API route handlers
-├── services/            # Business logic
 ├── static/              # Frontend assets
 │   ├── index.html       # Dashboard
 │   ├── editor.html      # Assembly editor
-│   └── js/              # Alpine components
+│   ├── css/             # Stylesheets
+│   └── js/
+│       └── template-wrapper.js  # iframe postMessage handler
 ├── templates/           # Symlink to chosen_templates
-├── wrapper/             # Template wrapper scripts
 ├── schema.sql           # Database schema
 ├── requirements.txt     # Python dependencies
 ├── README.md            # This file

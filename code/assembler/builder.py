@@ -1,5 +1,6 @@
 import os
 import logging
+from datetime import datetime
 from typing import Optional, Any, Dict
 
 from bs4 import BeautifulSoup
@@ -130,7 +131,7 @@ class SlideBuilder:
         self.repo_root = _repo_root()
         self.template_dir = os.path.join(self.repo_root, "template_design", "chosen_templates")
 
-    def build_slide(self, slide: Dict[str, Any], index: int) -> str:
+    def build_slide(self, slide: Dict[str, Any], index: int, total_slides: int | None = None) -> str:
         template_key = (slide or {}).get("template") or ""
         if not template_key:
             raise ValueError("Slide is missing 'template'")
@@ -184,13 +185,63 @@ class SlideBuilder:
 
         content = (slide or {}).get("content") or {}
         slide_type = (slide or {}).get("type") or ""
+        is_closing_template = str(template_key).startswith("closing")
+
+        def _format2(n: int) -> str:
+            return str(int(n)).zfill(2)
+
+        def _inject_page_numbers() -> None:
+            if total_slides is None:
+                return
+            try:
+                total = int(total_slides)
+                current = int(index) + 1
+            except Exception:
+                return
+            if total <= 0 or current <= 0:
+                return
+
+            # Closing template: "FINAL // NN"
+            footer_final = soup.select_one(".footer-final")
+            if footer_final is not None:
+                footer_final.string = f"FINAL // {_format2(total)}"
+
+            # Editorial/Photo template: "NN / NN"
+            page_number = soup.select_one(".page-number")
+            if page_number is not None:
+                page_number.string = f"{_format2(current)} / {_format2(total)}"
+
+            # Cover template: "NN/NN<br>SWIPE FOR MORE"
+            footer_left = soup.select_one(".footer-left")
+            has_arrow = soup.select_one(".arrow-container") is not None or soup.select_one(".swipe-arrow") is not None
+            if footer_left is not None and has_arrow:
+                footer_left.clear()
+                # Preserve the template's cover style with a <br>
+                footer_left.append(f"{_format2(current)}/{_format2(total)}")
+                footer_left.append(soup.new_tag("br"))
+                footer_left.append("SWIPE FOR MORE")
+
+        def _inject_dynamic_year() -> None:
+            # Only affects templates that have this element (closing1).
+            year_el = soup.select_one(".brand-year")
+            if year_el is not None:
+                year_el.string = str(datetime.now().year)
+
+        def _inject_domain_tag() -> None:
+            # Prefer a dedicated line if present (closing template uses this).
+            domain_tag = content.get("domain_tag")
+            if not domain_tag:
+                return
+            domain_line = soup.select_one(".domain-tag-line")
+            if domain_line is not None:
+                domain_line.string = str(domain_tag).upper()
+                return
+            meta = soup.select_one(".meta-data")
+            if meta and not meta.get_text(strip=True):
+                meta.string = str(domain_tag).upper()
 
         # Best-effort domain tag injection (some templates leave this for postMessage)
-        domain_tag = content.get("domain_tag")
-        if domain_tag:
-            meta = soup.select_one(".meta-data") or soup.select_one(".domain-tag-line")
-            if meta and not meta.get_text(strip=True):
-                meta.string = str(domain_tag)
+        _inject_domain_tag()
 
         if slide_type == "cover":
             title = content.get("title") or ""
@@ -260,7 +311,7 @@ class SlideBuilder:
             if src_el is not None:
                 src_el.string = str(source)
 
-        elif slide_type == "closing":
+        elif slide_type == "closing" or is_closing_template:
             sources = content.get("primary_sources") or []
             container = soup.select_one(".sources-container")
             list_el = soup.select_one(".sources-list")
@@ -280,6 +331,10 @@ class SlideBuilder:
         else:
             # Unknown slide type; return template as-is.
             logger.warning(f"Unknown slide type '{slide_type}', returning template without injection.")
+
+        # Ensure page numbers + year are always correct at render-time (Playwright path doesn't run template-wrapper.js)
+        _inject_page_numbers()
+        _inject_dynamic_year()
 
         return str(soup)
 

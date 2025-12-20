@@ -72,7 +72,25 @@ The complete workflow transforms internet sources into Instagram-ready content:
 │   ┌──────────────────┐                                                          │
 │   │THUMBNAIL GENERATOR│ GPT-5.2 concept generation (3 concepts)                 │
 │   │   (Cover Art)    │  Nano Banana (Gemini) image generation                   │
-│   └──────────────────┘  Interactive preview for selection                       │
+│   └────────┬─────────┘  Interactive preview for selection                       │
+│            │                                                                     │
+│            ▼                                                                     │
+│   ┌──────────────────┐                                                          │
+│   │  PRE-ASSEMBLER   │  Web-based carousel assembly editor                      │
+│   │    (Layout)      │  Drag-and-drop ordering, text editing, approval          │
+│   └────────┬─────────┘                                                          │
+│            │                                                                     │
+│            ▼                                                                     │
+│   ┌──────────────────┐                                                          │
+│   │    ASSEMBLER     │  Playwright headless rendering                           │
+│   │  (PNG Export)    │  HTML templates → 1080×1350 PNG carousel slides          │
+│   └────────┬─────────┘                                                          │
+│            │                                                                     │
+│            ▼                                                                     │
+│   ┌──────────────────┐                                                          │
+│   │    SCHEDULER     │  Upload PNGs to Supabase Storage                         │
+│   │   (Publisher)    │  Publish carousel via Instagram Graph API                │
+│   └──────────────────┘                                                          │
 │                                                                                  │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -242,6 +260,70 @@ python main.py --select <thumb_id> # Select a thumbnail
 
 ---
 
+### 7. Pre-Assembler (`pre_assembler/`)
+
+**Purpose:** Web-based tool for visually assembling and reviewing Instagram carousel stories before final rendering.
+
+**Features:**
+- Grid dashboard of stories ready for assembly
+- Drag-and-drop slide reordering with SortableJS
+- Toggle individual slides on/off for final export
+- Inline text editing and photo swapping
+- Switch between cover title/subtitle variations and thumbnails
+- Approval workflow for final assembly
+
+**Tech Stack:** FastAPI, PostgreSQL, Alpine.js, Tailwind CSS
+
+**Key Table:** `story_assemblies`
+
+```bash
+cd pre_assembler
+uvicorn main:app --reload --port 8000
+# Open http://localhost:8000
+```
+
+---
+
+### 8. Assembler (`assembler/`)
+
+**Purpose:** Converts approved story assemblies (HTML/CSS) into final PNG image assets for Instagram carousels.
+
+**Pipeline:**
+1. **Fetch** — Query stories with `approved_for_assembly=True`
+2. **Build** — Inject text, images, and metadata into HTML templates
+3. **Render** — Playwright (headless Chromium) captures 1080×1350 screenshots
+4. **Finalize** — Update `story_assemblies.status` to `finalized`
+
+**Output:** By default, no local files are written. Set `ASSEMBLER_KEEP_OUTPUT=1` for debugging.
+
+```bash
+cd assembler
+python main.py  # Process all approved stories
+```
+
+---
+
+### 9. Scheduler (`scheduler/`)
+
+**Purpose:** Publishes finalized stories to Instagram via the Graph API.
+
+**Pipeline:**
+1. **Select** — Pick one assembled story from the database
+2. **Render** — Generate PNG slides using the assembler renderer
+3. **Upload** — Store PNGs in Supabase Storage (public URLs)
+4. **Publish** — Create Instagram carousel via Graph API
+
+**Note:** This module performs NO database writes—it never marks stories as posted.
+
+**Token Management:** Long-lived tokens with periodic refresh for unattended posting.
+
+```bash
+python scheduler/main.py test-post --approved-only
+python -m scheduler.main refresh-token  # One-time token exchange
+```
+
+---
+
 ## 🗄️ Database Schema
 
 The pipeline uses PostgreSQL (Supabase) with the following core tables:
@@ -250,8 +332,8 @@ The pipeline uses PostgreSQL (Supabase) with the following core tables:
 
 ```
 leads                    → story_research        → story_generations    → story_thumbnails
-  ↓                           ↓                       ↓
-discovery_topics         story_photos            story_slides
+  ↓                           ↓                       ↓                       ↓
+discovery_topics         story_photos            story_slides          story_assemblies
   ↓
 processed_urls
 ```
@@ -268,6 +350,7 @@ processed_urls
 | `story_generations` | Generated text | `story_research_id`, `hook_title`, `subtitle`, `domain_tag` |
 | `story_slides` | Carousel content | `story_generation_id`, `slide_order`, `text_content`, `document_type_tag` |
 | `story_thumbnails` | Cover images | `story_generation_id`, `concept_type`, `image_url`, `is_selected` |
+| `story_assemblies` | Carousel assembly | `story_generation_id`, `assembly_data` (JSONB), `status`, `rendered_files` |
 
 ### Status Workflows
 
@@ -282,6 +365,12 @@ processed_urls
 
 **story_thumbnails.status:**
 `pending` → `generating` → `generated` → `approved` / `rejected` (or `failed`)
+
+**story_assemblies.status:**
+`new` → `draft` → `finalized`
+
+**story_generations flags:**
+`approved_for_assembly` = True → Ready for Assembler to render
 
 ---
 
@@ -375,6 +464,17 @@ cd ../text_generator && python main.py
 # 6. Create cover images
 cd ../thumbnail_generator
 python main.py --test  # Review and select
+
+# 7. Assemble carousel (web UI)
+cd ../pre_assembler
+uvicorn main:app --port 8000  # Open http://localhost:8000
+
+# 8. Render final PNGs (after approval in UI)
+cd ../assembler && python main.py
+
+# 9. Publish to Instagram
+cd ../scheduler
+python main.py test-post --approved-only
 ```
 
 ### Testing a Single Story
@@ -439,6 +539,24 @@ code/
 │   ├── nanobanana.py           # Gemini API client
 │   └── preview.py              # HTML preview generator
 │
+├── pre_assembler/              # Carousel assembly editor
+│   ├── main.py                 # FastAPI app
+│   ├── db.py                   # Database queries
+│   ├── models.py               # Pydantic models
+│   └── static/                 # Frontend (Alpine.js + Tailwind)
+│
+├── assembler/                  # PNG rendering
+│   ├── main.py                 # Batch processor
+│   ├── builder.py              # HTML injection
+│   ├── renderer.py             # Playwright screenshots
+│   └── db_utils.py
+│
+├── scheduler/                  # Instagram publishing
+│   ├── main.py                 # CLI orchestrator
+│   ├── instagram.py            # Graph API client
+│   ├── storage.py              # Supabase upload
+│   └── token_store.py          # Token management
+│
 └── template_design/            # Visual assets
     ├── all_templates/
     ├── chosen_templates/
@@ -477,6 +595,9 @@ Each module contains its own detailed README:
 - [`photo_researcher/README.md`](photo_researcher/README.md) — Image verification pipeline
 - [`text_generator/README.md`](text_generator/README.md) — Content generation
 - [`thumbnail_generator/README.md`](thumbnail_generator/README.md) — Cover art creation
+- [`pre_assembler/README.md`](pre_assembler/README.md) — Carousel assembly editor
+- [`assembler/README.md`](assembler/README.md) — PNG rendering pipeline
+- [`scheduler/README.md`](scheduler/README.md) — Instagram publishing
 
 ---
 

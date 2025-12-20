@@ -1,0 +1,60 @@
+{
+  "story_generation_id": "052531a9-6656-4a94-9bdf-e011eb51a961",
+  "assembly_id": "e05b4ba9-d2dd-4ed2-85cb-cb4887f9afab",
+  "assembly_status": "draft",
+  "slides": [
+    {
+      "filename": "01_cover.png",
+      "sha256": "9b3cbe1bd0187356aa76f9ac2f58d1b148e46e76c6944ae099c3edf0333061e2",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/052531a9-6656-4a94-9bdf-e011eb51a961/20251220_204437/01_cover.png"
+    },
+    {
+      "filename": "02_text.png",
+      "sha256": "94a12b1fb981a3b776ab2c2529fd86e07e775fd94259725d6713ea5de52a985a",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/052531a9-6656-4a94-9bdf-e011eb51a961/20251220_204437/02_text.png"
+    },
+    {
+      "filename": "03_text.png",
+      "sha256": "2d767fb3c99664391b14ea1a5475c1e538ae898332ec040ed8b665377a310af8",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/052531a9-6656-4a94-9bdf-e011eb51a961/20251220_204437/03_text.png"
+    },
+    {
+      "filename": "04_photo.png",
+      "sha256": "221e68b4a86fffe8bab890d6b43a2dd110990508c08fb890331c93ef669da9f9",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/052531a9-6656-4a94-9bdf-e011eb51a961/20251220_204437/04_photo.png"
+    },
+    {
+      "filename": "05_text.png",
+      "sha256": "a425ea46be9887079e5578cf99c2229e23c0a331c0895243eb6a7ecaa334fd52",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/052531a9-6656-4a94-9bdf-e011eb51a961/20251220_204437/05_text.png"
+    },
+    {
+      "filename": "06_text.png",
+      "sha256": "6027126d6ee13cc960913bec73ea4fec890fb4d21f3966b10d9bfa736806cc55",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/052531a9-6656-4a94-9bdf-e011eb51a961/20251220_204437/06_text.png"
+    },
+    {
+      "filename": "07_text.png",
+      "sha256": "6e24b1f9e8cd0d1705bb775dce7a72e3189219112fe54dae1881cb5e3c3c5dd5",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/052531a9-6656-4a94-9bdf-e011eb51a961/20251220_204437/07_text.png"
+    },
+    {
+      "filename": "08_text.png",
+      "sha256": "149384b5330393ac3ae228c2cfac2fbde16c19f27764640b7e20d2cd69253e8b",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/052531a9-6656-4a94-9bdf-e011eb51a961/20251220_204437/08_text.png"
+    },
+    {
+      "filename": "09_text.png",
+      "sha256": "aa1b6ad9c53d08b59a171d957df83d4434e62798b5fba118944e179abca706b7",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/052531a9-6656-4a94-9bdf-e011eb51a961/20251220_204437/09_text.png"
+    },
+    {
+      "filename": "10_text.png",
+      "sha256": "302ea5f4e6d4fffe226cbb6622ed165575cb2b1750180c00f5878149597e4f8f",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/052531a9-6656-4a94-9bdf-e011eb51a961/20251220_204437/10_text.png"
+    }
+  ],
+  "caption": "A wolf\u2019s bones turned up in a human cave on a tiny Baltic island where wolves could not have lived.\n\nAncient DNA confirmed it was a true wolf, and isotope work on its remains points to a seafood-heavy diet matching the people who used the site.\n\nThe quiet detail is logistical: somewhere in the Stone Age, someone ferried a live predator across open water and kept it alive on fish and seals.\n\nThe story unfolds slide by slide.\n\n#TheBoldUnknown #TheUnknownExplained #Curiosity #HiddenHistory #Archaeology #Zooarchaeology #AncientDNA #IsotopeAnalysis #BronzeAge #StoneAge",
+  "dry_run_publish": false,
+  "db_writes": "disabled (read-only connection + no UPDATEs executed)"
+}

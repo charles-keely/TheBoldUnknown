@@ -42,7 +42,7 @@ def get_db_connection_readonly() -> psycopg.Connection:
     return conn
 
 
-def pick_one_assembly(*, prefer_finalized: bool = True) -> dict | None:
+def pick_one_assembly(*, prefer_finalized: bool = True, approved_only: bool = False) -> dict | None:
     """
     Pick one story assembly + caption data.
 
@@ -51,6 +51,7 @@ def pick_one_assembly(*, prefer_finalized: bool = True) -> dict | None:
         story_generation_id,
         hook_title, subtitle, domain_tag,
         instagram_caption, hashtags,
+        approved_for_assembly, approved_for_assembly_at,
         assembly_id, assembly_status, assembly_updated_at,
         assembly_data
       }
@@ -68,6 +69,8 @@ def pick_one_assembly(*, prefer_finalized: bool = True) -> dict | None:
                         sg.domain_tag,
                         sg.instagram_caption,
                         sg.hashtags,
+                        COALESCE(sg.approved_for_assembly, FALSE) as approved_for_assembly,
+                        sg.approved_for_assembly_at,
                         sa.id as assembly_id,
                         sa.status as assembly_status,
                         sa.updated_at as assembly_updated_at,
@@ -81,11 +84,14 @@ def pick_one_assembly(*, prefer_finalized: bool = True) -> dict | None:
                         LIMIT 1
                     ) sa ON TRUE
                     WHERE COALESCE(sg.is_enabled, TRUE) = TRUE
+                      AND (%s = FALSE OR COALESCE(sg.approved_for_assembly, FALSE) = TRUE)
                       AND COALESCE(sa.status, 'draft') = 'finalized'
                       AND sa.assembly_data IS NOT NULL
                     ORDER BY sa.updated_at DESC
                     LIMIT 1
                     """
+                    ,
+                    (bool(approved_only),),
                 )
                 row = cur.fetchone()
                 if row:
@@ -101,6 +107,8 @@ def pick_one_assembly(*, prefer_finalized: bool = True) -> dict | None:
                     sg.domain_tag,
                     sg.instagram_caption,
                     sg.hashtags,
+                    COALESCE(sg.approved_for_assembly, FALSE) as approved_for_assembly,
+                    sg.approved_for_assembly_at,
                     sa.id as assembly_id,
                     sa.status as assembly_status,
                     sa.updated_at as assembly_updated_at,
@@ -114,13 +122,125 @@ def pick_one_assembly(*, prefer_finalized: bool = True) -> dict | None:
                     LIMIT 1
                 ) sa ON TRUE
                 WHERE COALESCE(sg.is_enabled, TRUE) = TRUE
+                  AND (%s = FALSE OR COALESCE(sg.approved_for_assembly, FALSE) = TRUE)
                   AND sa.assembly_data IS NOT NULL
-                ORDER BY sa.updated_at DESC
+                ORDER BY
+                    COALESCE(sg.approved_for_assembly_at, sa.updated_at) DESC,
+                    sa.updated_at DESC
                 LIMIT 1
-                """
+                """,
+                (bool(approved_only),),
             )
             row = cur.fetchone()
             return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def pick_assemblies(
+    *,
+    limit: int = 1,
+    prefer_finalized: bool = True,
+    approved_only: bool = False,
+    exclude_story_generation_ids: list[str] | None = None,
+) -> list[dict]:
+    """
+    Pick multiple story assemblies + caption data.
+
+    Ordering:
+    - finalized_first: finalized assemblies first (if prefer_finalized=True), otherwise any
+    - newest first by approved_for_assembly_at (fallback: assembly updated_at)
+    """
+    limit = int(limit)
+    if limit <= 0:
+        return []
+    exclude_story_generation_ids = exclude_story_generation_ids or []
+
+    conn = get_db_connection_readonly()
+    try:
+        with conn.cursor() as cur:
+            params: list = [bool(approved_only), exclude_story_generation_ids, limit]
+            if prefer_finalized:
+                cur.execute(
+                    """
+                    WITH latest AS (
+                      SELECT DISTINCT ON (sa.story_generation_id)
+                        sa.story_generation_id,
+                        sa.id as assembly_id,
+                        sa.status as assembly_status,
+                        sa.updated_at as assembly_updated_at,
+                        sa.assembly_data
+                      FROM story_assemblies sa
+                      WHERE sa.assembly_data IS NOT NULL
+                      ORDER BY sa.story_generation_id, sa.updated_at DESC
+                    )
+                    SELECT
+                      sg.id as story_generation_id,
+                      sg.hook_title,
+                      sg.subtitle,
+                      sg.domain_tag,
+                      sg.instagram_caption,
+                      sg.hashtags,
+                      COALESCE(sg.approved_for_assembly, FALSE) as approved_for_assembly,
+                      sg.approved_for_assembly_at,
+                      l.assembly_id,
+                      l.assembly_status,
+                      l.assembly_updated_at,
+                      l.assembly_data
+                    FROM story_generations sg
+                    JOIN latest l ON l.story_generation_id = sg.id
+                    WHERE COALESCE(sg.is_enabled, TRUE) = TRUE
+                      AND (%s = FALSE OR COALESCE(sg.approved_for_assembly, FALSE) = TRUE)
+                      AND (cardinality(%s::uuid[]) = 0 OR sg.id <> ALL(%s::uuid[]))
+                    ORDER BY
+                      CASE WHEN COALESCE(l.assembly_status, 'draft') = 'finalized' THEN 0 ELSE 1 END,
+                      COALESCE(sg.approved_for_assembly_at, l.assembly_updated_at) DESC,
+                      l.assembly_updated_at DESC
+                    LIMIT %s
+                    """,
+                    (params[0], params[1], params[1], params[2]),
+                )
+            else:
+                cur.execute(
+                    """
+                    WITH latest AS (
+                      SELECT DISTINCT ON (sa.story_generation_id)
+                        sa.story_generation_id,
+                        sa.id as assembly_id,
+                        sa.status as assembly_status,
+                        sa.updated_at as assembly_updated_at,
+                        sa.assembly_data
+                      FROM story_assemblies sa
+                      WHERE sa.assembly_data IS NOT NULL
+                      ORDER BY sa.story_generation_id, sa.updated_at DESC
+                    )
+                    SELECT
+                      sg.id as story_generation_id,
+                      sg.hook_title,
+                      sg.subtitle,
+                      sg.domain_tag,
+                      sg.instagram_caption,
+                      sg.hashtags,
+                      COALESCE(sg.approved_for_assembly, FALSE) as approved_for_assembly,
+                      sg.approved_for_assembly_at,
+                      l.assembly_id,
+                      l.assembly_status,
+                      l.assembly_updated_at,
+                      l.assembly_data
+                    FROM story_generations sg
+                    JOIN latest l ON l.story_generation_id = sg.id
+                    WHERE COALESCE(sg.is_enabled, TRUE) = TRUE
+                      AND (%s = FALSE OR COALESCE(sg.approved_for_assembly, FALSE) = TRUE)
+                      AND (cardinality(%s::uuid[]) = 0 OR sg.id <> ALL(%s::uuid[]))
+                    ORDER BY
+                      COALESCE(sg.approved_for_assembly_at, l.assembly_updated_at) DESC,
+                      l.assembly_updated_at DESC
+                    LIMIT %s
+                    """,
+                    (params[0], params[1], params[1], params[2]),
+                )
+            rows = cur.fetchall() or []
+            return [dict(r) for r in rows]
     finally:
         conn.close()
 

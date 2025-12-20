@@ -59,6 +59,8 @@ python main.py --random --dry-run --out random_test.md
 - `--dry-run`: Do not save results to the database.
 - `--out <file.md>`: Write the generated content to a Markdown file.
 - `--backfill-captions`: Backfill captions/hashtags for existing stories (see below).
+- `--regenerate`: Regenerate text for stories that already have generations (deletes old, creates new).
+- `--force`: Force regeneration even if assemblies/thumbnails exist (deletes them too).
 
 ## Backfill Captions & Hashtags
 

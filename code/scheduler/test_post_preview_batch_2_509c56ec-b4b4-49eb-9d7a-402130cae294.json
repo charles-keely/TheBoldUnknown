@@ -1,0 +1,55 @@
+{
+  "story_generation_id": "509c56ec-b4b4-49eb-9d7a-402130cae294",
+  "assembly_id": "9ccbf4f5-d366-4ab0-9e43-53e9e5049332",
+  "assembly_status": "draft",
+  "slides": [
+    {
+      "filename": "01_cover.png",
+      "sha256": "425a942351e2a50f918b2e169d53524cd8b23a05588e06336c3c9a8dbb48ec2f",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/509c56ec-b4b4-49eb-9d7a-402130cae294/20251220_203527/01_cover.png"
+    },
+    {
+      "filename": "02_text.png",
+      "sha256": "b51a48d22759da9befff94f6ff7c6185a85f473928da01a0984526759fc2eba3",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/509c56ec-b4b4-49eb-9d7a-402130cae294/20251220_203527/02_text.png"
+    },
+    {
+      "filename": "03_text.png",
+      "sha256": "eaa78d79b55939d143878fb63dda47fb95600e918881ba2a1798b71ced1f20f2",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/509c56ec-b4b4-49eb-9d7a-402130cae294/20251220_203527/03_text.png"
+    },
+    {
+      "filename": "04_text.png",
+      "sha256": "73faae621ae455b1a3d894c5f0536a7f30fe3e18876f0b35f75d0c06d35772b3",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/509c56ec-b4b4-49eb-9d7a-402130cae294/20251220_203527/04_text.png"
+    },
+    {
+      "filename": "05_text.png",
+      "sha256": "cbb621f1793c0727b5b09d7185bf268a02c428fad146bb56de9d7ab3f960e715",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/509c56ec-b4b4-49eb-9d7a-402130cae294/20251220_203527/05_text.png"
+    },
+    {
+      "filename": "06_text.png",
+      "sha256": "241b67052024b9610938c02da2257cedd2873de109b8064b6e78a35a976852a4",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/509c56ec-b4b4-49eb-9d7a-402130cae294/20251220_203527/06_text.png"
+    },
+    {
+      "filename": "07_text.png",
+      "sha256": "56fdbd7d52b6fecae84d11e40592a9df4dd1e9edcb4c690a28b9e275e08ac1a7",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/509c56ec-b4b4-49eb-9d7a-402130cae294/20251220_203527/07_text.png"
+    },
+    {
+      "filename": "08_text.png",
+      "sha256": "9f6fb43e8ce21b7ce907546470919bcec98db0281923243ddebcdfba535b720d",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/509c56ec-b4b4-49eb-9d7a-402130cae294/20251220_203527/08_text.png"
+    },
+    {
+      "filename": "09_text.png",
+      "sha256": "ac58b22e5cc517b348644a25e50d951278e7a0253a982780c056ab57129eb18e",
+      "public_url": "https://qjpzfjrwihgbhrotgrmq.supabase.co/storage/v1/object/public/story-assets/story-posts/509c56ec-b4b4-49eb-9d7a-402130cae294/20251220_203527/09_text.png"
+    }
+  ],
+  "caption": "A British naval wireless pioneer once claimed his homemade radio could \u201ctune in\u201d to fairies.\n\nIn the 1920s he treated the sounds\u2014harps, bells, and voices\u2014as a signal problem, and built a formal society to collect reports like evidence.\n\nThe odd part is not the folklore, but the paperwork: modern Britain briefly tried to measure the unseen with letterheads, tests, and a census.\n\nThe story unfolds slide by slide.\n\n#TheBoldUnknown #TheUnknownExplained #Curiosity #ScienceAndSociety #StrangeButTrue #HistoricalMystery #HiddenHistory #Anomalies #FolkloreStudies #PatternRecognition",
+  "dry_run_publish": false,
+  "db_writes": "disabled (read-only connection + no UPDATEs executed)"
+}

@@ -53,6 +53,19 @@ class Config:
         or os.getenv("IG_USER_ACCESS_TOKEN")
         or os.getenv("INSTAGRAM_USER_ACCESS_TOKEN")
     )
+    # Optional: local token cache (recommended for unattended runs).
+    # If IG_ACCESS_TOKEN is not set in env, the scheduler will read from this JSON file.
+    IG_TOKEN_STORE_PATH: str = os.getenv(
+        "SCHEDULER_IG_TOKEN_STORE",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "ig_token.json"),
+    )
+
+    # App credentials (required to auto-refresh long-lived tokens).
+    META_APP_ID: str | None = os.getenv("META_APP_ID") or os.getenv("FB_APP_ID") or os.getenv("FACEBOOK_APP_ID")
+    META_APP_SECRET: str | None = (
+        os.getenv("META_APP_SECRET") or os.getenv("FB_APP_SECRET") or os.getenv("FACEBOOK_APP_SECRET")
+    )
+    TOKEN_REFRESH_WINDOW_DAYS: int = int(os.getenv("SCHEDULER_TOKEN_REFRESH_WINDOW_DAYS", "10"))
 
     # Runner behavior
     DEFAULT_PICK_STRATEGY: str = os.getenv("SCHEDULER_PICK_STRATEGY", "finalized_first")  # finalized_first|latest_any

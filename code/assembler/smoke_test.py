@@ -25,7 +25,7 @@ async def main():
         },
     }
 
-    html = builder.build_slide(slide, 0)
+    html = builder.build_slide(slide, 0, total_slides=1)
 
     out_path = os.path.join(story_dir, "01_cover.png")
 
