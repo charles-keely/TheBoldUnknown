@@ -208,6 +208,27 @@ class SlideBuilder:
                 if bg is not None:
                     bg["src"] = _normalize_src(str(thumb), self.template_dir, self.repo_root)
 
+                    # Apply non-destructive crop/zoom if present
+                    # Matches logic in pre_assembler/static/js/template-wrapper.js
+                    try:
+                        zoom_raw = float(content.get("thumbnail_zoom", 1.0))
+                        x_raw = float(content.get("thumbnail_offset_x", 0.0))
+                        y_raw = float(content.get("thumbnail_offset_y", 0.0))
+
+                        # Clamp values
+                        zoom = max(1.0, min(4.0, zoom_raw))
+                        x = max(-2000.0, min(2000.0, x_raw))
+                        y = max(-2000.0, min(2000.0, y_raw))
+
+                        if zoom != 1.0 or x != 0.0 or y != 0.0:
+                            # Apply transform. Origin center is default for transform, but good to be explicit if CSS allows.
+                            # We inject inline style.
+                            transform = f"translate({x}px, {y}px) scale({zoom})"
+                            existing_style = bg.get("style", "")
+                            bg["style"] = f"{existing_style}; transform-origin: center center; transform: {transform};".lstrip("; ")
+                    except (ValueError, TypeError):
+                        pass
+
         elif slide_type == "text":
             text = (content.get("text") or "").strip()
             col = soup.select_one(".text-column")
