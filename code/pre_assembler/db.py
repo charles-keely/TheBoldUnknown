@@ -154,7 +154,13 @@ def get_stories_ready_for_assembly():
                         (SELECT sa.updated_at FROM story_assemblies sa 
                          WHERE sa.story_generation_id = sg.id 
                          ORDER BY sa.updated_at DESC 
-                         LIMIT 1) as assembly_updated_at
+                         LIMIT 1) as assembly_updated_at,
+
+                        -- Get full assembly data for title/subtitle overrides
+                        (SELECT sa.assembly_data FROM story_assemblies sa
+                         WHERE sa.story_generation_id = sg.id
+                         ORDER BY sa.updated_at DESC
+                         LIMIT 1) as assembly_data
                         
                     FROM story_generations sg
                     JOIN story_research sr ON sg.story_research_id = sr.id
@@ -183,7 +189,8 @@ def get_stories_ready_for_assembly():
                     ss.thumbnail_count,
                     COALESCE(ss.assembly_status, 'new') as assembly_status,
                     ss.created_at,
-                    ss.assembly_updated_at as updated_at
+                    ss.assembly_updated_at as updated_at,
+                    ss.assembly_data
                 FROM story_stats ss
                 WHERE slide_count > 0
                   AND thumbnail_count > 0
@@ -206,7 +213,28 @@ def get_stories_ready_for_assembly():
                     created_at DESC
             """
             cur.execute(query)
-            return cur.fetchall()
+            rows = cur.fetchall()
+            
+            # Post-process: Override title/subtitle/domain_tag from assembly cover slide if available
+            for row in rows:
+                ad = row.get('assembly_data')
+                if ad and isinstance(ad, dict) and 'slides' in ad:
+                    # Find cover slide
+                    for slide in ad['slides']:
+                        if isinstance(slide, dict) and slide.get('type') == 'cover':
+                            content = slide.get('content') or {}
+                            if content.get('title'):
+                                row['hook_title'] = content['title']
+                            if content.get('subtitle'):
+                                row['subtitle'] = content['subtitle']
+                            if content.get('domain_tag'):
+                                row['domain_tag'] = content['domain_tag']
+                            break
+                # Clean up to avoid sending heavy JSON downstream if not needed (though main.py filters fields)
+                if 'assembly_data' in row:
+                    del row['assembly_data']
+            
+            return rows
     except Exception as e:
         logger.error(f"Error fetching stories ready for assembly: {e}")
         return []
