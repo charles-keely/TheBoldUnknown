@@ -16,7 +16,7 @@ IMAGE FORMAT AND COMPOSITION CONSTRAINTS:
 • Subject placement: Keep all major subjects positioned in the upper half or upper-right third of the frame.
 • Lower safe zone: Avoid placing faces, focal objects, or high-contrast details in the lower 45% of the image.
 • Center-lower region: Maintain clean negative space for large headline typography.
-• Top-left corner: Keep visually calm for a circular logo overlay (90px diameter).
+• Top-left corner: Leave empty and visually calm (reserved for post-processing).
 • Top-right corner: Keep minimally detailed for a small metadata label.
 • Background style: Cinematic, grounded, and editorial — not busy or cluttered.
 • Lighting: Should guide the eye away from text-safe zones and toward the subject.

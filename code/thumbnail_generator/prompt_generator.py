@@ -77,7 +77,7 @@ Therefore:
 - Think of it like a movie poster where the title goes at the bottom
 
 SAFE ZONES:
-- Top-left corner: Keep calm for circular logo overlay (90px)
+- Top-left corner: Leave empty and visually calm (reserved for post-processing)
 - Top-right corner: Keep minimal for metadata label
 - Lower 45%: NO focal subjects - this is the text zone
 
