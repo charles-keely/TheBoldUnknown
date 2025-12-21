@@ -154,6 +154,50 @@
       border: none;
       pointer-events: none;
     }
+
+    /* Image loading overlay (per slide) */
+    .img-loading-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.18);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      transition: opacity 0.18s ease;
+      pointer-events: none;
+    }
+    .img-loading-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.86);
+      border: 1px solid rgba(0, 0, 0, 0.10);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+      color: rgba(29, 29, 31, 0.72);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .img-loading-spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      background:
+        conic-gradient(from 0deg,
+          rgba(0, 122, 255, 0.0),
+          rgba(0, 122, 255, 0.22),
+          rgba(0, 122, 255, 0.92)
+        );
+      -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      animation: apple-spin 0.9s linear infinite;
+      opacity: 0.9;
+    }
     
     /* Buttons */
     .btn {
@@ -228,6 +272,27 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
     }
+
+    /* Apple-style delete button (header) */
+    .danger-pill {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.85);
+      border: 1px solid rgba(0, 0, 0, 0.10);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      color: rgba(29, 29, 31, 0.55);
+    }
+    .danger-pill:hover { transform: scale(1.03); background: rgba(255, 59, 48, 0.10); border-color: rgba(255, 59, 48, 0.22); color: rgba(255, 59, 48, 0.85); }
+    .danger-pill:active { transform: scale(0.98); }
+    .danger-pill:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .danger-pill svg { width: 18px; height: 18px; }
     
     /* Sidebar */
     .sidebar {
@@ -372,6 +437,20 @@
             >
               <svg viewBox="0 0 24 24" fill="none">
                 <path class="check-stroke" d="M20 6L9 17l-5-5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+
+            <!-- Delete story -->
+            <button
+              type="button"
+              class="danger-pill"
+              :disabled="!story || saving || approving"
+              @click="deleteStory()"
+              title="Delete story"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m-7 0V5a2 2 0 012-2h4a2 2 0 012 2v2"/>
               </svg>
             </button>
 
@@ -721,6 +800,17 @@
                     :id="'preview-' + slide.id"
                     x-init="$nextTick(() => createIframe(slide, index))"
                   >
+                    <!-- Image loading overlay (shown when iframe reports image fetch in progress) -->
+                    <div
+                      class="img-loading-overlay"
+                      x-show="!!iframeImageLoadingStates?.[slide.id]"
+                    >
+                      <div class="img-loading-card">
+                        <div class="img-loading-spinner"></div>
+                        <span x-text="(iframeImagePendingCounts?.[slide.id] > 0) ? ('Loading image… (' + iframeImagePendingCounts[slide.id] + ')') : 'Loading image…'"></span>
+                      </div>
+                    </div>
+
                     <!-- Loading placeholder - will be replaced by iframe -->
                     <div class="w-full h-full flex items-center justify-center text-white/50 text-sm loading-placeholder">
                       <svg class="w-8 h-8 animate-spin mr-2" fill="none" viewBox="0 0 24 24">
@@ -838,7 +928,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">Current Photo</label>
               <div class="w-full aspect-video bg-gray-100 rounded-xl overflow-hidden">
                 <img 
-                  :src="editModal.content.image_url" 
+                  :src="proxyImage(editModal.content.image_url)" 
                   class="w-full h-full object-contain"
                   x-show="editModal.content.image_url"
                 >
@@ -855,7 +945,7 @@
                     :class="editModal.content.image_url === photo.image_url ? 'border-blue-500 ring-2 ring-blue-500' : 'border-transparent hover:border-gray-300'"
                     @click="selectPhoto(photo)"
                   >
-                    <img :src="photo.image_url" class="w-full h-full object-cover">
+                    <img :src="proxyImage(photo.image_url)" class="w-full h-full object-cover">
                     <div 
                       x-show="editModal.content.image_url === photo.image_url"
                       class="absolute top-1 right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center"
@@ -991,6 +1081,19 @@
         iframes: {},
         iframeReadyStates: {},
         iframeLoadedStates: {},
+        iframeImageLoadingStates: {},
+        iframeImagePendingCounts: {},
+
+        // Proxy remote images through the server cache endpoint (faster repeat loads)
+        proxyImage(url) {
+          if (!url) return url;
+          const s = String(url);
+          if (s.startsWith('/api/images/proxy')) return s;
+          if (s.startsWith('http://') || s.startsWith('https://')) {
+            return `/api/images/proxy?url=${encodeURIComponent(s)}`;
+          }
+          return s;
+        },
         
         // Computed
         get enabledSlideCount() {
@@ -1082,6 +1185,34 @@
             console.error('Failed to toggle story enabled:', err);
             this.story.is_enabled = prev;
             this.showToast('Failed to update story: ' + err.message, 'error');
+          }
+        },
+
+        async deleteStory() {
+          if (!this.storyGenerationId || !this.story) return;
+          if (this.saving || this.approving) return;
+
+          const title =
+            (this.getCoverSlide && this.getCoverSlide()?.content?.title)
+            || this.story?.hook_title
+            || 'this story';
+
+          const ok = confirm(
+            `Delete \"${title}\"?\n\nThis will permanently delete the story, its slides, thumbnails, assemblies, and any scheduled posts. This cannot be undone.`
+          );
+          if (!ok) return;
+
+          try {
+            const resp = await fetch(`/api/story-generations/${this.storyGenerationId}`, { method: 'DELETE' });
+            if (!resp.ok) {
+              throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+            }
+            this.hasUnsavedChanges = false;
+            this.showToast('Story deleted', 'success');
+            setTimeout(() => { window.location.href = '/'; }, 250);
+          } catch (err) {
+            console.error('Failed to delete story:', err);
+            this.showToast('Delete failed: ' + err.message, 'error');
           }
         },
 
@@ -1559,7 +1690,7 @@
         
         // Handle messages from iframes
         handleIframeMessage(event) {
-          const { type, slideId, content } = event.data || {};
+          const { type, slideId, content, pending, isLoading } = event.data || {};
           
           if (!type) return;
           
@@ -1573,6 +1704,12 @@
                 const slide = this.slides.find(s => s.id === slideId);
                 if (slide) this.initializeIframe(slide);
               }
+              break;
+
+            case 'IMAGE_LOADING':
+              if (!slideId) break;
+              this.iframeImagePendingCounts[slideId] = Number.isFinite(Number(pending)) ? Number(pending) : 0;
+              this.iframeImageLoadingStates[slideId] = !!isLoading;
               break;
               
             case 'TEMPLATE_LOADED':

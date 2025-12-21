@@ -60,3 +60,11 @@ def compute_etag_from_base64(b64: str) -> str:
     return f"\"{h}\""
 
 
+def compute_etag_from_bytes(data: bytes) -> str:
+    """
+    Compute a strong ETag from raw bytes.
+    """
+    h = hashlib.sha256(data).hexdigest()
+    return f"\"{h}\""
+
+

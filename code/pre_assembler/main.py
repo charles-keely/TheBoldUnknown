@@ -790,6 +790,138 @@ async def get_thumbnail_image(thumbnail_id: str, request: Request):
 
 
 # =============================================================================
+# Remote Image Proxy (Photo URL Cache)
+# =============================================================================
+
+@app.api_route("/api/images/proxy", methods=["GET", "HEAD"])
+async def proxy_remote_image(
+    request: Request,
+    url: str = Query(..., description="Remote image URL to fetch and cache"),
+):
+    """
+    Fetch a remote image (typically a Supabase Storage public URL) and serve it with:
+    - in-process LRU caching (fast repeat loads during editing)
+    - ETag support (304 responses)
+    - Cache-Control headers (browser caching)
+
+    This is used by the editor iframe wrapper so photo templates don't re-fetch
+    the same large images repeatedly.
+    """
+    from fastapi.responses import Response
+    from urllib.parse import urlparse
+    import urllib.request
+    import urllib.error
+    import time
+    import socket
+    import ipaddress
+    from starlette.concurrency import run_in_threadpool
+
+    try:
+        from .image_cache import LRUImageCache, CachedImage, compute_etag_from_bytes
+    except ImportError:
+        from image_cache import LRUImageCache, CachedImage, compute_etag_from_bytes
+
+    raw = (url or "").strip()
+    if not raw or len(raw) > 4096:
+        raise HTTPException(status_code=400, detail="Invalid url")
+
+    parsed = urlparse(raw)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only http/https URLs are allowed")
+    host = (parsed.hostname or "").lower()
+    if host in ("localhost", "127.0.0.1", "0.0.0.0", "::1"):
+        raise HTTPException(status_code=400, detail="Localhost URLs are not allowed")
+
+    # Block private / internal address ranges to reduce SSRF risk.
+    # We allow public hosts (including CDN/Supabase/etc.), but disallow anything that resolves to
+    # private, loopback, link-local, multicast, or reserved IPs.
+    def _host_resolves_to_public_ip(hostname: str) -> bool:
+        try:
+            infos = socket.getaddrinfo(hostname, None)
+            if not infos:
+                return False
+            for info in infos:
+                ip_str = info[4][0]
+                ip = ipaddress.ip_address(ip_str)
+                if (
+                    ip.is_private
+                    or ip.is_loopback
+                    or ip.is_link_local
+                    or ip.is_multicast
+                    or ip.is_reserved
+                    or ip.is_unspecified
+                ):
+                    return False
+            return True
+        except Exception:
+            return False
+
+    if not _host_resolves_to_public_ip(host):
+        raise HTTPException(status_code=400, detail="Host is not allowed")
+
+    # Process-wide cache for remote images
+    global _remote_image_cache  # type: ignore
+    try:
+        _remote_image_cache
+    except NameError:
+        _remote_image_cache = LRUImageCache(max_items=256, ttl_seconds=2 * 3600)
+
+    cache_key = raw
+    cached = _remote_image_cache.get(cache_key)
+    if cached:
+        inm = (request.headers.get("if-none-match") or "").strip()
+        headers = {
+            "ETag": cached.etag,
+            # Not immutable (remote content can change), but long enough to be useful during editing.
+            "Cache-Control": "public, max-age=86400",
+        }
+        if inm and inm == cached.etag:
+            return Response(status_code=304, headers=headers)
+        if request.method == "HEAD":
+            return Response(status_code=200, media_type=cached.mime_type, headers=headers)
+        return Response(content=cached.bytes_data, media_type=cached.mime_type, headers=headers)
+
+    def _fetch() -> tuple[str, bytes]:
+        req = urllib.request.Request(
+            raw,
+            headers={
+                "User-Agent": "TheBoldUnknown-PreAssembler/1.0",
+                "Accept": "image/*,*/*;q=0.8",
+            },
+            method="GET",
+        )
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            content_type = resp.headers.get("Content-Type") or "image/jpeg"
+            return content_type, resp.read()
+
+    # Fetch remote (threadpool so we don't block the event loop)
+    try:
+        content_type, data = await run_in_threadpool(_fetch)
+    except urllib.error.HTTPError as e:
+        raise HTTPException(status_code=int(getattr(e, "code", 502) or 502), detail="Upstream image fetch failed")
+    except Exception:
+        raise HTTPException(status_code=502, detail="Upstream image fetch failed")
+
+    # Cache + serve
+    etag = compute_etag_from_bytes(data)
+    _remote_image_cache.set(
+        cache_key,
+        CachedImage(etag=etag, mime_type=content_type.split(";")[0].strip() or "image/jpeg", bytes_data=data, cached_at=time.time()),
+    )
+
+    headers = {
+        "ETag": etag,
+        "Cache-Control": "public, max-age=86400",
+    }
+    inm = (request.headers.get("if-none-match") or "").strip()
+    if inm and inm == etag:
+        return Response(status_code=304, headers=headers)
+    if request.method == "HEAD":
+        return Response(status_code=200, media_type=content_type, headers=headers)
+    return Response(content=data, media_type=content_type, headers=headers)
+
+
+# =============================================================================
 # Health Check
 # =============================================================================
 
