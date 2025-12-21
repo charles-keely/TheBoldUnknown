@@ -1019,11 +1019,74 @@ def generate_default_assembly(story_data: dict) -> dict:
         }
     })
     
-    # 2. Distribute photos among text slides
-    # Insert photos after slide indices: [2, 5] for 7 slides, etc.
-    photo_positions = distribute_photos(len(slides), len(photos))
-    
-    photo_index = 0
+    # 2. Insert photos among text slides.
+    # Preference order:
+    # - If story_photos.metadata.placement exists for this generation, honor it.
+    # - Otherwise, fall back to even distribution.
+    generation_id = str(story.get("story_generation_id") or story_data.get("story_generation_id") or "")
+
+    def _get_photo_placement(p: dict) -> tuple[int, bool]:
+        meta = p.get("metadata") if isinstance(p.get("metadata"), dict) else {}
+        placement = meta.get("placement") if isinstance(meta, dict) else None
+        if isinstance(placement, dict) and str(placement.get("generation_id") or "") == generation_id:
+            try:
+                after = int(placement.get("after_slide_order", 0) or 0)
+            except Exception:
+                after = 0
+            enabled = bool(placement.get("enabled", False))
+            return after, enabled
+        return -1, False  # sentinel for "no placement"
+
+    # Fallback after-slide assignments (0-indexed positions → after_slide_order = pos+1)
+    fallback_positions = distribute_photos(len(slides), len(photos))
+    fallback_after_orders = [(int(pos) + 1) for pos in fallback_positions]
+
+    placements: list[dict] = []
+    any_enabled = False
+    for idx, p in enumerate(photos):
+        after, enabled = _get_photo_placement(p)
+        if after < 0:
+            # Assign an even-distribution fallback. If we have more photos than positions, append to end.
+            if idx < len(fallback_after_orders):
+                after = fallback_after_orders[idx]
+            else:
+                after = len(slides)
+            enabled = False
+        after = max(0, min(int(after), len(slides)))
+        placements.append({"photo": p, "after": after, "enabled": enabled})
+        if enabled:
+            any_enabled = True
+
+    # Ensure exactly one enabled photo by default (hero). If none were marked, enable the first.
+    if placements and not any_enabled:
+        placements[0]["enabled"] = True
+
+    photos_by_after: dict[int, list[dict]] = {}
+    overflow: list[dict] = []
+    for item in placements:
+        after = int(item["after"])
+        if after < 0:
+            overflow.append(item)
+        else:
+            photos_by_after.setdefault(after, []).append(item)
+
+    # Insert photos after cover (after_slide_order=0)
+    for item in photos_by_after.get(0, []):
+        photo = item["photo"]
+        assembly_slides.append({
+            "id": str(uuid.uuid4()),
+            "type": SlideType.PHOTO.value,
+            "template": TemplateType.PHOTOS1.value,
+            "visible": bool(item.get("enabled")),
+            "content": {
+                "image_url": photo['image_url'],
+                "caption": photo.get('caption', ''),
+                "source": photo.get('source_attribution', ''),
+                "domain_tag": story['domain_tag']
+            },
+            "source_photo_id": str(photo['id'])
+        })
+
     for i, slide in enumerate(slides):
         # Add text slide
         assembly_slides.append({
@@ -1039,14 +1102,14 @@ def generate_default_assembly(story_data: dict) -> dict:
             "source_slide_id": str(slide['id'])
         })
         
-        # Insert photo if at designated position
-        if i in photo_positions and photo_index < len(photos):
-            photo = photos[photo_index]
+        # Insert photos assigned to this slide_order
+        for item in photos_by_after.get(int(slide.get("slide_order") or (i + 1)), []):
+            photo = item["photo"]
             assembly_slides.append({
                 "id": str(uuid.uuid4()),
                 "type": SlideType.PHOTO.value,
                 "template": TemplateType.PHOTOS1.value,
-                "visible": True,
+                "visible": bool(item.get("enabled")),
                 "content": {
                     "image_url": photo['image_url'],
                     "caption": photo.get('caption', ''),
@@ -1055,7 +1118,6 @@ def generate_default_assembly(story_data: dict) -> dict:
                 },
                 "source_photo_id": str(photo['id'])
             })
-            photo_index += 1
 
     # 4. Closing slide (always last)
     # It renders primary sources from story_research; if none exist, the section is hidden client-side.

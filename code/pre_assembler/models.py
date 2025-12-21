@@ -101,6 +101,7 @@ class StoryPhoto(BaseModel):
     caption: Optional[str] = None
     source_attribution: Optional[str] = None
     concept_tag: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class StoryThumbnail(BaseModel):

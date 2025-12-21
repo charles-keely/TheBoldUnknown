@@ -58,15 +58,15 @@ The complete workflow transforms internet sources into Instagram-ready content:
 │            │                                                                     │
 │            ▼                                                                     │
 │   ┌──────────────────┐                                                          │
-│   │ PHOTO RESEARCHER │  AI query generation → Google Image Search               │
-│   │   (Visuals)      │  Deep verification: scraping + GPT-5.1 Vision            │
-│   └────────┬─────────┘  Quality scoring: Relevance, Verifiability, Usability    │
-│            │                                                                     │
-│            ▼                                                                     │
-│   ┌──────────────────┐                                                          │
 │   │  TEXT GENERATOR  │  Story slides (7-9 slides) → Cover options (6)           │
 │   │    (Writing)     │  Photo captions (documentary style)                      │
 │   └────────┬─────────┘                                                          │
+│            │                                                                     │
+│            ▼                                                                     │
+│   ┌──────────────────┐                                                          │
+│   │ PHOTO RESEARCHER │  Slide-aware search → Google Image Search                 │
+│   │   (Visuals)      │  Deep verification: scraping + GPT-5.1 Vision             │
+│   └────────┬─────────┘  Auto placement: choose best photo + where it goes        │
 │            │                                                                     │
 │            ▼                                                                     │
 │   ┌──────────────────┐                                                          │
@@ -176,40 +176,14 @@ PYTHONPATH=. ./story_researcher/venv/bin/python -m story_researcher.main --singl
 
 ---
 
-### 4. Photo Researcher (`photo_researcher/`)
-
-**Purpose:** Finds, verifies, and curates images for stories.
-
-**Pipeline:**
-1. **Generate** — GPT-5.1 creates specific search queries from research
-2. **Search** — Google Images Custom Search (top 5 per query)
-3. **Validate** — Check URL accessibility
-4. **Scrape** — Extract captions and context from source pages
-5. **Analyze** — GPT-5.1 Vision scores each image:
-   - **Relevance** (0-10) — Match to story details
-   - **Verifiability** (0-10) — Source context confirms content
-   - **Usability** (0-10) — Resolution, watermarks, cropping
-   - **AI Detection** — Flags AI-generated images
-6. **Decide** — Approved if Relevance ≥7, Verifiability ≥6, Usability ≥6, NOT AI
-
-**Model:** GPT-5.1 (queries + vision analysis)
-
-**Key Table:** `story_photos`
-
-```bash
-python3 -m photo_researcher.main --single --save-output
-```
-
----
-
-### 5. Text Generator (`text_generator/`)
+### 4. Text Generator (`text_generator/`)
 
 **Purpose:** Generates final text content for Instagram stories.
 
 **Pipeline:**
 1. **Story Slides** (7-9 slides) — Built around "Wait, What?" moments
 2. **Cover Options** (6 variations) — Viral hook + subtitle + domain tag
-3. **Photo Captions** — Documentary-style descriptions for approved photos
+3. **Photo Captions** — Documentary-style descriptions for approved photos (when available)
 
 **Model:** GPT-5.2
 
@@ -224,6 +198,33 @@ cd text_generator
 python main.py --dry-run --out test_output.md  # Preview
 python main.py --story-id <UUID>                # Process specific story
 python main.py --random --dry-run --out test.md # Random story for testing
+```
+
+---
+
+### 5. Photo Researcher (`photo_researcher/`)
+
+**Purpose:** Finds, verifies, and curates images for stories **after** slides exist so we can auto-place them.
+
+**Pipeline:**
+1. **Generate** — GPT-5.1 creates slide-aware search queries (from research + slides)
+2. **Search** — Google Images Custom Search (top 5 per query)
+3. **Validate** — Check URL accessibility
+4. **Scrape** — Extract captions and context from source pages
+5. **Analyze** — GPT-5.1 Vision scores each image:
+   - **Relevance** (0-10) — Match to story details
+   - **Verifiability** (0-10) — Source context confirms content
+   - **Usability** (0-10) — Resolution, watermarks, cropping
+   - **AI Detection** — Flags AI-generated images
+6. **Decide** — Approved if Relevance ≥7, Verifiability ≥6, Usability ≥6, NOT AI
+7. **Place** — GPT picks the best photo + where each photo belongs between slides; only the best starts enabled
+
+**Model:** GPT-5.1 (queries + vision analysis + placement)
+
+**Key Table:** `story_photos`
+
+```bash
+python3 -m photo_researcher.main --single --save-output
 ```
 
 ---
@@ -454,12 +455,12 @@ cd ../curator && python main.py
 cd ../story_researcher
 PYTHONPATH=.. python -m story_researcher.main
 
-# 4. Find photos for researched stories
+# 4. Generate text content
+cd ../text_generator && python main.py
+
+# 5. Find photos (slide-aware) and auto-place best photo (others disabled)
 cd ../photo_researcher
 python3 -m photo_researcher.main --limit 10
-
-# 5. Generate text content
-cd ../text_generator && python main.py
 
 # 6. Create cover images
 cd ../thumbnail_generator

@@ -299,7 +299,7 @@ def get_story_full_data(story_generation_id: str):
             
             # Get all approved photos for this research
             cur.execute("""
-                SELECT id, image_url, caption, source_attribution, concept_tag
+                SELECT id, image_url, caption, source_attribution, concept_tag, metadata
                 FROM story_photos
                 WHERE story_research_id = %s AND status = 'approved'
                 ORDER BY created_at
@@ -600,9 +600,62 @@ def _generate_default_assembly_data(story_data: dict) -> dict:
         }
     )
 
-    # 2) Text slides (+ interspersed photos)
-    photo_positions = _distribute_photos(len(slides), len(photos))
-    photo_index = 0
+    # 2) Text slides (+ photos placed using story_photos.metadata.placement when available)
+    generation_id = str(story.get("story_generation_id") or story.get("id") or "")
+
+    def _get_photo_placement(p: dict) -> tuple[int, bool]:
+        meta = p.get("metadata") if isinstance(p.get("metadata"), dict) else {}
+        placement = meta.get("placement") if isinstance(meta, dict) else None
+        if isinstance(placement, dict) and str(placement.get("generation_id") or "") == generation_id:
+            try:
+                after = int(placement.get("after_slide_order", 0) or 0)
+            except Exception:
+                after = 0
+            enabled = bool(placement.get("enabled", False))
+            return after, enabled
+        return -1, False
+
+    fallback_positions = _distribute_photos(len(slides), len(photos))
+    fallback_after_orders = [(int(pos) + 1) for pos in fallback_positions]
+
+    placements: list[dict] = []
+    any_enabled = False
+    for idx, p in enumerate(photos):
+        after, enabled = _get_photo_placement(p)
+        if after < 0:
+            after = fallback_after_orders[idx] if idx < len(fallback_after_orders) else len(slides)
+            enabled = False
+        after = max(0, min(int(after), len(slides)))
+        placements.append({"photo": p, "after": after, "enabled": enabled})
+        any_enabled = any_enabled or bool(enabled)
+
+    if placements and not any_enabled:
+        placements[0]["enabled"] = True
+
+    photos_by_after: dict[int, list[dict]] = {}
+    for item in placements:
+        photos_by_after.setdefault(int(item["after"]), []).append(item)
+
+    # after_slide_order=0 → after cover, before slide 1
+    for item in photos_by_after.get(0, []):
+        p = item["photo"]
+        if isinstance(p, dict):
+            assembly_slides.append(
+                {
+                    "id": str(uuid.uuid4()),
+                    "type": "photo",
+                    "template": "photos1",
+                    "visible": bool(item.get("enabled")),
+                    "content": {
+                        "image_url": p.get("image_url"),
+                        "caption": p.get("caption") or "",
+                        "source": p.get("source_attribution") or "",
+                        "domain_tag": domain_tag,
+                    },
+                    "source_photo_id": str(p.get("id")) if p.get("id") else None,
+                }
+            )
+
     for i, slide in enumerate(slides):
         if not isinstance(slide, dict):
             continue
@@ -621,15 +674,16 @@ def _generate_default_assembly_data(story_data: dict) -> dict:
             }
         )
 
-        if i in photo_positions and photo_index < len(photos):
-            p = photos[photo_index]
+        slide_order = int(slide.get("slide_order") or (i + 1))
+        for item in photos_by_after.get(slide_order, []):
+            p = item["photo"]
             if isinstance(p, dict):
                 assembly_slides.append(
                     {
                         "id": str(uuid.uuid4()),
                         "type": "photo",
                         "template": "photos1",
-                        "visible": True,
+                        "visible": bool(item.get("enabled")),
                         "content": {
                             "image_url": p.get("image_url"),
                             "caption": p.get("caption") or "",
@@ -639,7 +693,6 @@ def _generate_default_assembly_data(story_data: dict) -> dict:
                         "source_photo_id": str(p.get("id")) if p.get("id") else None,
                     }
                 )
-            photo_index += 1
 
     # 3) Closing slide
     assembly_slides.append(

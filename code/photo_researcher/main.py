@@ -1,12 +1,15 @@
 import argparse
 import sys
 import os
+import json
+from pathlib import Path
 from .db import Database
 from .generator import QueryGenerator
 from .searcher import ImageSearcher
 from .validator import Validator
 from .analyzer import VisualAnalyzer
 from .scraper import PageScraper
+from .placer import PhotoPlacer
 
 def main():
     parser = argparse.ArgumentParser(description="Photo Researcher Worker")
@@ -21,6 +24,7 @@ def main():
     validator = Validator()
     analyzer = VisualAnalyzer()
     scraper = PageScraper()
+    placer = PhotoPlacer()
 
     try:
         stories = db.fetch_stories_needing_photos(limit=1 if args.single else args.limit)
@@ -34,7 +38,9 @@ def main():
         test_report = []
 
         for story in stories:
-            print(f"\n--- Processing: {story['title']} ---")
+            story_research_id = story.get("story_research_id") or story.get("id")
+            story_generation_id = story.get("story_generation_id")
+            print(f"\n--- Processing: {story.get('title')} ---")
             
             # 1. Generate Queries
             queries = generator.generate_queries(story)
@@ -92,10 +98,65 @@ def main():
                 }
                 
                 # Save to DB
-                photo_id = db.save_photo_candidate(story['id'], candidate)
+                photo_id = db.save_photo_candidate(story_research_id, candidate)
                 print(f"Saved photo {photo_id} | Status: {candidate['status']} | Rel: {candidate['relevance_score']}")
                 
                 story_report["candidates"].append(candidate)
+
+            # 4. Placement (after text generation exists)
+            try:
+                approved = db.fetch_approved_photos(str(story_research_id))
+                if approved and story_generation_id and story.get("slides"):
+                    placement = placer.place_photos(
+                        story_title=str(story.get("title") or ""),
+                        slides=list(story.get("slides") or []),
+                        photos=[dict(p) for p in approved],
+                    )
+                    if placement and isinstance(placement, dict):
+                        hero_id = placement.get("hero_photo_id")
+                        placements = placement.get("placements") or []
+                        # Normalize placements to our persisted shape
+                        normalized = []
+                        if isinstance(placements, list):
+                            for p in placements:
+                                if not isinstance(p, dict):
+                                    continue
+                                normalized.append(
+                                    {
+                                        "photo_id": str(p.get("photo_id") or "").strip(),
+                                        "after_slide_order": p.get("after_slide_order", 0),
+                                        "enabled": bool(p.get("enabled", False)),
+                                        "reason": p.get("reason", ""),
+                                    }
+                                )
+                        # Safety: ensure exactly one enabled
+                        if hero_id:
+                            hero_id = str(hero_id).strip()
+                            found_hero = False
+                            for p in normalized:
+                                if str(p.get("photo_id")) == hero_id:
+                                    p["enabled"] = True
+                                    found_hero = True
+                                else:
+                                    p["enabled"] = False
+                            if not found_hero and normalized:
+                                normalized[0]["enabled"] = True
+                        elif normalized:
+                            normalized[0]["enabled"] = True
+                            for p in normalized[1:]:
+                                p["enabled"] = False
+
+                        db.apply_photo_placements(
+                            story_generation_id=str(story_generation_id),
+                            placements=normalized,
+                        )
+                        story_report["placement"] = {
+                            "hero_photo_id": str(hero_id) if hero_id else None,
+                            "placements": normalized,
+                        }
+                        print("Saved photo placements.")
+            except Exception as e:
+                print(f"Placement step failed: {e}")
 
             test_report.append(story_report)
             
@@ -110,6 +171,11 @@ def main():
                 for s in test_report:
                     f.write(f"## Story: {s['title']}\n")
                     f.write(f"**Queries:** {', '.join(s['queries'])}\n\n")
+                    if s.get("placement"):
+                        f.write("### Placement (auto)\n")
+                        f.write("```json\n")
+                        f.write(json.dumps(s.get("placement"), indent=2, ensure_ascii=False))
+                        f.write("\n```\n\n")
                     f.write("### Candidates:\n")
                     for c in s['candidates']:
                         f.write(f"#### Image: {c.get('status', 'unknown').upper()}\n")

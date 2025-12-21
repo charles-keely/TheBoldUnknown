@@ -9,16 +9,26 @@ class QueryGenerator:
 
     def generate_queries(self, story):
         """
-        Generates search queries based on story research.
+        Generates search queries based on story research + generated story slides (when available).
         Returns a list of query strings.
         """
         ground_truth = story.get('research_data', {}).get('ground_truth', '')
         title = story.get('title', '')
+        slides = story.get("slides") or []
+        slide_snippets = []
+        if isinstance(slides, list):
+            for s in slides:
+                if not isinstance(s, dict):
+                    continue
+                so = s.get("slide_order")
+                txt = (s.get("text_content") or "").strip()
+                if txt:
+                    slide_snippets.append(f"[Slide {so}] {txt[:300]}")
         
         system_prompt = """You are an expert photo researcher for 'TheBoldUnknown'.
 Your goal is to find high-quality, authentic images that visually represent a strange or surprising story.
 
-Based on the story details provided, generate 1-3 specific Google Image search queries.
+Based on the story details provided (including the final narrative slides), generate 2-5 specific Google Image search queries.
 
 Strategy:
 - Focus on specific nouns (artifacts, places, people, documents).
@@ -26,6 +36,7 @@ Strategy:
 - Avoid generic terms like "mystery" or "strange".
 - If the story is about a specific object, query that object's name.
 - If the story is about a place, query the place name + specific feature.
+- Prefer queries that match concrete visuals mentioned in individual slides.
 
 Output Format:
 Return ONLY a valid JSON object with a single key "queries" containing a list of strings.
@@ -34,6 +45,9 @@ Example: {"queries": ["Antikythera Mechanism fragment A", "Antikythera Mechanism
 
         user_prompt = f"""
 Story Title: {title}
+
+Story Slides (snippets):
+{chr(10).join(slide_snippets[:12])}
 
 Research Highlights:
 {ground_truth[:4000]} -- (truncated)
@@ -63,7 +77,7 @@ Research Highlights:
             if not isinstance(queries, list):
                 return [title]
                 
-            return queries[:3] # Limit to 3 max
+            return queries[:5] # Limit to 5 max
             
         except Exception as e:
             print(f"Error generating queries: {e}")

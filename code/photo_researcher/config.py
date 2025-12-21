@@ -17,6 +17,8 @@ class Config:
     # Using GPT-5.1 as requested for intelligent query generation and vision
     QUERY_GENERATOR_MODEL = "gpt-5.1"
     VISION_MODEL = "gpt-5.1" 
+    # Placement model (choose best photo + where it should be inserted among slides)
+    PLACER_MODEL = "gpt-5.1"
 
     # Google Custom Search
     GOOGLE_CUSTOM_SEARCH_KEY = os.getenv('GOOGLE_CUSTOM_SEARCH_KEY')
