@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline Run — TheBoldUnknown</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    :root {
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F5F5F7;
+      --bg-tertiary: #E8E8ED;
+      --text-primary: #1D1D1F;
+      --text-secondary: #6E6E73;
+      --text-tertiary: #86868B;
+      --accent: #007AFF;
+      --accent-hover: #0056B3;
+      --success: #34C759;
+      --warning: #FF9500;
+      --danger: #FF3B30;
+      --border: rgba(0, 0, 0, 0.1);
+      --shadow: rgba(0, 0, 0, 0.08);
+    }
+    
+    * {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 
+                   'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    
+    body {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    
+    .card {
+      background: var(--bg-primary);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+    
+    .status-running { background: #D4EDDA; color: #155724; }
+    .status-paused { background: #FFF3CD; color: #856404; }
+    .status-pending_approval { background: #FFF3CD; color: #856404; }
+    .status-completed { background: #D1ECF1; color: #0C5460; }
+    .status-failed { background: #F8D7DA; color: #721C24; }
+    .status-cancelled { background: var(--bg-tertiary); color: var(--text-secondary); }
+    
+    .mode-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    
+    .mode-auto { background: #E5F0FF; color: #2B6CB0; }
+    .mode-step { background: #FFF5E5; color: #C05621; }
+    
+    .phase-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    
+    .phase-pending { background: var(--bg-tertiary); color: var(--text-secondary); }
+    .phase-running { background: #D4EDDA; color: #155724; }
+    .phase-completed { background: #D1ECF1; color: #0C5460; }
+    .phase-failed { background: #F8D7DA; color: #721C24; }
+    .phase-skipped { background: var(--bg-tertiary); color: var(--text-tertiary); }
+    
+    /* Apple-like spinner */
+    .apple-spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background:
+        conic-gradient(from 0deg,
+          rgba(0, 122, 255, 0.0),
+          rgba(0, 122, 255, 0.22),
+          rgba(0, 122, 255, 0.90)
+        );
+      -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      animation: apple-spin 0.9s linear infinite;
+      opacity: 0.85;
+    }
+    
+    .apple-spinner-small {
+      width: 14px;
+      height: 14px;
+    }
+    
+    @keyframes apple-spin { to { transform: rotate(360deg); } }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-weight: 500;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    
+    .btn-sm {
+      padding: 8px 14px;
+      font-size: 13px;
+    }
+    
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+    
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+    
+    .btn-success:hover {
+      background: #2DA94C;
+    }
+    
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+    
+    .btn-secondary:hover {
+      background: #D8D8DC;
+    }
+    
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #E6352B;
+    }
+    
+    .btn-warning {
+      background: var(--warning);
+      color: white;
+    }
+    
+    .btn-warning:hover {
+      background: #E68800;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    /* Progress bar */
+    .progress-bar {
+      height: 8px;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    
+    .progress-bar-fill.success {
+      background: var(--success);
+    }
+    
+    /* Phase step indicators */
+    .phase-step {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    
+    .phase-step:hover {
+      background: var(--bg-secondary);
+    }
+    
+    .phase-step.active {
+      background: var(--bg-secondary);
+      border: 2px solid var(--accent);
+    }
+    
+    .phase-step.completed {
+      background: rgba(52, 199, 89, 0.08);
+    }
+    
+    .phase-indicator {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    
+    .phase-indicator.pending {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+    }
+    
+    .phase-indicator.running {
+      background: var(--accent);
+      color: white;
+    }
+    
+    .phase-indicator.completed {
+      background: var(--success);
+      color: white;
+    }
+    
+    .phase-indicator.failed {
+      background: var(--danger);
+      color: white;
+    }
+    
+    /* Story card */
+    .story-card {
+      background: var(--bg-primary);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 16px;
+      transition: all 0.2s ease;
+    }
+    
+    .story-card:hover {
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+    
+    .story-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    
+    .story-status-dot.pending { background: var(--bg-tertiary); }
+    .story-status-dot.processing { background: var(--accent); animation: pulse 1.5s infinite; }
+    .story-status-dot.completed { background: var(--success); }
+    .story-status-dot.failed { background: var(--danger); }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    /* Log viewer */
+    .log-viewer {
+      background: #1D1D1F;
+      border-radius: 12px;
+      padding: 16px;
+      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #E5E5E7;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .log-entry {
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .log-entry:last-child {
+      border-bottom: none;
+    }
+    
+    .log-time {
+      color: #6E6E73;
+      margin-right: 12px;
+    }
+    
+    .log-info { color: #007AFF; }
+    .log-success { color: #34C759; }
+    .log-warning { color: #FF9500; }
+    .log-error { color: #FF3B30; }
+    
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 14px 20px;
+      border-radius: 12px;
+      background: var(--text-primary);
+      color: white;
+      font-weight: 500;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    
+    .toast.success { background: var(--success); }
+    .toast.error { background: var(--danger); }
+    
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    /* Navigation Pills */
+    .nav-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    
+    .nav-pill:hover {
+      color: var(--text-primary);
+      background: var(--bg-secondary);
+    }
+    
+    .nav-pill.active {
+      color: var(--accent);
+      background: rgba(0, 122, 255, 0.1);
+    }
+  </style>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'apple-blue': '#007AFF',
+            'apple-gray': '#F5F5F7',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  
+  <div x-data="pipelineView()" x-init="init()" class="min-h-screen flex flex-col">
+    
+    <!-- Header -->
+    <header class="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-6 py-4">
+        <div class="flex items-center justify-between">
+          <!-- Back + Title -->
+          <div class="flex items-center gap-4">
+            <a href="/" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+              </svg>
+            </a>
+            <div>
+              <div class="flex items-center gap-3">
+                <h1 class="text-lg font-semibold text-gray-900">Pipeline Run</h1>
+                <span class="mode-badge" :class="'mode-' + (run?.mode || 'auto')" x-text="run?.mode === 'auto' ? 'Auto' : 'Step'"></span>
+              </div>
+              <p class="text-sm text-gray-500" x-text="run?.id ? 'ID: ' + run.id.substring(0, 8) : 'Loading...'"></p>
+            </div>
+            
+            <!-- Navigation Pills -->
+            <nav class="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm ml-4">
+              <a href="/" class="nav-pill active">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Pipeline
+              </a>
+              <a href="http://localhost:8000" class="nav-pill">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+                </svg>
+                Assembler
+              </a>
+              <a href="http://localhost:8000/schedule" class="nav-pill">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                Schedule
+              </a>
+            </nav>
+          </div>
+          
+          <!-- Status + Actions -->
+          <div class="flex items-center gap-4">
+            <span 
+              class="status-badge"
+              :class="'status-' + (run?.status || 'running')"
+            >
+              <template x-if="run?.status === 'running'">
+                <div class="apple-spinner apple-spinner-small"></div>
+              </template>
+              <span x-text="formatStatus(run?.status)"></span>
+            </span>
+            
+            <!-- Pause/Resume -->
+            <template x-if="run?.status === 'running'">
+              <button class="btn btn-warning btn-sm" @click="pausePipeline()" :disabled="actionInProgress">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Pause</span>
+              </button>
+            </template>
+            
+            <template x-if="run?.status === 'paused'">
+              <button class="btn btn-success btn-sm" @click="resumePipeline()" :disabled="actionInProgress">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span>Resume</span>
+              </button>
+            </template>
+            
+            <!-- Approve (Step Mode) -->
+            <template x-if="run?.status === 'pending_approval'">
+              <button class="btn btn-success btn-sm" @click="approvePhase()" :disabled="actionInProgress">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span>Approve & Continue</span>
+              </button>
+            </template>
+            
+            <!-- Cancel -->
+            <template x-if="['running', 'paused', 'pending_approval'].includes(run?.status)">
+              <button class="btn btn-danger btn-sm" @click="cancelPipeline()" :disabled="actionInProgress">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+                <span>Cancel</span>
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
+      
+      <!-- Loading State -->
+      <div x-show="loading" class="space-y-6">
+        <div class="card p-6">
+          <div class="skeleton h-6 w-48 rounded mb-4"></div>
+          <div class="skeleton h-4 w-full rounded mb-2"></div>
+          <div class="skeleton h-4 w-3/4 rounded"></div>
+        </div>
+      </div>
+      
+      <!-- Error State -->
+      <div x-show="error && !loading" class="card p-8 text-center">
+        <svg class="w-12 h-12 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">Error Loading Pipeline</h3>
+        <p class="text-gray-500 mb-4" x-text="error"></p>
+        <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+      </div>
+      
+      <!-- Pipeline Content -->
+      <div x-show="!loading && !error && run" class="space-y-6">
+        
+        <!-- Overall Progress -->
+        <div class="card p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-900">Overall Progress</h2>
+            <span class="text-sm text-gray-500" x-text="calculateProgress() + '%'"></span>
+          </div>
+          <div class="progress-bar">
+            <div 
+              class="progress-bar-fill"
+              :class="{ 'success': run?.status === 'completed' }"
+              :style="'width: ' + calculateProgress() + '%'"
+            ></div>
+          </div>
+          <div class="mt-4 flex items-center justify-between text-sm">
+            <span class="text-gray-500">
+              Started <span x-text="formatDate(run?.created_at)"></span>
+            </span>
+            <span class="text-gray-500" x-show="run?.completed_at">
+              Completed <span x-text="formatDate(run?.completed_at)"></span>
+            </span>
+          </div>
+        </div>
+        
+        <!-- Phases -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Phase Navigator -->
+          <div class="card p-4">
+            <h3 class="text-sm font-semibold text-gray-900 px-4 py-2 mb-2">Phases</h3>
+            <div class="space-y-1">
+              <template x-for="(phase, index) in phases" :key="phase.name">
+                <div 
+                  class="phase-step"
+                  :class="{ 
+                    'active': selectedPhase === phase.name,
+                    'completed': getPhaseStatus(phase.name) === 'completed'
+                  }"
+                  @click="selectedPhase = phase.name"
+                >
+                  <div 
+                    class="phase-indicator"
+                    :class="getPhaseStatus(phase.name)"
+                  >
+                    <template x-if="getPhaseStatus(phase.name) === 'completed'">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    </template>
+                    <template x-if="getPhaseStatus(phase.name) === 'running'">
+                      <div class="apple-spinner apple-spinner-small" style="background: conic-gradient(from 0deg, rgba(255,255,255,0), rgba(255,255,255,0.22), rgba(255,255,255,0.9));"></div>
+                    </template>
+                    <template x-if="getPhaseStatus(phase.name) === 'failed'">
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </template>
+                    <template x-if="getPhaseStatus(phase.name) === 'pending'">
+                      <span x-text="index + 1"></span>
+                    </template>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-medium text-gray-900 text-sm" x-text="phase.label"></p>
+                    <p class="text-xs text-gray-500 truncate" x-text="phase.description"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+          
+          <!-- Phase Details -->
+          <div class="lg:col-span-2 space-y-6">
+            
+            <!-- Phase Header -->
+            <div class="card p-6">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h3 class="text-lg font-semibold text-gray-900" x-text="getPhaseLabel(selectedPhase)"></h3>
+                  <p class="text-sm text-gray-500" x-text="getPhaseDescription(selectedPhase)"></p>
+                </div>
+                <span 
+                  class="phase-badge"
+                  :class="'phase-' + getPhaseStatus(selectedPhase)"
+                  x-text="getPhaseStatus(selectedPhase)"
+                ></span>
+              </div>
+              
+              <!-- Phase Progress -->
+              <template x-if="getPhaseStatus(selectedPhase) === 'running' || getPhaseStatus(selectedPhase) === 'completed'">
+                <div>
+                  <div class="flex items-center justify-between text-sm mb-2">
+                    <span class="text-gray-500">Progress</span>
+                    <span class="text-gray-900 font-medium" x-text="getPhaseProgress(selectedPhase) + '%'"></span>
+                  </div>
+                  <div class="progress-bar">
+                    <div 
+                      class="progress-bar-fill"
+                      :class="{ 'success': getPhaseStatus(selectedPhase) === 'completed' }"
+                      :style="'width: ' + getPhaseProgress(selectedPhase) + '%'"
+                    ></div>
+                  </div>
+                </div>
+              </template>
+            </div>
+            
+            <!-- Stories in Phase -->
+            <div class="card p-6" x-show="stories.length > 0">
+              <h4 class="text-sm font-semibold text-gray-900 mb-4">Stories</h4>
+              <div class="space-y-3">
+                <template x-for="story in getStoriesForPhase(selectedPhase)" :key="story.id">
+                  <div class="story-card">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-3">
+                        <div class="story-status-dot" :class="story.status || 'pending'"></div>
+                        <div>
+                          <p class="font-medium text-gray-900 text-sm" x-text="story.title || story.lead_url || 'Story #' + story.id.substring(0, 8)"></p>
+                          <p class="text-xs text-gray-500" x-text="story.status_message || formatStatus(story.status)"></p>
+                        </div>
+                      </div>
+                      <template x-if="story.error">
+                        <span class="text-xs text-red-600 max-w-xs truncate" x-text="story.error"></span>
+                      </template>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+            
+            <!-- Activity Log -->
+            <div class="card p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h4 class="text-sm font-semibold text-gray-900">Activity Log</h4>
+                <button 
+                  class="text-xs text-gray-500 hover:text-gray-700"
+                  @click="logs = []"
+                >
+                  Clear
+                </button>
+              </div>
+              <div class="log-viewer" x-ref="logViewer">
+                <template x-if="logs.length === 0">
+                  <div class="text-gray-500 text-center py-8">No activity yet</div>
+                </template>
+                <template x-for="log in logs" :key="log.id">
+                  <div class="log-entry">
+                    <span class="log-time" x-text="formatLogTime(log.timestamp)"></span>
+                    <span :class="'log-' + log.level" x-text="log.message"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+        
+        <!-- Completion Actions -->
+        <div x-show="run?.status === 'completed'" class="card p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900">Pipeline Complete!</h3>
+              <p class="text-sm text-gray-500">Stories are ready for review in the Pre-Assembler.</p>
+            </div>
+            <a href="http://localhost:8000" class="btn btn-primary">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+              </svg>
+              <span>Go to Pre-Assembler</span>
+            </a>
+          </div>
+        </div>
+        
+      </div>
+      
+    </main>
+    
+    <!-- Toast -->
+    <div 
+      class="toast"
+      :class="{ 'show': toast.show, 'success': toast.type === 'success', 'error': toast.type === 'error' }"
+      x-text="toast.message"
+    ></div>
+    
+  </div>
+  
+  <script>
+    function pipelineView() {
+      return {
+        runId: null,
+        run: null,
+        stories: [],
+        logs: [],
+        loading: true,
+        error: null,
+        actionInProgress: false,
+        selectedPhase: 'lead_generation',
+        eventSource: null,
+        
+        toast: { show: false, message: '', type: 'success' },
+        
+        phases: [
+          { name: 'lead_generation', label: 'Lead Generation', description: 'Discover and curate story leads' },
+          { name: 'story_research', label: 'Story Research', description: 'Deep dive research on selected stories' },
+          { name: 'text_generation', label: 'Text Generation', description: 'Generate carousel slides and captions' },
+          { name: 'photo_research', label: 'Photo Research', description: 'Find and validate images' },
+          { name: 'thumbnail_generation', label: 'Thumbnails', description: 'Create cover thumbnails' }
+        ],
+        
+        async init() {
+          // Get run ID from URL
+          const path = window.location.pathname;
+          const match = path.match(/\/pipeline\/([^\/]+)/);
+          if (!match) {
+            this.error = 'Invalid URL';
+            this.loading = false;
+            return;
+          }
+          
+          this.runId = match[1];
+          await this.loadRun();
+          this.connectSSE();
+        },
+        
+        async loadRun() {
+          try {
+            const response = await fetch(`/api/pipeline/runs/${this.runId}`);
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            this.run = data.run;
+            this.stories = data.stories || [];
+            
+            // Set selected phase to current phase
+            if (this.run?.current_phase) {
+              this.selectedPhase = this.run.current_phase;
+            }
+            
+          } catch (err) {
+            console.error('Failed to load run:', err);
+            this.error = err.message;
+          } finally {
+            this.loading = false;
+          }
+        },
+        
+        connectSSE() {
+          if (this.eventSource) {
+            this.eventSource.close();
+          }
+          
+          this.eventSource = new EventSource(`/api/pipeline/runs/${this.runId}/stream`);
+          
+          this.eventSource.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              this.handleSSEMessage(data);
+            } catch (err) {
+              console.error('Failed to parse SSE message:', err);
+            }
+          };
+          
+          this.eventSource.onerror = (err) => {
+            console.error('SSE error:', err);
+            // Reconnect after delay
+            setTimeout(() => {
+              if (['running', 'paused', 'pending_approval'].includes(this.run?.status)) {
+                this.connectSSE();
+              }
+            }, 5000);
+          };
+        },
+        
+        handleSSEMessage(data) {
+          switch (data.type) {
+            case 'status_update':
+              this.run = { ...this.run, ...data.run };
+              if (data.run.current_phase) {
+                this.selectedPhase = data.run.current_phase;
+              }
+              break;
+              
+            case 'phase_update':
+              // Update phase status in run
+              if (!this.run.phases) this.run.phases = {};
+              this.run.phases[data.phase] = data.status;
+              break;
+              
+            case 'story_update':
+              const storyIndex = this.stories.findIndex(s => s.id === data.story.id);
+              if (storyIndex >= 0) {
+                this.stories[storyIndex] = { ...this.stories[storyIndex], ...data.story };
+              } else {
+                this.stories.push(data.story);
+              }
+              break;
+              
+            case 'log':
+              this.addLog(data.level, data.message);
+              break;
+              
+            case 'progress':
+              if (!this.run.progress) this.run.progress = {};
+              this.run.progress[data.phase] = data.percent;
+              break;
+          }
+        },
+        
+        addLog(level, message) {
+          this.logs.push({
+            id: Date.now() + Math.random(),
+            timestamp: new Date(),
+            level: level,
+            message: message
+          });
+          
+          // Keep only last 100 logs
+          if (this.logs.length > 100) {
+            this.logs = this.logs.slice(-100);
+          }
+          
+          // Scroll to bottom
+          this.$nextTick(() => {
+            const viewer = this.$refs.logViewer;
+            if (viewer) {
+              viewer.scrollTop = viewer.scrollHeight;
+            }
+          });
+        },
+        
+        async pausePipeline() {
+          await this.performAction('pause', `/api/pipeline/runs/${this.runId}/pause`);
+        },
+        
+        async resumePipeline() {
+          await this.performAction('resume', `/api/pipeline/runs/${this.runId}/resume`);
+        },
+        
+        async approvePhase() {
+          await this.performAction('approve', `/api/pipeline/runs/${this.runId}/phase/approve`);
+        },
+        
+        async cancelPipeline() {
+          if (!confirm('Are you sure you want to cancel this pipeline? All data created in this run will be deleted.')) {
+            return;
+          }
+          await this.performAction('cancel', `/api/pipeline/runs/${this.runId}/cancel`);
+        },
+        
+        async performAction(action, url) {
+          this.actionInProgress = true;
+          
+          try {
+            const response = await fetch(url, { method: 'POST' });
+            if (!response.ok) {
+              const data = await response.json();
+              throw new Error(data.detail || `HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            this.run = data.run;
+            this.showToast(`Pipeline ${action}d`, 'success');
+            
+          } catch (err) {
+            console.error(`Failed to ${action} pipeline:`, err);
+            this.showToast(err.message, 'error');
+          } finally {
+            this.actionInProgress = false;
+          }
+        },
+        
+        getPhaseStatus(phaseName) {
+          if (!this.run) return 'pending';
+          
+          const phases = this.run.phases || {};
+          if (phases[phaseName]) {
+            return phases[phaseName];
+          }
+          
+          // Infer from current phase
+          const phaseOrder = this.phases.map(p => p.name);
+          const currentIndex = phaseOrder.indexOf(this.run.current_phase);
+          const phaseIndex = phaseOrder.indexOf(phaseName);
+          
+          if (phaseIndex < currentIndex) return 'completed';
+          if (phaseIndex === currentIndex && this.run.status === 'running') return 'running';
+          return 'pending';
+        },
+        
+        getPhaseProgress(phaseName) {
+          if (!this.run?.progress) return 0;
+          return this.run.progress[phaseName] || 0;
+        },
+        
+        getPhaseLabel(phaseName) {
+          const phase = this.phases.find(p => p.name === phaseName);
+          return phase?.label || phaseName;
+        },
+        
+        getPhaseDescription(phaseName) {
+          const phase = this.phases.find(p => p.name === phaseName);
+          return phase?.description || '';
+        },
+        
+        getStoriesForPhase(phaseName) {
+          // Return all stories for now, could filter by phase status
+          return this.stories;
+        },
+        
+        calculateProgress() {
+          if (!this.run) return 0;
+          if (this.run.status === 'completed') return 100;
+          
+          const phaseOrder = this.phases.map(p => p.name);
+          const currentIndex = phaseOrder.indexOf(this.run.current_phase);
+          
+          if (currentIndex < 0) return 0;
+          
+          const phaseProgress = this.getPhaseProgress(this.run.current_phase);
+          const baseProgress = (currentIndex / phaseOrder.length) * 100;
+          const phaseContribution = (1 / phaseOrder.length) * phaseProgress;
+          
+          return Math.round(baseProgress + phaseContribution);
+        },
+        
+        formatStatus(status) {
+          const labels = {
+            'running': 'Running',
+            'paused': 'Paused',
+            'pending_approval': 'Awaiting Approval',
+            'completed': 'Completed',
+            'failed': 'Failed',
+            'cancelled': 'Cancelled',
+            'pending': 'Pending',
+            'processing': 'Processing'
+          };
+          return labels[status] || status || 'Unknown';
+        },
+        
+        formatDate(dateString) {
+          if (!dateString) return '';
+          const date = new Date(dateString);
+          return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit'
+          });
+        },
+        
+        formatLogTime(date) {
+          if (!date) return '';
+          return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+        },
+        
+        showToast(message, type = 'success') {
+          this.toast = { show: true, message, type };
+          setTimeout(() => {
+            this.toast.show = false;
+          }, 3000);
+        }
+      }
+    }
+  </script>
+  
+</body>
+</html>
