@@ -3,6 +3,7 @@ Database connection and queries for the Pre-Assembler.
 """
 
 import os
+import uuid
 import logging
 import json
 import psycopg
@@ -511,13 +512,165 @@ def update_story_generation(
             )
             row = cur.fetchone()
             conn.commit()
-            return dict(row) if row else None
+            updated = dict(row) if row else None
+
+            # Best-effort: when a story is approved_for_assembly=True, ensure there's at least
+            # one draft assembly row so the Scheduler can pick it up immediately.
+            try:
+                if approved_for_assembly is True and updated:
+                    ensure_default_assembly_exists(str(story_generation_id))
+            except Exception as e:
+                logger.error(f"Failed to ensure default assembly for {story_generation_id}: {e}")
+
+            return updated
     except Exception as e:
         logger.error(f"Error updating story_generation {story_generation_id}: {e}")
         conn.rollback()
         raise
     finally:
         conn.close()
+
+
+# =============================================================================
+# Scheduler Integration Helpers
+# =============================================================================
+
+def _distribute_photos(text_count: int, photo_count: int) -> list[int]:
+    """
+    Spread photos evenly among text slides.
+    Returns list of text-slide indices after which to insert photos.
+    """
+    if photo_count <= 0 or text_count <= 0:
+        return []
+    positions: list[int] = []
+    interval = text_count / (photo_count + 1)
+    for i in range(photo_count):
+        pos = int((i + 1) * interval) - 1
+        pos = max(0, min(pos, text_count - 1))
+        positions.append(pos)
+    return positions
+
+
+def _generate_default_assembly_data(story_data: dict) -> dict:
+    """
+    Generate a default assembly JSON (same idea as `pre_assembler.main.generate_default_assembly`)
+    so approved stories can be scheduled even before a user opens the editor.
+    """
+    story = story_data.get("story") or {}
+    slides = story_data.get("slides") or []
+    photos = story_data.get("photos") or []
+    thumbnails = story_data.get("thumbnails") or []
+
+    # Pick selected thumbnail (or first)
+    selected_thumb = None
+    for t in thumbnails:
+        if isinstance(t, dict) and t.get("is_selected"):
+            selected_thumb = t
+            break
+    if not selected_thumb and thumbnails:
+        selected_thumb = thumbnails[0] if isinstance(thumbnails[0], dict) else None
+
+    domain_tag = story.get("domain_tag")
+
+    assembly_slides: list[dict] = []
+
+    # 1) Cover
+    assembly_slides.append(
+        {
+            "id": str(uuid.uuid4()),
+            "type": "cover",
+            "template": "cover3",
+            "visible": True,
+            "content": {
+                "title": story.get("hook_title"),
+                "subtitle": story.get("subtitle"),
+                "thumbnail_url": (selected_thumb or {}).get("image_url") if selected_thumb else None,
+                "thumbnail_zoom": 1.0,
+                "thumbnail_offset_x": 0.0,
+                "thumbnail_offset_y": 0.0,
+                "domain_tag": domain_tag,
+            },
+        }
+    )
+
+    # 2) Text slides (+ interspersed photos)
+    photo_positions = _distribute_photos(len(slides), len(photos))
+    photo_index = 0
+    for i, slide in enumerate(slides):
+        if not isinstance(slide, dict):
+            continue
+        assembly_slides.append(
+            {
+                "id": str(uuid.uuid4()),
+                "type": "text",
+                "template": "editorial3",
+                "visible": True,
+                "content": {
+                    "text": slide.get("text_content"),
+                    "paragraph_count": slide.get("paragraph_count"),
+                    "domain_tag": domain_tag,
+                },
+                "source_slide_id": str(slide.get("id")) if slide.get("id") else None,
+            }
+        )
+
+        if i in photo_positions and photo_index < len(photos):
+            p = photos[photo_index]
+            if isinstance(p, dict):
+                assembly_slides.append(
+                    {
+                        "id": str(uuid.uuid4()),
+                        "type": "photo",
+                        "template": "photos1",
+                        "visible": True,
+                        "content": {
+                            "image_url": p.get("image_url"),
+                            "caption": p.get("caption") or "",
+                            "source": p.get("source_attribution") or "",
+                            "domain_tag": domain_tag,
+                        },
+                        "source_photo_id": str(p.get("id")) if p.get("id") else None,
+                    }
+                )
+            photo_index += 1
+
+    # 3) Closing slide
+    assembly_slides.append(
+        {
+            "id": str(uuid.uuid4()),
+            "type": "text",
+            "template": "closing1",
+            "visible": True,
+            "content": {
+                "primary_sources": story.get("primary_sources") or [],
+                "primary_source_urls": story.get("primary_source_urls") or [],
+                "domain_tag": domain_tag,
+            },
+        }
+    )
+
+    now_iso = datetime.now().isoformat()
+    return {
+        "version": 1,
+        "story_generation_id": str(story.get("story_generation_id") or story.get("id") or ""),
+        "slides": assembly_slides,
+        "metadata": {"created_at": now_iso, "updated_at": now_iso, "hydrated_from_story": True, "hydrated_at": now_iso},
+    }
+
+
+def ensure_default_assembly_exists(story_generation_id: str) -> None:
+    """
+    Ensure at least one story_assemblies row exists for this story_generation_id.
+    If none exists, create a default draft assembly.
+    """
+    existing = get_assembly(story_generation_id)
+    if existing:
+        return
+    story_data = get_story_full_data(story_generation_id)
+    if not story_data:
+        raise ValueError(f"Story not found for assembly creation: {story_generation_id}")
+    assembly_data = _generate_default_assembly_data(story_data)
+    save_assembly(story_generation_id, assembly_data, status="draft")
 
 
 def get_db_fingerprint() -> dict:

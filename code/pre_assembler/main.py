@@ -8,7 +8,7 @@ import os
 import uuid
 from datetime import datetime
 from typing import Optional
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -59,6 +59,7 @@ try:
         TemplateType,
         UpdateStoryGenerationRequest,
     )
+    from .render_jobs import enqueue_render_for_story
 except ImportError:
     # Local-folder imports
     from config import config
@@ -95,6 +96,10 @@ except ImportError:
         TemplateType,
         UpdateStoryGenerationRequest,
     )
+    try:
+        from render_jobs import enqueue_render_for_story
+    except ImportError:
+        enqueue_render_for_story = None  # type: ignore
 
 # =============================================================================
 # App Setup
@@ -135,6 +140,21 @@ if os.path.exists(chosen_templates_dir):
 
 
 # =============================================================================
+# Schedule Router (integrated from scheduler module)
+# =============================================================================
+
+try:
+    from .schedule_routes import router as schedule_router
+    app.include_router(schedule_router)
+except ImportError:
+    try:
+        from schedule_routes import router as schedule_router
+        app.include_router(schedule_router)
+    except ImportError:
+        pass  # Schedule routes not available
+
+
+# =============================================================================
 # Page Routes
 # =============================================================================
 
@@ -145,6 +165,15 @@ async def dashboard():
     if os.path.exists(index_path):
         return FileResponse(index_path, headers={"Cache-Control": "no-store"})
     return HTMLResponse("<h1>Pre-Assembler Dashboard</h1><p>index.html not found</p>")
+
+
+@app.get("/schedule", response_class=HTMLResponse)
+async def schedule_page():
+    """Serve the schedule management page."""
+    schedule_path = os.path.join(config.STATIC_DIR, 'schedule.html')
+    if os.path.exists(schedule_path):
+        return FileResponse(schedule_path, headers={"Cache-Control": "no-store"})
+    return HTMLResponse("<h1>Schedule</h1><p>schedule.html not found</p>")
 
 
 @app.get("/editor/{story_generation_id}", response_class=HTMLResponse)
@@ -252,6 +281,17 @@ async def patch_story_generation(story_generation_id: str, request: UpdateStoryG
         )
         if not updated:
             raise HTTPException(status_code=404, detail="Story generation not found")
+
+        # If the user just approved this story, kick off a background render+upload job.
+        # This keeps scheduler previews and the worker fast without manual steps.
+        try:
+            if request.approved_for_assembly is True and callable(enqueue_render_for_story):
+                await enqueue_render_for_story(str(story_generation_id))
+        except Exception as e:
+            # Best-effort: approval should still succeed even if render queue fails.
+            import logging
+            logging.getLogger(__name__).error(f"Failed to enqueue render job for {story_generation_id}: {e}")
+
         return updated
     except HTTPException:
         raise
@@ -645,8 +685,8 @@ async def render_template(
 # Thumbnail Image Endpoint
 # =============================================================================
 
-@app.get("/api/thumbnails/{thumbnail_id}/image")
-async def get_thumbnail_image(thumbnail_id: str):
+@app.api_route("/api/thumbnails/{thumbnail_id}/image", methods=["GET", "HEAD"])
+async def get_thumbnail_image(thumbnail_id: str, request: Request):
     """
     Serve thumbnail image from database.
     
@@ -656,9 +696,34 @@ async def get_thumbnail_image(thumbnail_id: str):
     from fastapi.responses import Response
     try:
         from .db import get_db_connection
+        from .image_cache import LRUImageCache, CachedImage, compute_etag_from_base64
     except ImportError:
         from db import get_db_connection
+        from image_cache import LRUImageCache, CachedImage, compute_etag_from_base64
     import base64
+    import time
+
+    # Process-wide cache (fast path)
+    # NOTE: This is per-process; in production behind multiple workers, each keeps its own cache.
+    global _thumb_cache  # type: ignore
+    try:
+        _thumb_cache
+    except NameError:
+        _thumb_cache = LRUImageCache(max_items=512, ttl_seconds=6 * 3600)
+
+    cached = _thumb_cache.get(str(thumbnail_id))
+    if cached:
+        inm = (request.headers.get("if-none-match") or "").strip()
+        if inm and inm == cached.etag:
+            return Response(status_code=304, headers={"ETag": cached.etag, "Cache-Control": "public, max-age=31536000, immutable"})
+        return Response(
+            content=cached.bytes_data,
+            media_type=cached.mime_type,
+            headers={
+                "ETag": cached.etag,
+                "Cache-Control": "public, max-age=31536000, immutable",
+            },
+        )
     
     conn = get_db_connection()
     try:
@@ -678,13 +743,29 @@ async def get_thumbnail_image(thumbnail_id: str):
                 raise HTTPException(status_code=404, detail="Thumbnail image not found")
             
             # Decode base64 image
-            image_data = base64.b64decode(metadata['image_base64'])
+            b64 = str(metadata["image_base64"] or "")
+            image_data = base64.b64decode(b64)
             mime_type = metadata.get('mime_type', 'image/png')
+            etag = compute_etag_from_base64(b64)
+
+            # Store in cache
+            _thumb_cache.set(
+                str(thumbnail_id),
+                CachedImage(etag=etag, mime_type=mime_type, bytes_data=image_data, cached_at=time.time()),
+            )
+
+            inm = (request.headers.get("if-none-match") or "").strip()
+            if inm and inm == etag:
+                return Response(status_code=304, headers={"ETag": etag, "Cache-Control": "public, max-age=31536000, immutable"})
             
             return Response(
                 content=image_data,
                 media_type=mime_type,
-                headers={"Cache-Control": "public, max-age=86400"}  # Cache for 24 hours
+                headers={
+                    # Thumbnails are immutable by ID (new generation → new id), so allow long caching.
+                    "ETag": etag,
+                    "Cache-Control": "public, max-age=31536000, immutable",
+                },
             )
     finally:
         conn.close()

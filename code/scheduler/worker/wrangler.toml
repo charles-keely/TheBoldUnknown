@@ -1,0 +1,35 @@
+# Cloudflare Worker Configuration for TheBoldUnknown Scheduler
+# 
+# Setup:
+# 1. Install wrangler: npm install -g wrangler
+# 2. Login: wrangler login
+# 3. Set secrets (see below)
+# 4. Deploy: npm run deploy
+
+name = "tbu-scheduler"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Cron trigger: runs every minute
+[triggers]
+crons = ["* * * * *"]
+
+# Environment variables (non-secret)
+[vars]
+GRAPH_API_VERSION = "v19.0"
+TOKEN_REFRESH_WINDOW_DAYS = "7"
+MAX_RETRY_COUNT = "3"
+TIMEZONE = "America/Denver"
+
+# Secrets (set via wrangler secret put):
+# - SUPABASE_URL
+# - SUPABASE_SERVICE_ROLE_KEY
+# - IG_USER_ID
+# - META_APP_ID
+# - META_APP_SECRET
+
+# Development settings
+[dev]
+port = 8787
+local_protocol = "http"
+

@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schedule — TheBoldUnknown</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  
+  <!-- SortableJS for drag-and-drop -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    :root {
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F5F5F7;
+      --bg-tertiary: #E8E8ED;
+      --text-primary: #1D1D1F;
+      --text-secondary: #6E6E73;
+      --text-tertiary: #86868B;
+      --accent: #007AFF;
+      --accent-hover: #0056B3;
+      --success: #34C759;
+      --warning: #FF9500;
+      --danger: #FF3B30;
+      --border: rgba(0, 0, 0, 0.1);
+      --shadow: rgba(0, 0, 0, 0.08);
+    }
+    
+    * {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 
+                   'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    
+    body {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* Schedule Item Card */
+    .schedule-item {
+      background: var(--bg-primary);
+      border-radius: 14px;
+      box-shadow: 0 1px 3px var(--shadow), 0 1px 2px rgba(0,0,0,0.04);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      transition: all 0.2s ease;
+      cursor: default;
+      border: 1px solid transparent;
+    }
+    
+    .schedule-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0,0,0,0.04);
+      border-color: rgba(0, 122, 255, 0.15);
+    }
+    
+    .schedule-item.sortable-ghost {
+      opacity: 0.4;
+    }
+    
+    .schedule-item.sortable-chosen {
+      transform: scale(1.01) rotate(0.5deg);
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+      z-index: 100;
+    }
+    
+    .drag-handle {
+      cursor: grab;
+      color: var(--text-tertiary);
+      padding: 8px 4px;
+      margin: -8px -4px;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+      opacity: 0.5;
+    }
+    
+    .schedule-item:hover .drag-handle {
+      opacity: 1;
+    }
+    
+    .drag-handle:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+    }
+    
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    
+    /* Thumbnail */
+    .schedule-thumbnail {
+      width: 56px;
+      height: 70px;
+      border-radius: 8px;
+      background: var(--bg-tertiary);
+      overflow: hidden;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    
+    .schedule-thumbnail:hover {
+      transform: scale(1.05);
+    }
+    
+    .schedule-thumbnail img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    /* Time Display */
+    .time-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 72px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: background 0.15s ease;
+    }
+    
+    .time-display:hover {
+      background: var(--bg-tertiary);
+    }
+    
+    .time-value {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .time-zone {
+      font-size: 10px;
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    
+    /* Status Badges */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    
+    .status-scheduled { background: var(--bg-tertiary); color: var(--text-secondary); }
+    .status-approved { background: rgba(0, 122, 255, 0.1); color: #007AFF; }
+    .status-publishing { background: rgba(255, 149, 0, 0.1); color: #FF9500; }
+    .status-published { background: rgba(52, 199, 89, 0.1); color: #34C759; }
+    .status-failed { background: rgba(255, 59, 48, 0.1); color: #FF3B30; }
+    
+    /* Domain Tag */
+    .domain-tag {
+      display: inline-block;
+      padding: 3px 7px;
+      border-radius: 5px;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: var(--text-primary);
+      color: white;
+    }
+    
+    /* Day Headers */
+    .day-header {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 20px 0 10px 4px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    
+    .day-header:first-child {
+      padding-top: 0;
+    }
+    
+    /* Buttons */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 22px;
+      background: var(--accent);
+      color: white;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+    
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 14px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      font-weight: 500;
+      font-size: 13px;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    
+    .btn-secondary:hover {
+      background: var(--bg-tertiary);
+      border-color: rgba(0,0,0,0.15);
+    }
+    
+    .btn-icon {
+      padding: 6px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      color: var(--text-tertiary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      opacity: 0;
+    }
+    
+    .schedule-item:hover .btn-icon {
+      opacity: 1;
+    }
+    
+    .btn-icon:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-secondary);
+    }
+    
+    .btn-icon.danger:hover {
+      background: rgba(255, 59, 48, 0.1);
+      color: var(--danger);
+    }
+    
+    /* Token Health Indicator */
+    .token-health {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .token-health.healthy { background: rgba(52, 199, 89, 0.1); color: var(--success); }
+    .token-health.warning { background: rgba(255, 149, 0, 0.1); color: var(--warning); }
+    .token-health.error { background: rgba(255, 59, 48, 0.1); color: var(--danger); }
+    
+    .token-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+    
+    .token-health.healthy .token-dot { background: var(--success); }
+    .token-health.warning .token-dot { background: var(--warning); }
+    .token-health.error .token-dot { background: var(--danger); }
+    
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--bg-primary);
+      border-radius: 16px;
+      box-shadow: 0 1px 3px var(--shadow);
+    }
+    
+    /* Stats Pills */
+    .stat-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      background: var(--bg-primary);
+      border-radius: 16px;
+      padding: 28px;
+      max-width: 480px;
+      width: 90%;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+    }
+    
+    /* Preview Modal */
+    .preview-modal {
+      max-width: 600px;
+    }
+    
+    .preview-slides {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 8px 0;
+      margin: 16px 0;
+    }
+    
+    .preview-slide {
+      flex-shrink: 0;
+      width: 100px;
+      height: 125px;
+      border-radius: 8px;
+      background: var(--bg-tertiary);
+      overflow: hidden;
+    }
+    
+    .preview-slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    /* Time picker */
+    .time-picker-popover {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 8px;
+      background: var(--bg-primary);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+      padding: 16px;
+      z-index: 100;
+      min-width: 220px;
+    }
+    
+    /* Loading skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    [x-cloak] { display: none !important; }
+  </style>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'apple-blue': '#007AFF',
+            'apple-gray': '#F5F5F7',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="min-h-screen">
+  
+  <div x-data="scheduler()" x-init="init()" class="max-w-3xl mx-auto px-6 py-10">
+    
+    <!-- Header -->
+    <header class="mb-8">
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-4">
+          <a href="/" class="p-2 -ml-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all" title="Back to Pre-Assembler">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+          </a>
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-gray-900">Post Schedule</h1>
+            <p class="text-sm text-gray-500 mt-0.5">Manage your Instagram posting queue</p>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <!-- Token Health -->
+          <div 
+            class="token-health"
+            :class="{
+              'healthy': tokenStatus.is_healthy,
+              'warning': !tokenStatus.is_healthy && tokenStatus.has_token,
+              'error': !tokenStatus.has_token
+            }"
+            :title="tokenStatus.has_token ? 'Token expires in ' + tokenStatus.days_until_expiry + ' days' : 'No token configured'"
+          >
+            <span class="token-dot"></span>
+            <span x-text="tokenStatus.has_token ? (tokenStatus.is_healthy ? 'Token OK' : Math.floor(tokenStatus.days_until_expiry) + 'd') : 'No Token'"></span>
+          </div>
+          
+          <!-- Sync Button -->
+          <button @click="syncSchedule()" class="btn-secondary" :disabled="syncing">
+            <svg class="w-4 h-4" :class="{'animate-spin': syncing}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span x-text="syncing ? 'Syncing...' : 'Sync'"></span>
+          </button>
+          
+          <!-- Approve Button -->
+          <button 
+            @click="showApproveModal = true" 
+            class="btn-primary"
+            :disabled="pendingCount === 0"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <span x-text="pendingCount > 0 ? 'Approve ' + pendingCount : 'All Approved'"></span>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Stats -->
+      <div class="flex items-center gap-2 mt-5" x-show="posts.length > 0">
+        <span class="stat-pill">
+          <span x-text="posts.length"></span> total
+        </span>
+        <span class="stat-pill" x-show="approvedCount > 0">
+          <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+          <span x-text="approvedCount"></span> queued
+        </span>
+        <span class="stat-pill" x-show="publishedCount > 0">
+          <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+          <span x-text="publishedCount"></span> posted
+        </span>
+        <span class="stat-pill" x-show="failedCount > 0">
+          <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+          <span x-text="failedCount"></span> failed
+        </span>
+      </div>
+    </header>
+    
+    <!-- Loading State -->
+    <div x-show="loading" class="space-y-3">
+      <template x-for="i in 4">
+        <div class="schedule-item">
+          <div class="skeleton w-6 h-8 rounded"></div>
+          <div class="skeleton w-16 h-10 rounded"></div>
+          <div class="skeleton w-14 h-[70px] rounded-lg"></div>
+          <div class="flex-1">
+            <div class="skeleton h-4 w-3/4 rounded mb-2"></div>
+            <div class="skeleton h-3 w-1/2 rounded"></div>
+          </div>
+          <div class="skeleton w-20 h-6 rounded-full"></div>
+        </div>
+      </template>
+    </div>
+    
+    <!-- Empty State -->
+    <div x-show="!loading && posts.length === 0" class="empty-state">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gray-100 mb-5">
+        <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">No posts scheduled</h3>
+      <p class="text-gray-500 text-sm max-w-sm mx-auto mb-5">
+        Approve stories in the Pre-Assembler, then click "Sync" to add them to your schedule.
+      </p>
+      <button @click="syncSchedule()" class="btn-primary">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+        </svg>
+        Sync New Posts
+      </button>
+    </div>
+    
+    <!-- Error State -->
+    <div x-show="error" x-cloak class="bg-red-50 border border-red-200 rounded-xl p-5 mb-5">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <div>
+          <h4 class="font-semibold text-red-800 text-sm">Error</h4>
+          <p class="text-red-600 text-sm mt-0.5" x-text="error"></p>
+        </div>
+        <button @click="error = null" class="ml-auto text-red-400 hover:text-red-600">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Schedule List (grouped by day) -->
+    <div x-show="!loading && posts.length > 0">
+      <template x-for="(dayGroup, dayKey) in groupedPosts" :key="dayKey">
+        <div class="mb-6">
+          <div class="day-header" x-text="dayKey"></div>
+          <div class="space-y-2" :data-day="dayKey">
+            <template x-for="post in dayGroup" :key="post.id">
+              <div 
+                class="schedule-item"
+                :data-id="post.id"
+                :class="{
+                  'opacity-50': post.status === 'published',
+                  'border-red-200 bg-red-50/30': post.status === 'failed'
+                }"
+              >
+                <!-- Drag Handle -->
+                <div class="drag-handle" :class="{'invisible': post.status === 'published'}">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM13 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"></path>
+                  </svg>
+                </div>
+                
+                <!-- Time -->
+                <div class="time-display relative" @click="post.status !== 'published' && toggleTimeEdit(post.id)">
+                  <span class="time-value" x-text="formatTime(post.scheduled_at)"></span>
+                  <span class="time-zone">MST</span>
+                  
+                  <!-- Time Edit Popover -->
+                  <div 
+                    x-show="editingTimeId === post.id" 
+                    @click.away="editingTimeId = null"
+                    class="time-picker-popover"
+                    x-cloak
+                  >
+                    <label class="block text-xs font-medium text-gray-500 mb-2">Change scheduled time</label>
+                    <input 
+                      type="datetime-local"
+                      :value="formatDateTimeLocal(post.scheduled_at)"
+                      @change="updatePostTime(post.id, $event.target.value)"
+                      class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                  </div>
+                </div>
+                
+                <!-- Thumbnail -->
+                <div class="schedule-thumbnail" @click="openPreview(post)">
+                  <template x-if="post.thumbnail_url">
+                    <img :src="post.thumbnail_url" :alt="post.hook_title" loading="lazy">
+                  </template>
+                  <template x-if="!post.thumbnail_url">
+                    <div class="w-full h-full flex items-center justify-center">
+                      <svg class="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                      </svg>
+                    </div>
+                  </template>
+                </div>
+                
+                <!-- Content -->
+                <div class="flex-1 min-w-0 cursor-pointer" @click="openPreview(post)">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="domain-tag" x-text="post.domain_tag || 'STORY'"></span>
+                  </div>
+                  <h3 class="font-medium text-gray-900 text-sm truncate leading-tight" x-text="post.hook_title"></h3>
+                  <p class="text-xs text-gray-500 truncate mt-0.5" x-text="post.subtitle || ''"></p>
+                </div>
+                
+                <!-- Status -->
+                <div class="flex items-center gap-2">
+                  <span 
+                    class="status-badge"
+                    :class="'status-' + post.status"
+                    :title="post.error_message || ''"
+                  >
+                    <template x-if="post.status === 'scheduled'">
+                      <span class="flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Pending
+                      </span>
+                    </template>
+                    <template x-if="post.status === 'approved'">
+                      <span class="flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Queued
+                      </span>
+                    </template>
+                    <template x-if="post.status === 'publishing'">
+                      <span class="flex items-center gap-1">
+                        <svg class="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Posting
+                      </span>
+                    </template>
+                    <template x-if="post.status === 'published'">
+                      <span class="flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        Posted
+                      </span>
+                    </template>
+                    <template x-if="post.status === 'failed'">
+                      <span class="flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                        </svg>
+                        Failed
+                      </span>
+                    </template>
+                  </span>
+                  
+                  <!-- Retry button for failed posts -->
+                  <button 
+                    x-show="post.status === 'failed'"
+                    @click="retryPost(post.id)"
+                    class="btn-icon"
+                    style="opacity: 1;"
+                    title="Retry"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                  </button>
+                </div>
+                
+                <!-- Delete Button -->
+                <button 
+                  @click.stop="confirmDelete(post)"
+                  class="btn-icon danger"
+                  title="Remove from schedule"
+                  :class="{'invisible': post.status === 'published'}"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </div>
+    
+    <!-- Approve Modal -->
+    <div x-show="showApproveModal" class="modal-backdrop" x-cloak>
+      <div class="modal-content" @click.away="showApproveModal = false">
+        <h3 class="text-lg font-bold mb-2">Approve Schedule?</h3>
+        <p class="text-gray-500 text-sm mb-5">
+          This will approve <strong x-text="pendingCount"></strong> post<span x-text="pendingCount > 1 ? 's' : ''"></span> for automatic publishing and render all slides.
+        </p>
+        <div class="flex justify-end gap-2">
+          <button @click="showApproveModal = false" class="btn-secondary">Cancel</button>
+          <button @click="approveSchedule()" class="btn-primary" :disabled="approving">
+            <span x-text="approving ? 'Rendering...' : 'Approve & Render'"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div x-show="deleteModal.show" class="modal-backdrop" x-cloak>
+      <div class="modal-content" @click.away="deleteModal.show = false">
+        <h3 class="text-lg font-bold mb-2">Remove from Schedule?</h3>
+        <p class="text-gray-500 text-sm mb-5">
+          "<span x-text="deleteModal.post?.hook_title"></span>" will be removed. You can re-add it by syncing.
+        </p>
+        <div class="flex justify-end gap-2">
+          <button @click="deleteModal.show = false" class="btn-secondary">Cancel</button>
+          <button @click="deletePost()" class="btn-primary" style="background: var(--danger);">Remove</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Preview Modal -->
+    <div x-show="previewModal.show" class="modal-backdrop" x-cloak>
+      <div class="modal-content preview-modal" @click.away="previewModal.show = false">
+        <div class="flex items-start justify-between mb-4">
+          <div>
+            <span class="domain-tag" x-text="previewModal.post?.domain_tag || 'STORY'"></span>
+            <h3 class="text-lg font-bold mt-2" x-text="previewModal.post?.hook_title"></h3>
+            <p class="text-sm text-gray-500" x-text="previewModal.post?.subtitle"></p>
+          </div>
+          <button @click="previewModal.show = false" class="text-gray-400 hover:text-gray-600">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Slides Preview -->
+        <div class="preview-slides" x-show="previewModal.data?.slides?.length > 0">
+          <template x-for="slide in previewModal.data?.slides || []" :key="slide.index">
+            <div class="preview-slide">
+              <template x-if="slide.thumbnail_url">
+                <img :src="slide.thumbnail_url" :alt="'Slide ' + (slide.index + 1)">
+              </template>
+              <template x-if="!slide.thumbnail_url">
+                <div class="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                  <span x-text="slide.type"></span>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+        
+        <!-- Caption -->
+        <div x-show="previewModal.data?.caption" class="mt-4">
+          <div class="text-xs font-medium text-gray-500 mb-1">Caption</div>
+          <p class="text-sm text-gray-700 whitespace-pre-wrap" x-text="previewModal.data?.caption"></p>
+        </div>
+        
+        <!-- Hashtags -->
+        <div x-show="previewModal.data?.hashtags?.length > 0" class="mt-3">
+          <div class="text-xs font-medium text-gray-500 mb-1">Hashtags</div>
+          <p class="text-sm text-blue-600" x-text="(previewModal.data?.hashtags || []).map(t => t.startsWith('#') ? t : '#' + t).join(' ')"></p>
+        </div>
+        
+        <div class="flex justify-end mt-5">
+          <button @click="previewModal.show = false" class="btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+  
+  <script>
+    function scheduler() {
+      return {
+        posts: [],
+        loading: true,
+        error: null,
+        syncing: false,
+        approving: false,
+        
+        pendingCount: 0,
+        approvedCount: 0,
+        publishedCount: 0,
+        failedCount: 0,
+        
+        tokenStatus: { has_token: false, is_healthy: false, days_until_expiry: null },
+        
+        editingTimeId: null,
+        showApproveModal: false,
+        deleteModal: { show: false, post: null },
+        previewModal: { show: false, post: null, data: null },
+        
+        sortableInstances: [],
+        
+        // Computed: Group posts by day
+        get groupedPosts() {
+          const groups = {};
+          const today = new Date();
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          
+          for (const post of this.posts) {
+            const date = new Date(post.scheduled_at);
+            let dayKey;
+            
+            if (this.isSameDay(date, today)) {
+              dayKey = 'Today';
+            } else if (this.isSameDay(date, tomorrow)) {
+              dayKey = 'Tomorrow';
+            } else {
+              dayKey = date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                month: 'short', 
+                day: 'numeric',
+                timeZone: 'America/Denver'
+              });
+            }
+            
+            if (!groups[dayKey]) groups[dayKey] = [];
+            groups[dayKey].push(post);
+          }
+          
+          return groups;
+        },
+        
+        isSameDay(d1, d2) {
+          return d1.toDateString() === d2.toDateString();
+        },
+        
+        async init() {
+          await this.loadSchedule();
+          await this.loadTokenStatus();
+          this.$nextTick(() => this.initSortable());
+        },
+        
+        initSortable() {
+          // Clean up existing instances
+          this.sortableInstances.forEach(s => s.destroy());
+          this.sortableInstances = [];
+          
+          // Initialize sortable for each day group
+          document.querySelectorAll('[data-day]').forEach(el => {
+            const instance = new Sortable(el, {
+              handle: '.drag-handle',
+              animation: 150,
+              ghostClass: 'sortable-ghost',
+              chosenClass: 'sortable-chosen',
+              filter: '.opacity-50',
+              group: 'schedule',
+              onEnd: async (evt) => {
+                if (evt.oldIndex === evt.newIndex && evt.from === evt.to) return;
+                const postId = evt.item.dataset.id;
+                const newPosition = evt.newIndex;
+                await this.movePost(postId, newPosition);
+              },
+            });
+            this.sortableInstances.push(instance);
+          });
+        },
+        
+        async loadSchedule() {
+          this.loading = true;
+          this.error = null;
+          
+          try {
+            const response = await fetch('/api/schedule');
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const data = await response.json();
+            this.posts = data.posts || [];
+            this.pendingCount = data.pending_count || 0;
+            this.approvedCount = data.approved_count || 0;
+            this.publishedCount = data.published_count || 0;
+            this.failedCount = data.failed_count || 0;
+          } catch (err) {
+            this.error = err.message;
+          } finally {
+            this.loading = false;
+            this.$nextTick(() => this.initSortable());
+          }
+        },
+        
+        async loadTokenStatus() {
+          try {
+            const response = await fetch('/api/schedule/tokens/status');
+            if (response.ok) this.tokenStatus = await response.json();
+          } catch (err) {
+            console.error('Failed to load token status:', err);
+          }
+        },
+        
+        async syncSchedule() {
+          this.syncing = true;
+          this.error = null;
+          
+          try {
+            const response = await fetch('/api/schedule/sync', { method: 'POST' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await this.loadSchedule();
+          } catch (err) {
+            this.error = err.message;
+          } finally {
+            this.syncing = false;
+          }
+        },
+        
+        async approveSchedule() {
+          this.approving = true;
+          
+          try {
+            const response = await fetch('/api/schedule/approve', { method: 'POST' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            this.showApproveModal = false;
+            await this.loadSchedule();
+          } catch (err) {
+            this.error = err.message;
+          } finally {
+            this.approving = false;
+          }
+        },
+        
+        async movePost(postId, newPosition) {
+          try {
+            const response = await fetch(`/api/schedule/${postId}/move`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ new_position: newPosition }),
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await this.loadSchedule();
+          } catch (err) {
+            this.error = 'Failed to reorder';
+            await this.loadSchedule();
+          }
+        },
+        
+        toggleTimeEdit(postId) {
+          this.editingTimeId = this.editingTimeId === postId ? null : postId;
+        },
+        
+        async updatePostTime(postId, dateTimeValue) {
+          if (!dateTimeValue) return;
+          
+          try {
+            const scheduledAt = new Date(dateTimeValue).toISOString();
+            const response = await fetch(`/api/schedule/${postId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ scheduled_at: scheduledAt }),
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            this.editingTimeId = null;
+            await this.loadSchedule();
+          } catch (err) {
+            this.error = 'Failed to update time';
+          }
+        },
+        
+        async retryPost(postId) {
+          try {
+            const response = await fetch(`/api/schedule/${postId}/retry`, { method: 'POST' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await this.loadSchedule();
+          } catch (err) {
+            this.error = err.message;
+          }
+        },
+        
+        confirmDelete(post) {
+          this.deleteModal.post = post;
+          this.deleteModal.show = true;
+        },
+        
+        async deletePost() {
+          if (!this.deleteModal.post) return;
+          
+          try {
+            const response = await fetch(`/api/schedule/${this.deleteModal.post.id}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            this.deleteModal.show = false;
+            this.deleteModal.post = null;
+            await this.loadSchedule();
+          } catch (err) {
+            this.error = err.message;
+          }
+        },
+        
+        async openPreview(post) {
+          this.previewModal.post = post;
+          this.previewModal.show = true;
+          this.previewModal.data = null;
+          
+          try {
+            const response = await fetch(`/api/schedule/${post.id}/preview`);
+            if (response.ok) {
+              this.previewModal.data = await response.json();
+            }
+          } catch (err) {
+            console.error('Failed to load preview:', err);
+          }
+        },
+        
+        formatTime(isoString) {
+          if (!isoString) return '';
+          return new Date(isoString).toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: 'America/Denver',
+          });
+        },
+        
+        formatDateTimeLocal(isoString) {
+          if (!isoString) return '';
+          const date = new Date(isoString);
+          const offset = date.getTimezoneOffset();
+          const mstOffset = 7 * 60;
+          const adjusted = new Date(date.getTime() - (mstOffset - offset) * 60000);
+          return adjusted.toISOString().slice(0, 16);
+        },
+      };
+    }
+  </script>
+  
+</body>
+</html>
+

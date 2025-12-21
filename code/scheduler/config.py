@@ -23,10 +23,29 @@ _load_env()
 
 @dataclass(frozen=True)
 class Config:
+    # Web Server
+    HOST: str = os.getenv("SCHEDULER_HOST", "0.0.0.0")
+    PORT: int = int(os.getenv("SCHEDULER_PORT", "8001"))
+    DEBUG: bool = os.getenv("SCHEDULER_DEBUG", "true").strip().lower() in ("1", "true", "yes")
+    
+    # Static files
+    STATIC_DIR: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+    TEMPLATE_DESIGN_DIR: str = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "template_design"
+    )
+    
     # DB
     DATABASE_URL: str | None = os.getenv("DATABASE_URL")
     POSTGRES_CONNECT_TIMEOUT: int = int(os.getenv("POSTGRES_CONNECT_TIMEOUT", "5"))
     POSTGRES_STATEMENT_TIMEOUT_MS: int = int(os.getenv("POSTGRES_STATEMENT_TIMEOUT_MS", "15000"))
+    
+    # Scheduling defaults (MST = UTC-7)
+    TIMEZONE: str = os.getenv("SCHEDULER_TIMEZONE", "America/Denver")  # MST
+    POSTING_TIMES: tuple = (
+        (8, 30),   # 8:30 AM
+        (13, 0),   # 1:00 PM
+        (19, 0),   # 7:00 PM
+    )
 
     # Supabase Storage (for making rendered slides reachable by Instagram)
     SUPABASE_URL: str | None = os.getenv("SUPABASE_URL")
