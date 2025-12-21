@@ -32,6 +32,67 @@
       --border: rgba(0, 0, 0, 0.1);
       --shadow: rgba(0, 0, 0, 0.08);
     }
+
+    /* Apple-like spinner (subtle + futuristic) */
+    .apple-spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background:
+        conic-gradient(from 0deg,
+          rgba(0, 122, 255, 0.0),
+          rgba(0, 122, 255, 0.25),
+          rgba(0, 122, 255, 0.95)
+        );
+      -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      animation: apple-spin 0.9s linear infinite;
+    }
+
+    .apple-spinner.sm { width: 14px; height: 14px; }
+    .apple-spinner.lg { width: 28px; height: 28px; }
+
+    @keyframes apple-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Glassy loading overlay */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(245, 245, 247, 0.55);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .loading-card {
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 18px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.18);
+      padding: 22px 22px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 280px;
+    }
+
+    .loading-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .loading-subtitle {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
     
     * {
       font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 
@@ -107,6 +168,7 @@
       flex-shrink: 0;
       cursor: pointer;
       transition: transform 0.15s ease;
+      position: relative;
     }
     
     .schedule-thumbnail:hover {
@@ -117,6 +179,51 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .schedule-thumbnail.loaded img {
+      opacity: 1;
+    }
+
+    .schedule-thumbnail::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      display: block;
+      background: transparent;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+    }
+
+    .schedule-thumbnail::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      transform: translate(-50%, -50%);
+      border-radius: 999px;
+      background:
+        conic-gradient(from 0deg,
+          rgba(0, 122, 255, 0.0),
+          rgba(0, 122, 255, 0.22),
+          rgba(0, 122, 255, 0.85)
+        );
+      -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      animation: apple-spin 0.9s linear infinite;
+      opacity: 0.85;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+
+    .schedule-thumbnail.loaded::before {
+      opacity: 0;
+      animation: none;
     }
     
     /* Time Display */
@@ -435,19 +542,20 @@
           <div 
             class="token-health"
             :class="{
-              'healthy': tokenStatus.is_healthy,
-              'warning': !tokenStatus.is_healthy && tokenStatus.has_token,
-              'error': !tokenStatus.has_token
+              'healthy': tokenLoading || tokenStatus.is_healthy,
+              'warning': !tokenLoading && !tokenStatus.is_healthy && tokenStatus.has_token,
+              'error': !tokenLoading && !tokenStatus.has_token
             }"
-            :title="tokenStatus.has_token ? 'Token expires in ' + tokenStatus.days_until_expiry + ' days' : 'No token configured'"
+            :title="tokenLoading ? 'Checking token…' : (tokenStatus.has_token ? 'Token expires in ' + tokenStatus.days_until_expiry + ' days' : 'No token configured')"
           >
             <span class="token-dot"></span>
-            <span x-text="tokenStatus.has_token ? (tokenStatus.is_healthy ? 'Token OK' : Math.floor(tokenStatus.days_until_expiry) + 'd') : 'No Token'"></span>
+            <span x-text="tokenLoading ? 'Token OK' : (tokenStatus.has_token ? (tokenStatus.is_healthy ? 'Token OK' : Math.floor(tokenStatus.days_until_expiry) + 'd') : 'No Token')"></span>
           </div>
           
           <!-- Sync Button -->
           <button @click="syncSchedule()" class="btn-secondary" :disabled="syncing">
-            <svg class="w-4 h-4" :class="{'animate-spin': syncing}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div x-show="syncing" class="apple-spinner sm" x-cloak></div>
+            <svg x-show="!syncing" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" x-cloak>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
             </svg>
             <span x-text="syncing ? 'Syncing...' : 'Sync'"></span>
@@ -459,6 +567,7 @@
             class="btn-primary"
             :disabled="pendingCount === 0"
           >
+            <div x-show="approving" class="apple-spinner sm" x-cloak></div>
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
@@ -489,6 +598,13 @@
     
     <!-- Loading State -->
     <div x-show="loading" class="space-y-3">
+      <div class="flex items-center gap-10 py-4 px-1">
+        <div class="apple-spinner lg"></div>
+        <div>
+          <div class="loading-title">Loading schedule</div>
+          <div class="loading-subtitle">Fetching posts and thumbnails…</div>
+        </div>
+      </div>
       <template x-for="i in 4">
         <div class="schedule-item">
           <div class="skeleton w-6 h-8 rounded"></div>
@@ -587,7 +703,13 @@
                 <!-- Thumbnail -->
                 <div class="schedule-thumbnail" @click="openPreview(post)">
                   <template x-if="post.thumbnail_url">
-                    <img :src="post.thumbnail_url" :alt="post.hook_title" loading="lazy">
+                    <img
+                      :src="post.thumbnail_url"
+                      :alt="post.hook_title"
+                      loading="lazy"
+                      @load="$el.closest('.schedule-thumbnail')?.classList.add('loaded')"
+                      @error="$el.closest('.schedule-thumbnail')?.classList.add('loaded')"
+                    >
                   </template>
                   <template x-if="!post.thumbnail_url">
                     <div class="w-full h-full flex items-center justify-center">
@@ -698,8 +820,20 @@
         <div class="flex justify-end gap-2">
           <button @click="showApproveModal = false" class="btn-secondary">Cancel</button>
           <button @click="approveSchedule()" class="btn-primary" :disabled="approving">
-            <span x-text="approving ? 'Rendering...' : 'Approve & Render'"></span>
+            <div x-show="approving" class="apple-spinner sm" x-cloak></div>
+            <span x-text="approving ? 'Rendering…' : 'Approve & Render'"></span>
           </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Professional render overlay (Approve & Render / background uploads) -->
+    <div x-show="approving" class="loading-overlay" x-cloak>
+      <div class="loading-card">
+        <div class="apple-spinner lg"></div>
+        <div>
+          <div class="loading-title">Rendering & uploading</div>
+          <div class="loading-subtitle">Preparing assets for Instagram…</div>
         </div>
       </div>
     </div>
@@ -735,11 +869,18 @@
         </div>
         
         <!-- Slides Preview -->
+        <div x-show="previewModal.show && !previewModal.data" class="flex items-center gap-10 py-4">
+          <div class="apple-spinner lg"></div>
+          <div>
+            <div class="loading-title">Rendering preview</div>
+            <div class="loading-subtitle">Generating slides…</div>
+          </div>
+        </div>
         <div class="preview-slides" x-show="previewModal.data?.slides?.length > 0">
           <template x-for="slide in previewModal.data?.slides || []" :key="slide.index">
             <div class="preview-slide">
               <template x-if="slide.thumbnail_url">
-                <img :src="slide.thumbnail_url" :alt="'Slide ' + (slide.index + 1)">
+                <img :src="slide.thumbnail_url" :alt="'Slide ' + (slide.index + 1)" loading="lazy">
               </template>
               <template x-if="!slide.thumbnail_url">
                 <div class="w-full h-full flex items-center justify-center text-gray-400 text-xs">
@@ -785,6 +926,7 @@
         failedCount: 0,
         
         tokenStatus: { has_token: false, is_healthy: false, days_until_expiry: null },
+        tokenLoading: true,
         
         editingTimeId: null,
         showApproveModal: false,
@@ -894,10 +1036,13 @@
         
         async loadTokenStatus() {
           try {
+            this.tokenLoading = true;
             const response = await fetch('/api/schedule/tokens/status');
             if (response.ok) this.tokenStatus = await response.json();
           } catch (err) {
             console.error('Failed to load token status:', err);
+          } finally {
+            this.tokenLoading = false;
           }
         },
         

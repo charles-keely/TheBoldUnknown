@@ -36,6 +36,7 @@ def generate_story_slides(research_text, source_content=None):
     Returns a dict with 'slides' list.
     """
     system_prompt = f"""You are writing an Instagram carousel story for TheBoldUnknown.
+Never use double asterisks (**) in place of quotation marks—use standard double quotes (") when quoting.
 
 YOUR JOB IS TO FIND THE "WAIT, WHAT?" MOMENTS IN THE RESEARCH AND WRITE A STORY AROUND THEM.
 
@@ -280,6 +281,7 @@ def generate_cover_options(research_text, story_slides):
     story_text = "\n\n".join([f"[{s['tag']}]\n{s['text']}" for s in story_slides])
     
     system_prompt = f"""You write cover text for TheBoldUnknown Instagram posts.
+Never use double asterisks (**) in place of quotation marks—use standard double quotes (") when quoting.
 
 You've just read a completed story. Now write a hook that tells people WHAT THIS STORY IS ABOUT while making them want to read it.
 
@@ -426,6 +428,7 @@ def generate_photo_text(photo_description, research_context, source_content=None
         story_context = f"Source Article Excerpt:\n{source_content[:3000]}\n\n{story_context}"
 
     system_prompt = f"""You write photo captions for TheBoldUnknown.
+Never use double asterisks (**) in place of quotation marks—use standard double quotes (") when quoting.
 
 The caption should feel like a museum placard or a documentary chyron—informative, precise, atmospheric, never hyperbolic.
 
@@ -533,6 +536,7 @@ def generate_instagram_caption(story_slides, cover_data):
     story_text = "\n\n".join([f"[{s['tag']}]\n{s['text']}" for s in story_slides])
     
     system_prompt = f"""You write Instagram post captions for TheBoldUnknown.
+Never use double asterisks (**) in place of quotation marks—use standard double quotes (") when quoting.
 
 Your captions should behave like quiet editorial ledes—not social media captions.
 Think: A magazine subheading that happens to live on Instagram.
@@ -650,6 +654,7 @@ def generate_hashtags(story_slides, cover_data):
     story_text = "\n\n".join([f"[{s['tag']}]\n{s['text']}" for s in story_slides])
     
     system_prompt = f"""You generate hashtags for TheBoldUnknown Instagram posts.
+Never use double asterisks (**) in place of quotation marks—use standard double quotes (") when quoting.
 
 Hashtags should work like distribution infrastructure, not vibes.
 The goal is reach + correct audience routing without looking like engagement bait.

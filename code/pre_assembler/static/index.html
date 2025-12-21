@@ -124,12 +124,66 @@
       background: var(--bg-tertiary);
       border-radius: 12px;
       overflow: hidden;
+      position: relative;
     }
     
     .thumbnail-preview img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .thumbnail-preview.loaded img {
+      opacity: 1;
+    }
+
+    /* Apple-like spinner (inline, subtle) */
+    .apple-spinner {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background:
+        conic-gradient(from 0deg,
+          rgba(0, 122, 255, 0.0),
+          rgba(0, 122, 255, 0.22),
+          rgba(0, 122, 255, 0.90)
+        );
+      -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      animation: apple-spin 0.9s linear infinite;
+      opacity: 0.85;
+    }
+
+    @keyframes apple-spin { to { transform: rotate(360deg); } }
+
+    .thumbnail-preview::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background:
+        conic-gradient(from 0deg,
+          rgba(0, 122, 255, 0.0),
+          rgba(0, 122, 255, 0.22),
+          rgba(0, 122, 255, 0.90)
+        );
+      -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
+      animation: apple-spin 0.9s linear infinite;
+      opacity: 0.85;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .thumbnail-preview.loaded::before {
+      opacity: 0;
+      animation: none;
     }
     
     .stat-pill {
@@ -171,6 +225,33 @@
     .approval-check svg { width: 16px; height: 16px; }
     .approval-check .check-stroke { stroke: rgba(29, 29, 31, 0.55); }
     .approval-check.checked .check-stroke { stroke: rgba(255, 255, 255, 0.98); }
+
+    /* Apple-style delete button (overlay) */
+    .delete-pill {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid rgba(0, 0, 0, 0.10);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .card:hover .delete-pill {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .delete-pill:hover { transform: scale(1.04); background: rgba(255, 59, 48, 0.10); border-color: rgba(255, 59, 48, 0.22); }
+    .delete-pill:active { transform: scale(0.98); }
+    .delete-pill svg { width: 16px; height: 16px; }
     
     .btn-primary {
       display: inline-flex;
@@ -298,7 +379,13 @@
           <!-- Thumbnail Preview -->
           <div class="thumbnail-preview mb-4 relative">
             <template x-if="story.thumbnail_url">
-              <img :src="story.thumbnail_url" :alt="story.hook_title" loading="lazy">
+              <img
+                :src="story.thumbnail_url"
+                :alt="story.hook_title"
+                loading="lazy"
+                @load="$el.closest('.thumbnail-preview')?.classList.add('loaded')"
+                @error="$el.closest('.thumbnail-preview')?.classList.add('loaded')"
+              >
             </template>
             <template x-if="!story.thumbnail_url">
               <div class="w-full h-full flex items-center justify-center">
@@ -328,6 +415,20 @@
               >
                 <svg viewBox="0 0 24 24" fill="none">
                   <path class="check-stroke" d="M20 6L9 17l-5-5" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <!-- Delete story (overlay) -->
+            <div class="absolute top-3 left-12">
+              <button
+                type="button"
+                class="delete-pill"
+                @click.prevent.stop="confirmDeleteStory(story)"
+                title="Delete this story"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.4" d="M6 7h12M10 11v7M14 11v7M9 7l1-2h4l1 2M7 7l1 14h8l1-14"/>
                 </svg>
               </button>
             </div>
@@ -467,6 +568,30 @@
           } catch (err) {
             console.error('Failed to toggle approved_for_assembly:', err);
             story.approved_for_assembly = prev;
+            this.error = err.message;
+          }
+        },
+
+        async confirmDeleteStory(story) {
+          if (!story || !story.story_generation_id) return;
+          const title = (story.hook_title || '').trim() || 'this story';
+          const ok = confirm(`Delete \"${title}\"?\n\nThis will permanently delete the story, its slides, thumbnails, assemblies, and any scheduled posts. This cannot be undone.`);
+          if (!ok) return;
+
+          // Optimistic removal
+          const prevStories = [...this.stories];
+          this.stories = this.stories.filter(s => s.story_generation_id !== story.story_generation_id);
+
+          try {
+            const resp = await fetch(`/api/story-generations/${story.story_generation_id}`, {
+              method: 'DELETE'
+            });
+            if (!resp.ok) {
+              throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+            }
+          } catch (err) {
+            console.error('Failed to delete story:', err);
+            this.stories = prevStories;
             this.error = err.message;
           }
         },

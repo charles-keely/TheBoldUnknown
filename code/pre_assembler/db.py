@@ -188,6 +188,13 @@ def get_stories_ready_for_assembly():
                 WHERE slide_count > 0
                   AND thumbnail_count > 0
                   AND (assembly_status IS NULL OR assembly_status != 'finalized')
+                  -- Hide anything already published by the scheduler
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM scheduled_posts sp
+                      WHERE sp.story_generation_id = ss.story_generation_id
+                        AND sp.status = 'published'
+                  )
                 ORDER BY 
                     approved_for_assembly ASC,
                     is_enabled DESC,
@@ -812,4 +819,73 @@ def check_db_connection():
     except Exception as e:
         logger.error(f"Database connection check failed: {e}")
         return False
+
+
+# =============================================================================
+# Deletion
+# =============================================================================
+
+def delete_story_generation(story_generation_id: str) -> dict:
+    """
+    Permanently delete a story_generation and its dependent rows.
+
+    Order matters due to foreign keys:
+    - scheduled_posts (scheduler)
+    - story_assemblies
+    - story_thumbnails
+    - story_slides
+    - story_generations
+    """
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # scheduled_posts (if scheduler already touched it)
+            cur.execute(
+                "DELETE FROM scheduled_posts WHERE story_generation_id = %s",
+                (story_generation_id,),
+            )
+            scheduled_deleted = cur.rowcount or 0
+
+            cur.execute(
+                "DELETE FROM story_assemblies WHERE story_generation_id = %s",
+                (story_generation_id,),
+            )
+            assemblies_deleted = cur.rowcount or 0
+
+            cur.execute(
+                "DELETE FROM story_thumbnails WHERE story_generation_id = %s",
+                (story_generation_id,),
+            )
+            thumbs_deleted = cur.rowcount or 0
+
+            cur.execute(
+                "DELETE FROM story_slides WHERE story_generation_id = %s",
+                (story_generation_id,),
+            )
+            slides_deleted = cur.rowcount or 0
+
+            cur.execute(
+                "DELETE FROM story_generations WHERE id = %s",
+                (story_generation_id,),
+            )
+            sg_deleted = cur.rowcount or 0
+
+            conn.commit()
+            return {
+                "story_generation_id": str(story_generation_id),
+                "deleted": bool(sg_deleted),
+                "rows": {
+                    "scheduled_posts": int(scheduled_deleted),
+                    "story_assemblies": int(assemblies_deleted),
+                    "story_thumbnails": int(thumbs_deleted),
+                    "story_slides": int(slides_deleted),
+                    "story_generations": int(sg_deleted),
+                },
+            }
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error deleting story_generation {story_generation_id}: {e}")
+        raise
+    finally:
+        conn.close()
 

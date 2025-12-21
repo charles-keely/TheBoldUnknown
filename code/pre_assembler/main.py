@@ -33,6 +33,7 @@ try:
         get_assembly,
         save_assembly,
         update_story_generation,
+        delete_story_generation,
         get_next_story_generation_id,
         check_db_connection,
         get_db_fingerprint,
@@ -70,6 +71,7 @@ except ImportError:
         get_assembly,
         save_assembly,
         update_story_generation,
+        delete_story_generation,
         get_next_story_generation_id,
         check_db_connection,
         get_db_fingerprint,
@@ -293,6 +295,22 @@ async def patch_story_generation(story_generation_id: str, request: UpdateStoryG
             logging.getLogger(__name__).error(f"Failed to enqueue render job for {story_generation_id}: {e}")
 
         return updated
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/story-generations/{story_generation_id}")
+async def delete_story(story_generation_id: str):
+    """
+    Permanently delete a story (story_generations row) and its dependent rows.
+    """
+    try:
+        result = delete_story_generation(story_generation_id)
+        if not result.get("deleted"):
+            raise HTTPException(status_code=404, detail="Story generation not found")
+        return result
     except HTTPException:
         raise
     except Exception as e:
