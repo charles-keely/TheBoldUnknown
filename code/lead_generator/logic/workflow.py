@@ -106,9 +106,21 @@ class Workflow:
             
             lead['embedding'] = embedding
             
-            # Strict similarity check (0.85 threshold = 85% similar is a dupe)
-            if db.check_similarity(embedding, threshold=config.SIMILARITY_THRESHOLD):
-                logger.info(f"[DEDUP] Semantically similar, skipping: {title}")
+            # Durable similarity check against the cross-pipeline "story_memory" index.
+            # This prevents repeats even if old leads are later deleted/pruned.
+            match = db.check_story_memory_similarity(
+                embedding,
+                threshold=config.SIMILARITY_THRESHOLD,
+                # Treat "used before" as: already generated/assembled/published in the pipeline.
+                # We intentionally do NOT include raw leads here so that deleting/rejecting leads
+                # doesn't permanently block related stories.
+                source_types=["story_generation", "story_assembly", "scheduled_post"],
+            )
+            if match:
+                logger.info(
+                    f"[DEDUP] Semantically similar, skipping: {title} "
+                    f"(matched {match.get('source_type')}:{match.get('source_id')})"
+                )
                 db.mark_url_processed(lead.get('url'))
                 semantic_dupes += 1
                 continue
@@ -160,6 +172,21 @@ class Workflow:
             lead_id = db.insert_lead(lead)
             saved_count += 1
             logger.info(f"[SAVED] {title} (Virality: {lead['virality_score']}, Brand: {lead['brand_score']})")
+
+            # Persist semantic memory for this lead so future dedupe survives lead cleanup.
+            try:
+                db.upsert_story_memory_item(
+                    source_type="lead",
+                    source_id=str(lead_id),
+                    lead_id=str(lead_id),
+                    title=lead.get("title"),
+                    summary=lead.get("summary"),
+                    url=lead.get("url"),
+                    embedding=lead.get("embedding"),
+                )
+            except Exception as e:
+                # Best-effort: lead generation should still succeed even if memory write fails.
+                logger.warning(f"[MEMORY] Failed to upsert story_memory for lead {lead_id}: {e}")
             
             # Mark URL as processed
             db.mark_url_processed(url)

@@ -42,7 +42,7 @@ class Config:
     # Application Settings
     RSS_BATCH_SIZE = 1
     FILTER_BATCH_SIZE = 20
-    SIMILARITY_THRESHOLD = 0.75  # 85% similar = duplicate (strict)
+    SIMILARITY_THRESHOLD = 0.75  # 75% similar = duplicate (stricter = higher)
     VIRALITY_THRESHOLD = 78      # Stories must score 80+ virality to proceed
     BRAND_THRESHOLD = 70         # Stories must score 70+ brand fit to be saved
     

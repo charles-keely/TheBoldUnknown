@@ -3,6 +3,7 @@ from psycopg2.extras import RealDictCursor, execute_values
 from tenacity import retry, stop_after_attempt, wait_exponential
 from config import Config
 from utils.logger import logger
+from datetime import datetime, timezone
 
 class Database:
     def __init__(self):
@@ -90,6 +91,213 @@ class Database:
         embedding_str = str(embedding)
         result = self.fetch_one(query, (embedding_str, distance_threshold))
         return result is not None
+
+    # -------------------------------------------------------------------------
+    # Durable semantic dedupe ("story memory")
+    # -------------------------------------------------------------------------
+
+    @staticmethod
+    def _build_dedupe_text(*, title: str | None, summary: str | None, url: str | None) -> str:
+        """
+        Canonical text used for embeddings. Keep it stable so re-embedding is deterministic.
+        """
+        t = (title or "").strip()
+        s = (summary or "").strip()
+        u = (url or "").strip()
+        parts = []
+        if t:
+            parts.append(f"TITLE: {t}")
+        if s:
+            parts.append(f"SUMMARY: {s}")
+        if u:
+            parts.append(f"URL: {u}")
+        return "\n".join(parts).strip() or (t or s or u or "")
+
+    def check_story_memory_similarity(
+        self,
+        embedding: list[float],
+        *,
+        threshold: float = 0.85,
+        source_types: list[str] | None = None,
+    ) -> dict | None:
+        """
+        Checks if a semantically similar story exists in the durable `story_memory` index.
+
+        Returns:
+          A matching row (dict) if found, else None.
+        """
+        distance_threshold = 1 - float(threshold)
+        embedding_str = str(embedding)
+
+        if source_types:
+            query = """
+            SELECT source_type, source_id, lead_id, canonical_title, canonical_url, updated_at
+            FROM story_memory
+            WHERE embedding IS NOT NULL
+              AND is_active_for_dedupe = TRUE
+              AND source_type = ANY(%s::text[])
+              AND embedding <=> %s < %s
+            ORDER BY embedding <=> %s ASC
+            LIMIT 1
+            """
+            params = (source_types, embedding_str, distance_threshold, embedding_str)
+        else:
+            query = """
+            SELECT source_type, source_id, lead_id, canonical_title, canonical_url, updated_at
+            FROM story_memory
+            WHERE embedding IS NOT NULL
+              AND is_active_for_dedupe = TRUE
+              AND embedding <=> %s < %s
+            ORDER BY embedding <=> %s ASC
+            LIMIT 1
+            """
+            params = (embedding_str, distance_threshold, embedding_str)
+
+        return self.fetch_one(query, params)
+
+    def upsert_story_memory_item(
+        self,
+        *,
+        source_type: str,
+        source_id: str,
+        lead_id: str | None = None,
+        title: str | None = None,
+        summary: str | None = None,
+        url: str | None = None,
+        embedding: list[float] | None = None,
+    ) -> None:
+        """
+        Upsert a story_memory row keyed by (source_type, source_id).
+        """
+        dedupe_text = self._build_dedupe_text(title=title, summary=summary, url=url)
+        embedding_str = str(embedding) if embedding else None
+        now = datetime.now(timezone.utc)
+
+        query = """
+        INSERT INTO story_memory (
+          source_type, source_id, lead_id,
+          canonical_title, canonical_summary, canonical_url,
+          dedupe_text, embedding, is_active_for_dedupe, created_at, updated_at
+        )
+        VALUES (%s, %s::uuid, %s::uuid, %s, %s, %s, %s, %s, TRUE, %s, %s)
+        ON CONFLICT (source_type, source_id)
+        DO UPDATE SET
+          lead_id = COALESCE(EXCLUDED.lead_id, story_memory.lead_id),
+          canonical_title = COALESCE(EXCLUDED.canonical_title, story_memory.canonical_title),
+          canonical_summary = COALESCE(EXCLUDED.canonical_summary, story_memory.canonical_summary),
+          canonical_url = COALESCE(EXCLUDED.canonical_url, story_memory.canonical_url),
+          dedupe_text = EXCLUDED.dedupe_text,
+          embedding = COALESCE(EXCLUDED.embedding, story_memory.embedding),
+          updated_at = EXCLUDED.updated_at
+        """
+        self.execute_query(
+            query,
+            (
+                source_type,
+                source_id,
+                lead_id,
+                title,
+                summary,
+                url,
+                dedupe_text,
+                embedding_str,
+                now,
+                now,
+            ),
+        )
+
+    # ---- Backfill helpers (used by CLI sync command) ----
+
+    def fetch_leads_missing_story_memory(self, *, limit: int = 500) -> list[dict]:
+        """
+        Return leads that are not yet present in story_memory as source_type='lead'.
+        """
+        query = """
+        SELECT l.id::text as lead_id, l.title, l.summary, l.url
+        FROM leads l
+        WHERE NOT EXISTS (
+          SELECT 1 FROM story_memory sm
+          WHERE sm.source_type = 'lead' AND sm.source_id = l.id
+        )
+        ORDER BY l.created_at DESC
+        LIMIT %s
+        """
+        return self.fetch_all(query, (int(limit),))
+
+    def fetch_story_generations_missing_story_memory(self, *, limit: int = 500) -> list[dict]:
+        """
+        Return story_generations that are not yet present in story_memory as source_type='story_generation'.
+        """
+        query = """
+        SELECT
+          sg.id::text as story_generation_id,
+          l.id::text as lead_id,
+          l.title,
+          l.summary,
+          l.url
+        FROM story_generations sg
+        JOIN story_research sr ON sg.story_research_id = sr.id
+        JOIN leads l ON sr.lead_id = l.id
+        WHERE NOT EXISTS (
+          SELECT 1 FROM story_memory sm
+          WHERE sm.source_type = 'story_generation' AND sm.source_id = sg.id
+        )
+        ORDER BY sg.created_at DESC
+        LIMIT %s
+        """
+        return self.fetch_all(query, (int(limit),))
+
+    def fetch_finalized_assemblies_missing_story_memory(self, *, limit: int = 500) -> list[dict]:
+        """
+        Return finalized story_assemblies not yet in story_memory as source_type='story_assembly'.
+        """
+        query = """
+        SELECT
+          sa.id::text as assembly_id,
+          sg.id::text as story_generation_id,
+          l.id::text as lead_id,
+          l.title,
+          l.summary,
+          l.url
+        FROM story_assemblies sa
+        JOIN story_generations sg ON sa.story_generation_id = sg.id
+        JOIN story_research sr ON sg.story_research_id = sr.id
+        JOIN leads l ON sr.lead_id = l.id
+        WHERE sa.status = 'finalized'
+          AND NOT EXISTS (
+            SELECT 1 FROM story_memory sm
+            WHERE sm.source_type = 'story_assembly' AND sm.source_id = sa.id
+          )
+        ORDER BY sa.updated_at DESC
+        LIMIT %s
+        """
+        return self.fetch_all(query, (int(limit),))
+
+    def fetch_published_posts_missing_story_memory(self, *, limit: int = 500) -> list[dict]:
+        """
+        Return published scheduled_posts not yet in story_memory as source_type='scheduled_post'.
+        """
+        query = """
+        SELECT
+          sp.id::text as post_id,
+          sp.story_generation_id::text as story_generation_id,
+          l.id::text as lead_id,
+          l.title,
+          l.summary,
+          l.url
+        FROM scheduled_posts sp
+        JOIN story_generations sg ON sp.story_generation_id = sg.id
+        JOIN story_research sr ON sg.story_research_id = sr.id
+        JOIN leads l ON sr.lead_id = l.id
+        WHERE sp.status = 'published'
+          AND NOT EXISTS (
+            SELECT 1 FROM story_memory sm
+            WHERE sm.source_type = 'scheduled_post' AND sm.source_id = sp.id
+          )
+        ORDER BY sp.published_at DESC NULLS LAST, sp.updated_at DESC
+        LIMIT %s
+        """
+        return self.fetch_all(query, (int(limit),))
 
     def insert_lead(self, lead: dict) -> str:
         query = """
