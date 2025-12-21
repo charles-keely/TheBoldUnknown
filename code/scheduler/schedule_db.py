@@ -578,11 +578,105 @@ def reorder_schedule(post_id: str, new_position: int) -> list[dict]:
             )
             
             conn.commit()
-            return get_scheduled_posts()
+        # After changing positions, reflow the slot assignments so the schedule
+        # stays “3 per day” and drag/drop swaps which post sits in which slot.
+        reflow_schedule_slots(window_minutes=5)
+        return get_scheduled_posts()
     except Exception as e:
         conn.rollback()
         logger.error(f"Error reordering schedule: {e}")
         raise
+    finally:
+        conn.close()
+
+
+def _generate_posting_slots(*, start: datetime, count: int) -> list[datetime]:
+    """
+    Generate the next N posting slots using config.POSTING_TIMES in the configured timezone.
+    Returns timezone-aware datetimes.
+    """
+    tz = ZoneInfo(config.TIMEZONE)
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=tz)
+    else:
+        start = start.astimezone(tz)
+
+    slots: list[datetime] = []
+    current_date = start.date()
+
+    while len(slots) < int(count):
+        for hour, minute in config.POSTING_TIMES:
+            candidate = datetime.combine(current_date, time(hour, minute), tz)
+            if candidate <= start:
+                continue
+            slots.append(candidate)
+            if len(slots) >= int(count):
+                break
+        current_date += timedelta(days=1)
+
+    return slots
+
+
+def reflow_schedule_slots(*, window_minutes: int = 5) -> None:
+    """
+    Enforce the “3 per day” slot schedule by ensuring every active post
+    occupies a unique slot. After a drag/drop reorder, we keep the set of
+    existing future slots (so manual time edits are respected) and just
+    reassign which post sits in which slot.
+
+    If slots are missing/expired (e.g. in the past), we generate fresh slots
+    starting from now + window_minutes.
+    """
+    tz = ZoneInfo(config.TIMEZONE)
+    now = datetime.now(tz) + timedelta(minutes=max(0, int(window_minutes)))
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cur:
+            # Active queue: only these should consume slots.
+            cur.execute(
+                """
+                SELECT id, scheduled_at
+                FROM scheduled_posts
+                WHERE status IN ('scheduled', 'approved')
+                ORDER BY position ASC, created_at ASC
+                """
+            )
+            rows = cur.fetchall() or []
+            if not rows:
+                return
+
+            post_ids = [str(r["id"]) for r in rows]
+            existing_slots: list[datetime] = []
+            for r in rows:
+                dt = r.get("scheduled_at")
+                if not dt:
+                    continue
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=ZoneInfo("UTC")).astimezone(tz)
+                else:
+                    dt = dt.astimezone(tz)
+                # Only keep slots that are still in the future window
+                if dt > now:
+                    existing_slots.append(dt.replace(second=0, microsecond=0))
+
+            # Ensure we have exactly one slot per post. If not, generate fresh.
+            if len(existing_slots) != len(post_ids):
+                slots = _generate_posting_slots(start=now, count=len(post_ids))
+            else:
+                slots = sorted(existing_slots)
+
+            # Assign earliest slot to first post in queue order, etc.
+            for pid, slot in zip(post_ids, slots):
+                cur.execute(
+                    """
+                    UPDATE scheduled_posts
+                    SET scheduled_at = %s, updated_at = NOW()
+                    WHERE id = %s
+                    """,
+                    (slot, pid),
+                )
+            conn.commit()
     finally:
         conn.close()
 

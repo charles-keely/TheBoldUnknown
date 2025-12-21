@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from enum import Enum
 
@@ -43,6 +43,8 @@ from scheduler.schedule_db import (
 from scheduler.render import render_assembly_to_png_bytes
 from scheduler.storage import upload_bytes_to_supabase
 from scheduler.config import config as scheduler_config
+from scheduler.token_refresh import exchange_for_long_lived_token, compute_expires_at
+from scheduler.token_store import get_access_token_from_env, load_token_record
 
 from .db import get_story_full_data
 from .hydration import hydrate_assembly_from_story
@@ -213,6 +215,12 @@ class TokenStatus(BaseModel):
     days_until_expiry: Optional[float] = None
     is_healthy: bool
     needs_refresh: bool
+
+
+class SeedTokenResponse(BaseModel):
+    success: bool
+    message: str
+    expires_at: Optional[datetime] = None
 
 
 # =============================================================================
@@ -538,6 +546,89 @@ async def get_token_status():
         days_until_expiry=round(days_until, 1) if days_until is not None else None,
         is_healthy=is_healthy,
         needs_refresh=needs_refresh,
+    )
+
+
+@router.post("/tokens/seed-from-env", response_model=SeedTokenResponse)
+async def seed_token_from_env(request: Request):
+    """
+    One-time helper: seed `ig_access_tokens` from the current env token.
+
+    - Reads IG access token from env (preferred), falling back to scheduler's local token store JSON.
+    - Exchanges it to a long-lived token using META_APP_ID/META_APP_SECRET.
+    - Stores it in `ig_access_tokens` as the active token (deactivates old).
+
+    Security:
+    - Requires:
+      Authorization: Bearer <META_APP_SECRET>
+      OR
+      X-Admin-Token: <META_APP_SECRET>
+    """
+    secret = (scheduler_config.META_APP_SECRET or "").strip()
+    if not secret:
+        raise HTTPException(status_code=500, detail="META_APP_SECRET not configured on server.")
+
+    auth = (request.headers.get("authorization") or "").strip()
+    x_admin = (request.headers.get("x-admin-token") or "").strip()
+    ok = False
+    if auth.lower().startswith("bearer "):
+        ok = auth.split(" ", 1)[1].strip() == secret
+    if not ok and x_admin:
+        ok = x_admin == secret
+    if not ok:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not scheduler_config.META_APP_ID or not scheduler_config.META_APP_SECRET:
+        raise HTTPException(status_code=500, detail="META_APP_ID/META_APP_SECRET missing; cannot exchange token.")
+
+    # Resolve input token: env > token store
+    input_token = (get_access_token_from_env() or "").strip()
+    if not input_token:
+        rec = load_token_record(scheduler_config.IG_TOKEN_STORE_PATH)
+        if rec and rec.access_token:
+            input_token = rec.access_token.strip()
+    if not input_token:
+        raise HTTPException(status_code=400, detail="No IG access token found in env or token store.")
+
+    try:
+        resp = exchange_for_long_lived_token(
+            graph_api_version=scheduler_config.GRAPH_API_VERSION,
+            app_id=scheduler_config.META_APP_ID,
+            app_secret=scheduler_config.META_APP_SECRET,
+            fb_exchange_token=input_token,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Token exchange failed: {str(e)}")
+
+    new_token = resp.get("access_token")
+    expires_in = resp.get("expires_in")
+    token_type = resp.get("token_type") or "bearer"
+    if not new_token:
+        raise HTTPException(status_code=500, detail=f"Token exchange returned no access_token: {resp}")
+
+    now_ts = int(time.time())
+    expires_at_ts = compute_expires_at(
+        expires_in=int(expires_in) if expires_in is not None else None,
+        now=now_ts,
+    )
+    expires_at = datetime.fromtimestamp(expires_at_ts, tz=ZoneInfo("UTC")) if expires_at_ts else None
+
+    try:
+        # Import here to avoid circulars in some run modes
+        from scheduler.schedule_db import save_new_token
+
+        save_new_token(
+            access_token=str(new_token),
+            expires_at=expires_at or datetime.now(ZoneInfo("UTC")),
+            token_type=str(token_type),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save token to DB: {str(e)}")
+
+    return SeedTokenResponse(
+        success=True,
+        message="Seeded ig_access_tokens from env token successfully.",
+        expires_at=expires_at,
     )
 
 

@@ -848,11 +848,22 @@
               chosenClass: 'sortable-chosen',
               filter: '.opacity-50',
               group: 'schedule',
+              // Auto-scroll while dragging near edges (fixes “can’t drag to bottom”)
+              scroll: true,
+              scrollSensitivity: 80,
+              scrollSpeed: 14,
+              bubbleScroll: true,
+              forceAutoScrollFallback: true,
               onEnd: async (evt) => {
                 if (evt.oldIndex === evt.newIndex && evt.from === evt.to) return;
                 const postId = evt.item.dataset.id;
-                const newPosition = evt.newIndex;
-                await this.movePost(postId, newPosition);
+                // Compute the new global order across all day groups (DOM order).
+                // This avoids slow + incorrect “per-day index” moves.
+                const orderedIds = Array.from(document.querySelectorAll('.schedule-item[data-id]'))
+                  .map(el => el.dataset.id)
+                  .filter(Boolean);
+                const newPosition = orderedIds.indexOf(postId) + 1; // DB positions are 1-based
+                await this.movePost(postId, newPosition, orderedIds);
               },
             });
             this.sortableInstances.push(instance);
@@ -920,15 +931,35 @@
           }
         },
         
-        async movePost(postId, newPosition) {
+        async movePost(postId, newPosition, orderedIds = null) {
           try {
+            // Optimistic UI: reorder local array immediately to match the dragged DOM order.
+            // This removes the “wait for refresh” feeling.
+            if (Array.isArray(orderedIds) && orderedIds.length === this.posts.length) {
+              const byId = new Map(this.posts.map(p => [p.id, p]));
+              this.posts = orderedIds.map(id => byId.get(id)).filter(Boolean);
+            }
+
             const response = await fetch(`/api/schedule/${postId}/move`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ new_position: newPosition }),
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            await this.loadSchedule();
+
+            // Apply server result (will include updated scheduled_at due to slot reflow)
+            const data = await response.json();
+            if (data && Array.isArray(data.schedule)) {
+              this.posts = data.schedule;
+              // Update counts locally (avoid extra round-trip)
+              this.pendingCount = this.posts.filter(p => p.status === 'scheduled').length;
+              this.approvedCount = this.posts.filter(p => p.status === 'approved').length;
+              this.publishedCount = this.posts.filter(p => p.status === 'published').length;
+              this.failedCount = this.posts.filter(p => p.status === 'failed').length;
+              this.$nextTick(() => this.initSortable());
+            } else {
+              await this.loadSchedule();
+            }
           } catch (err) {
             this.error = 'Failed to reorder';
             await this.loadSchedule();
