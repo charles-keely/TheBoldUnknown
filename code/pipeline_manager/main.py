@@ -48,6 +48,21 @@ async def lifespan(app: FastAPI):
     try:
         init_schema()
         logger.info("Database schema initialized")
+
+        # Startup recovery: if a run was marked 'running' but the server restarted,
+        # the background executor is gone. Pause it so the UI doesn't misleadingly
+        # show an active run still executing.
+        try:
+            active = get_active_pipeline_run()
+            if active and active.get("status") == "running":
+                update_pipeline_run(
+                    str(active["id"]),
+                    status="paused",
+                    error_message="Server restarted; run auto-paused. Resume to continue.",
+                )
+                logger.info(f"Recovered active run {active['id']} -> paused")
+        except Exception as e:
+            logger.warning(f"Startup recovery check failed: {e}")
     except Exception as e:
         logger.error(f"Failed to initialize schema: {e}")
     yield

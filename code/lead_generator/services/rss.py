@@ -2,8 +2,8 @@ import feedparser
 import httpx
 import re
 from typing import List, Dict, Any
-from utils.logger import logger
-from utils.text import clean_text, normalize_url
+from lead_generator.utils.logger import logger
+from lead_generator.utils.text import clean_text, normalize_url
 import datetime
 
 # This list should ideally be in a config or database

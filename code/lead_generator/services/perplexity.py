@@ -1,6 +1,6 @@
 import httpx
-from config import config
-from utils.logger import logger
+from lead_generator.config import config
+from lead_generator.utils.logger import logger
 from typing import List, Dict, Any
 import json
 

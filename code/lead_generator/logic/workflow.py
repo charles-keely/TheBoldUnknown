@@ -1,12 +1,14 @@
 from typing import List
-from services.rss import rss_service
-from services.perplexity import perplexity_service
-from services.llm import llm
-from database import db
-from logic.filters import filters
-from logic.discovery import discovery_engine
-from config import config
-from utils.logger import logger
+
+# Import via the package to avoid collisions with other top-level modules (e.g. "utils")
+from lead_generator.services.rss import rss_service
+from lead_generator.services.perplexity import perplexity_service
+from lead_generator.services.llm import llm
+from lead_generator.database import db
+from lead_generator.logic.filters import filters
+from lead_generator.logic.discovery import discovery_engine
+from lead_generator.config import config
+from lead_generator.utils.logger import logger
 import time
 
 class Workflow:

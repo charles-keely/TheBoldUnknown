@@ -17,7 +17,7 @@ from .models import (
 from .db import (
     get_pipeline_run, update_pipeline_run, update_pipeline_stats, update_phase_status,
     get_leads_for_run, get_research_for_run, get_generations_for_run,
-    get_stories_for_run, get_pending_leads_for_curation
+    get_stories_for_run, get_pending_leads_for_curation, get_curated_leads_for_research
 )
 from .workers import (
     LeadGeneratorWorker,
@@ -54,9 +54,10 @@ class PipelineExecutor:
     All state is persisted to the database for session recovery.
     """
     
-    def __init__(self, run_id: str, progress_callback: Optional[Callable] = None):
+    def __init__(self, run_id: str, progress_callback: Optional[Callable] = None, run_config: Dict[str, Any] = None):
         self.run_id = run_id
         self.progress_callback = progress_callback
+        self.run_config = run_config or {}
         self._cancelled = False
         self._paused = False
         self.retry_config = RetryConfig(
@@ -266,7 +267,8 @@ class PipelineExecutor:
         
         # Step 1a: Lead Generation
         lead_worker = LeadGeneratorWorker(progress_callback=self._worker_progress_callback)
-        lead_result = await lead_worker.run(self.run_id, source="all")
+        source = self.run_config.get("source", "all")
+        lead_result = await lead_worker.run(self.run_id, source=source)
         
         if not lead_result.get('success'):
             update_phase_status(self.run_id, 'lead_generation', 'failed', 
@@ -279,7 +281,9 @@ class PipelineExecutor:
         # Step 1b: Curation (select best stories)
         if leads:
             curator_worker = CuratorWorker(progress_callback=self._worker_progress_callback)
-            curation_result = await curator_worker.run(self.run_id, leads, target_count=config.curation_story_count)
+            # Use story_count from run config, fallback to global config
+            target_count = self.run_config.get('story_count', config.curation_story_count)
+            curation_result = await curator_worker.run(self.run_id, leads, target_count=target_count)
             
             leads_approved = curation_result.get('selected_count', 0)
         else:
@@ -318,9 +322,9 @@ class PipelineExecutor:
         update_pipeline_run(self.run_id, current_phase='story_research', current_phase_index=2)
         update_phase_status(self.run_id, 'story_research', 'running', started_at=datetime.utcnow())
         
-        # Get curated leads for this run
-        leads = get_leads_for_run(self.run_id)
-        curated_leads = [l for l in leads if l.get('status') == 'curated']
+        # Get approved leads for this run that haven't been researched yet
+        # (DB constraint supports: new/approved/rejected/published)
+        curated_leads = get_curated_leads_for_research(self.run_id)
         
         if not curated_leads:
             update_phase_status(self.run_id, 'story_research', 'completed',
@@ -468,6 +472,13 @@ class PipelineExecutor:
         
         thumbnails_generated = result.get('thumbnails_generated', 0)
         completed = result.get('completed', 0)
+        errors = result.get("errors") or []
+
+        # If nothing completed and we have an error, fail the phase (like other phases).
+        if (not result.get("success")) and completed == 0:
+            error_message = (result.get("error") or (errors[0].get("error") if isinstance(errors, list) and errors else "Thumbnail generation failed"))
+            update_phase_status(self.run_id, 'thumbnail_generation', 'failed', error_message=error_message)
+            raise Exception(f"Thumbnail generation failed: {error_message}")
         
         update_pipeline_stats(self.run_id, {'thumbnails_generated': thumbnails_generated})
         update_phase_status(self.run_id, 'thumbnail_generation', 'completed',
@@ -521,7 +532,14 @@ async def start_pipeline(run_id: str, mode: PipelineMode, progress_callback: Cal
     Returns:
         Execution result
     """
-    executor = PipelineExecutor(run_id, progress_callback=progress_callback)
+    # Get the run config from the database
+    run = get_pipeline_run(run_id)
+    run_config = run.get('config', {}) if run else {}
+    if isinstance(run_config, str):
+        import json
+        run_config = json.loads(run_config)
+    
+    executor = PipelineExecutor(run_id, progress_callback=progress_callback, run_config=run_config)
     register_executor(run_id, executor)
     
     try:

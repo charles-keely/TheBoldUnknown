@@ -9,7 +9,14 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+# Add parent paths for imports
+code_dir = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(code_dir))
+
+# Also add thumbnail_generator directory for internal imports (has 'from config import config')
+thumb_gen_dir = code_dir / "thumbnail_generator"
+if str(thumb_gen_dir) not in sys.path:
+    sys.path.insert(0, str(thumb_gen_dir))
 
 logger = logging.getLogger(__name__)
 

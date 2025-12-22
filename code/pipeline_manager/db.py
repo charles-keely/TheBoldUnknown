@@ -589,7 +589,7 @@ def get_pending_leads_for_curation() -> List[Dict[str, Any]]:
     with get_db_cursor() as cur:
         cur.execute("""
             SELECT * FROM leads 
-            WHERE status = 'pending'
+            WHERE status = 'new'
             ORDER BY virality_score DESC, brand_score DESC
             LIMIT 100
         """)
@@ -597,12 +597,12 @@ def get_pending_leads_for_curation() -> List[Dict[str, Any]]:
 
 
 def get_curated_leads_for_research(run_id: str) -> List[Dict[str, Any]]:
-    """Get curated leads ready for research."""
+    """Get curated/approved leads ready for research."""
     with get_db_cursor() as cur:
         cur.execute("""
             SELECT l.* FROM leads l
             WHERE l.pipeline_run_id = %s
-            AND l.status = 'curated'
+            AND l.status = 'approved'
             AND NOT EXISTS (
                 SELECT 1 FROM story_research sr WHERE sr.lead_id = l.id
             )

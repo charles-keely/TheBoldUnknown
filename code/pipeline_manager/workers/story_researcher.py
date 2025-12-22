@@ -10,7 +10,14 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
 import uuid
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+# Add parent paths for imports
+code_dir = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(code_dir))
+
+# Also add story_researcher directory for internal imports
+story_researcher_dir = code_dir / "story_researcher"
+if str(story_researcher_dir) not in sys.path:
+    sys.path.insert(0, str(story_researcher_dir))
 
 logger = logging.getLogger(__name__)
 

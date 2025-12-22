@@ -1,8 +1,8 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor, execute_values
 from tenacity import retry, stop_after_attempt, wait_exponential
-from config import Config
-from utils.logger import logger
+from lead_generator.config import Config
+from lead_generator.utils.logger import logger
 from datetime import datetime, timezone
 
 class Database:

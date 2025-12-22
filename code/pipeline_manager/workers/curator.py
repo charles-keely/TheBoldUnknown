@@ -9,7 +9,14 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+# Add parent paths for imports
+code_dir = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(code_dir))
+
+# Also add curator directory for internal imports
+curator_dir = code_dir / "curator"
+if str(curator_dir) not in sys.path:
+    sys.path.insert(0, str(curator_dir))
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +72,8 @@ class CuratorWorker:
             
             self._emit_progress("running", {"message": "AI curator selecting stories..."})
             
-            # Run curation
-            result = curator.curate_stories(candidates)
+            # Run curation (honor requested target_count)
+            result = curator.curate_stories(candidates, target_count=target_count)
             
             selected_ids = []
             selected_stories = []
@@ -79,10 +86,10 @@ class CuratorWorker:
                     "reasoning": story.reasoning
                 })
                 
-                # Update lead status to 'curated'
+                # Update lead status to 'approved' (matches DB constraint: new/approved/rejected/published)
                 with get_db_cursor() as cur:
                     cur.execute("""
-                        UPDATE leads SET status = 'curated' WHERE id = %s
+                        UPDATE leads SET status = 'approved' WHERE id = %s
                     """, (story.id,))
             
             self._emit_progress("completed", {

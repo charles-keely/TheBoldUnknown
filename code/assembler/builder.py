@@ -236,8 +236,9 @@ class SlideBuilder:
             if domain_line is not None:
                 domain_line.string = str(domain_tag).upper()
                 return
+            # Always replace .meta-data content with the domain tag (matches template-wrapper.js behavior)
             meta = soup.select_one(".meta-data")
-            if meta and not meta.get_text(strip=True):
+            if meta:
                 meta.string = str(domain_tag).upper()
 
         # Best-effort domain tag injection (some templates leave this for postMessage)

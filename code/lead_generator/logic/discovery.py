@@ -1,7 +1,7 @@
 import random
 from typing import List
-from services.llm import llm
-from utils.logger import logger
+from lead_generator.services.llm import llm
+from lead_generator.utils.logger import logger
 import json
 import datetime
 

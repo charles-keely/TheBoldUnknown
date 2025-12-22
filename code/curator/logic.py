@@ -33,7 +33,7 @@ class CuratorLogic:
             lines.append("---")
         return "\n".join(lines)
 
-    def curate_stories(self, candidates: List[Dict[str, Any]]) -> CurationResult:
+    def curate_stories(self, candidates: List[Dict[str, Any]], target_count: int = 21) -> CurationResult:
         if not candidates:
             raise ValueError("No candidates provided for curation.")
 
@@ -41,7 +41,7 @@ class CuratorLogic:
         
         system_prompt = f"""You are the Editor-in-Chief for TheBoldUnknown — an Instagram account that reveals the hidden strangeness woven through reality.
 
-Your task: Select exactly 21 stories for this week's content from the candidate pool below.
+Your task: Select exactly {int(target_count)} stories for this week's content from the candidate pool below.
 
 ## THE BRAND (INTERNALIZE THIS)
 

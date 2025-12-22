@@ -9,7 +9,14 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+# Add parent paths for imports
+code_dir = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(code_dir))
+
+# Also add text_generator directory for internal imports (has bare imports like 'from utils import ...')
+text_gen_dir = code_dir / "text_generator"
+if str(text_gen_dir) not in sys.path:
+    sys.path.insert(0, str(text_gen_dir))
 
 logger = logging.getLogger(__name__)
 

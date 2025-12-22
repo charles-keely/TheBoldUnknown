@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
-from services.llm import llm
-from utils.logger import logger
-from config import config
+from lead_generator.services.llm import llm
+from lead_generator.utils.logger import logger
+from lead_generator.config import config
 import json
 import datetime
 import re

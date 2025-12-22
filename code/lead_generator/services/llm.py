@@ -1,6 +1,6 @@
 from openai import OpenAI
-from config import config
-from utils.logger import logger
+from lead_generator.config import config
+from lead_generator.utils.logger import logger
 import json
 from typing import List, Dict, Any
 

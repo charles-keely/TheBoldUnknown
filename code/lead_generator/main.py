@@ -1,9 +1,9 @@
 import typer
-from logic.workflow import workflow
-from database import db
-from utils.logger import logger
-from config import config
-from services.llm import llm
+from lead_generator.logic.workflow import workflow
+from lead_generator.database import db
+from lead_generator.utils.logger import logger
+from lead_generator.config import config
+from lead_generator.services.llm import llm
 
 app = typer.Typer()
 
