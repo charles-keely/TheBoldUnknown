@@ -293,6 +293,12 @@
       animation: shimmer 1.5s infinite;
     }
     
+    /* Fix Tailwind's `animate-spin` on SVGs (Safari/WebKit can animate around the wrong origin) */
+    svg.animate-spin {
+      transform-box: fill-box;
+      transform-origin: center;
+    }
+    
     @keyframes shimmer {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
