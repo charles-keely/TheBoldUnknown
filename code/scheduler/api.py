@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -107,7 +107,26 @@ async def schedule_page():
 # API Routes - Schedule
 # =============================================================================
 
-def _row_to_summary(row: dict) -> ScheduledPostSummary:
+def _with_root(request: Request, path: str | None) -> str | None:
+    """
+    When mounted under /scheduler, request.scope['root_path'] == '/scheduler'.
+    Prefix root-relative paths (like /api/thumbnails/...) so the UI can load assets correctly.
+    """
+    if not path or not isinstance(path, str):
+        return path
+    if path.startswith("http://") or path.startswith("https://") or path.startswith("data:"):
+        return path
+    rp = (request.scope.get("root_path") or "").rstrip("/")
+    if not rp:
+        return path
+    if not path.startswith("/"):
+        return path
+    if path.startswith(rp + "/"):
+        return path
+    return rp + path
+
+
+def _row_to_summary(row: dict, *, request: Request) -> ScheduledPostSummary:
     """Convert a DB row to a ScheduledPostSummary."""
     return ScheduledPostSummary(
         id=str(row["id"]),
@@ -116,7 +135,7 @@ def _row_to_summary(row: dict) -> ScheduledPostSummary:
         hook_title=row.get("hook_title", "Untitled"),
         subtitle=row.get("subtitle"),
         domain_tag=row.get("domain_tag"),
-        thumbnail_url=row.get("thumbnail_url"),
+        thumbnail_url=_with_root(request, row.get("thumbnail_url")),
         scheduled_at=row["scheduled_at"],
         position=row["position"],
         status=ScheduleStatus(row["status"]),
@@ -132,6 +151,7 @@ def _row_to_summary(row: dict) -> ScheduledPostSummary:
 
 @app.get("/api/schedule", response_model=ScheduleResponse)
 async def list_schedule(
+    request: Request,
     include_published: bool = Query(True, description="Include published posts"),
     include_failed: bool = Query(True, description="Include failed posts"),
     limit: int = Query(100, description="Maximum number of posts to return"),
@@ -147,7 +167,7 @@ async def list_schedule(
     )
     counts = get_schedule_counts()
     
-    posts = [_row_to_summary(row) for row in rows]
+    posts = [_row_to_summary(row, request=request) for row in rows]
     
     return ScheduleResponse(
         posts=posts,
@@ -160,7 +180,7 @@ async def list_schedule(
 
 
 @app.post("/api/schedule/sync", response_model=SyncScheduleResponse)
-async def sync_schedule():
+async def sync_schedule(request: Request):
     """
     Find newly approved stories and add them to the schedule.
     Assigns next available time slots (8:30 AM, 1:00 PM, 7:00 PM MST).
@@ -188,7 +208,7 @@ async def sync_schedule():
     
     # Get updated schedule
     rows = get_scheduled_posts()
-    posts = [_row_to_summary(row) for row in rows]
+    posts = [_row_to_summary(row, request=request) for row in rows]
     
     return SyncScheduleResponse(
         added=added,
@@ -198,7 +218,7 @@ async def sync_schedule():
 
 
 @app.patch("/api/schedule/{post_id}")
-async def update_post(post_id: str, request: UpdateScheduledPostRequest):
+async def update_post(post_id: str, request: UpdateScheduledPostRequest, http_request: Request):
     """
     Update a scheduled post's time or position.
     """
@@ -211,7 +231,7 @@ async def update_post(post_id: str, request: UpdateScheduledPostRequest):
     if not updated:
         raise HTTPException(status_code=404, detail="Post not found")
     
-    return _row_to_summary(updated)
+    return _row_to_summary(updated, request=http_request)
 
 
 @app.delete("/api/schedule/{post_id}", response_model=DeletePostResponse)
@@ -228,20 +248,20 @@ async def remove_post(post_id: str):
 
 
 @app.post("/api/schedule/{post_id}/move", response_model=MovePostResponse)
-async def move_post(post_id: str, request: MovePostRequest):
+async def move_post(post_id: str, request: MovePostRequest, http_request: Request):
     """
     Reorder a post in the schedule.
     """
     try:
         rows = reorder_schedule(post_id, request.new_position)
-        posts = [_row_to_summary(row) for row in rows]
+        posts = [_row_to_summary(row, request=http_request) for row in rows]
         return MovePostResponse(schedule=posts)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.post("/api/schedule/{post_id}/retry")
-async def retry_post(post_id: str):
+async def retry_post(post_id: str, http_request: Request):
     """
     Retry a failed post by resetting its status to 'approved'.
     """
@@ -254,7 +274,7 @@ async def retry_post(post_id: str):
     
     # Reset to approved with retry count reset
     updated = update_scheduled_post(post_id, status="approved")
-    return _row_to_summary(updated)
+    return _row_to_summary(updated, request=http_request)
 
 
 @app.post("/api/schedule/approve", response_model=ApproveScheduleResponse)
@@ -440,7 +460,7 @@ async def refresh_token():
 # =============================================================================
 
 @app.get("/api/schedule/{post_id}/preview", response_model=PostPreviewResponse)
-async def get_post_preview(post_id: str):
+async def get_post_preview(post_id: str, request: Request):
     """
     Get preview data for a scheduled post.
     """
@@ -483,7 +503,7 @@ async def get_post_preview(post_id: str):
             type=slide_type,
             template=slide.get("template", ""),
             visible=slide.get("visible", True),
-            thumbnail_url=thumbnail_url,
+            thumbnail_url=_with_root(request, thumbnail_url) if thumbnail_url else None,
             text_preview=text_preview,
         ))
     

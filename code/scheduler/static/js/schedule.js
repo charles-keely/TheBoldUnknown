@@ -63,7 +63,7 @@ function scheduler() {
             const newPosition = evt.newIndex;
             
             try {
-              const response = await fetch(`/api/schedule/${postId}/move`, {
+              const response = await fetch(`api/schedule/${postId}/move`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ new_position: newPosition }),
@@ -95,7 +95,7 @@ function scheduler() {
       this.error = null;
       
       try {
-        const response = await fetch('/api/schedule');
+        const response = await fetch('api/schedule');
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -116,7 +116,7 @@ function scheduler() {
     
     async loadTokenStatus() {
       try {
-        const response = await fetch('/api/tokens/status');
+        const response = await fetch('api/tokens/status');
         if (response.ok) {
           this.tokenStatus = await response.json();
         }
@@ -130,7 +130,7 @@ function scheduler() {
       this.error = null;
       
       try {
-        const response = await fetch('/api/schedule/sync', {
+        const response = await fetch('api/schedule/sync', {
           method: 'POST',
         });
         
@@ -159,7 +159,7 @@ function scheduler() {
       this.approving = true;
       
       try {
-        const response = await fetch('/api/schedule/approve', {
+        const response = await fetch('api/schedule/approve', {
           method: 'POST',
         });
         
@@ -187,7 +187,7 @@ function scheduler() {
         // Convert local datetime to ISO string
         const scheduledAt = new Date(dateTimeValue).toISOString();
         
-        const response = await fetch(`/api/schedule/${postId}`, {
+        const response = await fetch(`api/schedule/${postId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ scheduled_at: scheduledAt }),
@@ -214,7 +214,7 @@ function scheduler() {
     
     async retryPost(postId) {
       try {
-        const response = await fetch(`/api/schedule/${postId}/retry`, {
+        const response = await fetch(`api/schedule/${postId}/retry`, {
           method: 'POST',
         });
         
@@ -240,7 +240,7 @@ function scheduler() {
       const postId = this.deleteModal.post.id;
       
       try {
-        const response = await fetch(`/api/schedule/${postId}`, {
+        const response = await fetch(`api/schedule/${postId}`, {
           method: 'DELETE',
         });
         

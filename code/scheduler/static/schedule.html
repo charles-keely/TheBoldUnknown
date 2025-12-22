@@ -370,7 +370,7 @@
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
           <div class="flex items-center gap-3 mb-2">
-            <a href="http://localhost:8000" class="text-gray-400 hover:text-gray-600 transition-colors" title="Back to Pre-Assembler">
+            <a href="/" class="text-gray-400 hover:text-gray-600 transition-colors" title="Back">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
               </svg>
@@ -651,7 +651,8 @@
     
   </div>
   
-  <script src="/static/js/schedule.js"></script>
+  <!-- Relative so this works when the app is mounted at /scheduler -->
+  <script src="static/js/schedule.js"></script>
   
 </body>
 </html>
