@@ -72,10 +72,20 @@ def _resolve_internal_thumbnail_url(url: str) -> str | None:
     return None
 
 
-async def render_assembly_to_png_bytes(assembly_data: dict) -> list[RenderedSlide]:
+async def render_assembly_to_png_bytes_selected(
+    assembly_data: dict,
+    *,
+    slide_indices: set[int] | None = None,
+    renderer: Renderer | None = None,
+) -> list[RenderedSlide]:
     """
-    Render visible slides to PNG bytes.
+    Render visible slides (or a selected subset) to PNG bytes.
     This does NOT write to disk and does NOT touch the database.
+
+    Notes:
+    - Selection is based on the *visible slide index* (0-based) after filtering by `visible=True`.
+      This preserves correct page numbering even when rendering only the cover.
+    - If `renderer` is provided, it will be reused (no extra browser launches).
     """
     data = _normalize_assembly(assembly_data)
     slides = data.get("slides") or []
@@ -85,10 +95,14 @@ async def render_assembly_to_png_bytes(assembly_data: dict) -> list[RenderedSlid
     builder = SlideBuilder(working_dir=None)
     rendered: list[RenderedSlide] = []
 
-    async with Renderer() as renderer:
-        visible_slides = [s for s in slides if isinstance(s, dict) and s.get("visible", True)]
-        total = len(visible_slides)
+    visible_slides = [s for s in slides if isinstance(s, dict) and s.get("visible", True)]
+    total = len(visible_slides)
+
+    async def _render_with(r: Renderer) -> list[RenderedSlide]:
         for idx, slide in enumerate(visible_slides):
+            if slide_indices is not None and idx not in slide_indices:
+                continue
+
             # Patch internal Pre-Assembler thumbnail URLs into renderable sources
             # so cover backgrounds render correctly in Playwright.
             s = dict(slide)
@@ -102,7 +116,7 @@ async def render_assembly_to_png_bytes(assembly_data: dict) -> list[RenderedSlid
             s["content"] = content
 
             html = builder.build_slide(s, idx, total_slides=total)
-            png = await renderer.render_png_bytes(html)
+            png = await r.render_png_bytes(html)
             filename = f"{idx+1:02d}_{slide.get('type') or 'slide'}.png"
             rendered.append(
                 RenderedSlide(
@@ -111,8 +125,23 @@ async def render_assembly_to_png_bytes(assembly_data: dict) -> list[RenderedSlid
                     sha256=hashlib.sha256(png).hexdigest(),
                 )
             )
+        return rendered
+
+    if renderer is not None:
+        return await _render_with(renderer)
+
+    async with Renderer() as r:
+        return await _render_with(r)
 
     return rendered
+
+
+async def render_assembly_to_png_bytes(assembly_data: dict) -> list[RenderedSlide]:
+    """
+    Render all visible slides to PNG bytes.
+    Backwards-compatible wrapper around `render_assembly_to_png_bytes_selected`.
+    """
+    return await render_assembly_to_png_bytes_selected(assembly_data, slide_indices=None, renderer=None)
 
 
 def render_assembly_to_png_bytes_sync(assembly_data: dict) -> list[RenderedSlide]:
