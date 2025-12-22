@@ -348,8 +348,17 @@ def get_story_full_data(story_generation_id: str):
             slides = cur.fetchall()
             
             # Get all approved photos for this research
+            #
+            # NOTE: Historically some photo rows were created without persisting `caption`.
+            # We treat `description` as a fallback caption so the UI doesn't show blank photo slides.
             cur.execute("""
-                SELECT id, image_url, caption, source_attribution, concept_tag, metadata
+                SELECT
+                    id,
+                    image_url,
+                    COALESCE(NULLIF(caption, ''), description) as caption,
+                    source_attribution,
+                    concept_tag,
+                    metadata
                 FROM story_photos
                 WHERE story_research_id = %s AND status = 'approved'
                 ORDER BY created_at

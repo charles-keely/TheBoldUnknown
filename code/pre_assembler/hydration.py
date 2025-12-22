@@ -43,6 +43,64 @@ def hydrate_assembly_from_story(
     metadata = assembly_data.get("metadata") or {}
     already_hydrated = bool(metadata.get("hydrated_from_story"))
     if already_hydrated and not force:
+        # Non-destructive backfill:
+        # Some pipeline runs historically wrote photos without persisting `story_photos.caption`
+        # (or created an assembly before captions existed). If the assembly is marked hydrated,
+        # we still want to *fill empty fields* from canonical tables without overwriting user edits.
+        photos_by_id = {
+            str(p["id"]): p
+            for p in (story_data.get("photos") or [])
+            if isinstance(p, dict) and p.get("id")
+        }
+
+        changed = False
+        new_data = dict(assembly_data)
+        new_slides = []
+        for slide in (assembly_data.get("slides") or []):
+            if not isinstance(slide, dict):
+                new_slides.append(slide)
+                continue
+
+            s = dict(slide)
+            if s.get("type") != SlideType.PHOTO.value:
+                new_slides.append(s)
+                continue
+
+            src_id = s.get("source_photo_id")
+            if not src_id or str(src_id) not in photos_by_id:
+                new_slides.append(s)
+                continue
+
+            p = photos_by_id[str(src_id)]
+            content = dict(s.get("content") or {})
+
+            # Only backfill when the assembly field is empty/blank.
+            desired_url = (p.get("image_url") or "").strip()
+            if desired_url and not str(content.get("image_url") or "").strip():
+                content["image_url"] = desired_url
+                changed = True
+
+            desired_caption = (p.get("caption") or "").strip()
+            if desired_caption and not str(content.get("caption") or "").strip():
+                content["caption"] = desired_caption
+                changed = True
+
+            desired_source = (p.get("source_attribution") or "").strip()
+            if desired_source and not str(content.get("source") or "").strip():
+                content["source"] = desired_source
+                changed = True
+
+            s["content"] = content
+            new_slides.append(s)
+
+        if changed:
+            new_data["slides"] = new_slides
+            new_metadata = dict(metadata)
+            new_metadata["hydrated_at"] = _iso_now()
+            new_metadata["updated_at"] = _iso_now()
+            new_data["metadata"] = new_metadata
+            return new_data, True
+
         return assembly_data, False
 
     story = story_data.get("story") or {}

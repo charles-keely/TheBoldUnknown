@@ -1,6 +1,8 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor, Json
 import json
+import re
+from urllib.parse import urlparse
 from .config import config
 
 class Database:
@@ -26,6 +28,11 @@ class Database:
                     source_page_url text,
                     search_query text,
                     description text,
+                    caption text,
+                    source_attribution text,
+                    concept_tag text,
+                    text_generated_at timestamp with time zone,
+                    pipeline_run_id uuid,
                     relevance_score integer CHECK (relevance_score >= 0 AND relevance_score <= 10),
                     verifiability_score integer CHECK (verifiability_score >= 0 AND verifiability_score <= 10),
                     status text DEFAULT 'potential' CHECK (status = ANY (ARRAY['potential', 'approved', 'rejected'])),
@@ -35,6 +42,45 @@ class Database:
                     CONSTRAINT story_photos_story_research_id_fkey FOREIGN KEY (story_research_id) REFERENCES story_research(id)
                 );
             """)
+
+            # Ensure newer columns exist even if the table was created by an older version.
+            # This is safe on Postgres and prevents silent "caption/source not persisted" issues.
+            cur.execute("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS caption text;")
+            cur.execute("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS source_attribution text;")
+            cur.execute("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS concept_tag text;")
+            cur.execute("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS text_generated_at timestamp with time zone;")
+            cur.execute("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS pipeline_run_id uuid;")
+
+    def _normalize_caption(self, text: str) -> str:
+        t = re.sub(r"\s+", " ", (text or "").strip())
+        if not t:
+            return ""
+        # Keep captions reasonably short for the photo template UI.
+        if len(t) > 200:
+            return t[:197].rstrip() + "..."
+        return t
+
+    def _infer_source_attribution(self, image_data: dict) -> str:
+        # Prefer explicit fields when present.
+        explicit = (image_data.get("source_attribution") or "").strip()
+        if explicit:
+            return explicit
+
+        meta = image_data.get("metadata") if isinstance(image_data.get("metadata"), dict) else {}
+        source_title = (meta.get("source_title") or "").strip()
+        if source_title:
+            # Avoid extremely long titles in the footer.
+            return source_title[:80].rstrip()
+
+        sp = (image_data.get("source_page_url") or "").strip()
+        if sp:
+            try:
+                host = (urlparse(sp).netloc or "").lower()
+                host = host[4:] if host.startswith("www.") else host
+                return host
+            except Exception:
+                return ""
+        return ""
 
     def fetch_stories_needing_photos(self, limit=5):
         """
@@ -105,10 +151,21 @@ class Database:
 
     def save_photo_candidate(self, story_id, image_data):
         with self.conn.cursor() as cur:
+            # Pre-assembler expects story_photos.caption + story_photos.source_attribution.
+            # Older versions only stored `description`, which caused blank captions in new stories.
+            caption = self._normalize_caption(
+                (image_data.get("caption") or "").strip()
+                or (image_data.get("description") or "").strip()
+                or (image_data.get("title") or "").strip()
+            )
+            source_attribution = self._infer_source_attribution(image_data)
+            concept_tag = (image_data.get("concept_tag") or "").strip() or None
+            text_generated_at = "NOW()" if caption else "NULL"
+
             cur.execute("""
                 INSERT INTO story_photos 
-                (story_research_id, image_url, source_page_url, search_query, description, relevance_score, verifiability_score, metadata, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                (story_research_id, image_url, source_page_url, search_query, description, caption, source_attribution, concept_tag, relevance_score, verifiability_score, metadata, status, text_generated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, """ + text_generated_at + """)
                 RETURNING id;
             """, (
                 story_id,
@@ -116,6 +173,9 @@ class Database:
                 image_data.get('source_page_url'),
                 image_data.get('search_query'),
                 image_data.get('description'),
+                caption,
+                source_attribution,
+                concept_tag,
                 image_data.get('relevance_score'),
                 image_data.get('verifiability_score'),
                 Json(image_data.get('metadata', {})),
@@ -136,6 +196,9 @@ class Database:
                     source_page_url,
                     search_query,
                     description,
+                    caption,
+                    source_attribution,
+                    concept_tag,
                     relevance_score,
                     verifiability_score,
                     metadata,
