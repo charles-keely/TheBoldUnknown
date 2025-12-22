@@ -478,6 +478,32 @@ cd ../scheduler
 python main.py test-post --approved-only
 ```
 
+---
+
+## 🖥️ Run the Web UIs Together (Single Machine)
+
+If you want the three UIs running on the same server at once:
+
+- **Pre-Assembler**: `http://localhost:8000`
+- **Pipeline Manager**: `http://localhost:8001`
+- **Scheduler UI**: `http://localhost:8002` (uses 8002 to avoid colliding with Pipeline Manager)
+
+From the repo root (`code/`):
+
+```bash
+python ops/run_all.py
+```
+
+Optional:
+
+```bash
+# Enable auto-reload (dev)
+TBU_RELOAD=1 python ops/run_all.py
+
+# Override ports
+PRE_ASSEMBLER_PORT=9000 PIPELINE_PORT=9001 SCHEDULER_PORT=9002 python ops/run_all.py
+```
+
 ### Testing a Single Story
 
 ```bash

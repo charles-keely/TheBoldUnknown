@@ -560,7 +560,7 @@
           <!-- Navigation Pills -->
           <nav class="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
             <a 
-              href="http://localhost:8001" 
+              href="/" 
               class="nav-pill"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -569,7 +569,7 @@
               Pipeline
             </a>
             <a 
-              href="/" 
+              href="./" 
               class="nav-pill"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -578,7 +578,7 @@
               Assembler
             </a>
             <a 
-              href="/schedule" 
+              href="./schedule" 
               class="nav-pill active"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1066,7 +1066,7 @@
           this.error = null;
           
           try {
-            const response = await fetch('/api/schedule');
+            const response = await fetch('api/schedule');
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
             const data = await response.json();
@@ -1086,7 +1086,7 @@
         async loadTokenStatus() {
           try {
             this.tokenLoading = true;
-            const response = await fetch('/api/schedule/tokens/status');
+            const response = await fetch('api/schedule/tokens/status');
             if (response.ok) this.tokenStatus = await response.json();
           } catch (err) {
             console.error('Failed to load token status:', err);
@@ -1100,7 +1100,7 @@
           this.error = null;
           
           try {
-            const response = await fetch('/api/schedule/sync', { method: 'POST' });
+            const response = await fetch('api/schedule/sync', { method: 'POST' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             await this.loadSchedule();
           } catch (err) {
@@ -1114,7 +1114,7 @@
           this.approving = true;
           
           try {
-            const response = await fetch('/api/schedule/approve', { method: 'POST' });
+            const response = await fetch('api/schedule/approve', { method: 'POST' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             this.showApproveModal = false;
             await this.loadSchedule();
@@ -1134,7 +1134,7 @@
               this.posts = orderedIds.map(id => byId.get(id)).filter(Boolean);
             }
 
-            const response = await fetch(`/api/schedule/${postId}/move`, {
+            const response = await fetch(`api/schedule/${postId}/move`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ new_position: newPosition }),
@@ -1169,7 +1169,7 @@
           
           try {
             const scheduledAt = new Date(dateTimeValue).toISOString();
-            const response = await fetch(`/api/schedule/${postId}`, {
+            const response = await fetch(`api/schedule/${postId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ scheduled_at: scheduledAt }),
@@ -1184,7 +1184,7 @@
         
         async retryPost(postId) {
           try {
-            const response = await fetch(`/api/schedule/${postId}/retry`, { method: 'POST' });
+            const response = await fetch(`api/schedule/${postId}/retry`, { method: 'POST' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             await this.loadSchedule();
           } catch (err) {
@@ -1201,7 +1201,7 @@
           if (!this.deleteModal.post) return;
           
           try {
-            const response = await fetch(`/api/schedule/${this.deleteModal.post.id}`, { method: 'DELETE' });
+            const response = await fetch(`api/schedule/${this.deleteModal.post.id}`, { method: 'DELETE' });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             this.deleteModal.show = false;
             this.deleteModal.post = null;
@@ -1217,7 +1217,7 @@
           this.previewModal.data = null;
           
           try {
-            const response = await fetch(`/api/schedule/${post.id}/preview`);
+            const response = await fetch(`api/schedule/${post.id}/preview`);
             if (response.ok) {
               this.previewModal.data = await response.json();
             }

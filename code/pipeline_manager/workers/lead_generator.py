@@ -25,13 +25,24 @@ logger = logging.getLogger(__name__)
 class LeadGeneratorWorker:
     """Worker adapter for lead generation phase."""
     
-    def __init__(self, progress_callback: Optional[Callable] = None):
+    def __init__(
+        self,
+        progress_callback: Optional[Callable] = None,
+        cancellation_check: Optional[Callable[[], bool]] = None,
+        pause_event: Optional[asyncio.Event] = None
+    ):
         self.progress_callback = progress_callback
         self._cancelled = False
+        self._cancellation_check = cancellation_check or (lambda: False)
+        self._pause_event = pause_event
     
     def cancel(self):
         """Signal cancellation."""
         self._cancelled = True
+    
+    def is_cancelled(self) -> bool:
+        """Check if we should stop."""
+        return self._cancelled or self._cancellation_check()
     
     def _emit_progress(self, status: str, data: Dict[str, Any] = None):
         """Emit progress update."""

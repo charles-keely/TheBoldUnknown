@@ -25,13 +25,38 @@ logger = logging.getLogger(__name__)
 class ThumbnailGeneratorWorker:
     """Worker adapter for thumbnail generation phase."""
     
-    def __init__(self, progress_callback: Optional[Callable] = None):
+    def __init__(
+        self,
+        progress_callback: Optional[Callable] = None,
+        cancellation_check: Optional[Callable[[], bool]] = None,
+        pause_event: Optional[asyncio.Event] = None
+    ):
         self.progress_callback = progress_callback
         self._cancelled = False
+        self._cancellation_check = cancellation_check or (lambda: False)
+        self._pause_event = pause_event
     
     def cancel(self):
         """Signal cancellation."""
         self._cancelled = True
+    
+    def is_cancelled(self) -> bool:
+        """Check if we should stop."""
+        return self._cancelled or self._cancellation_check()
+    
+    async def wait_if_paused(self):
+        """Block if paused, return True if cancelled during pause."""
+        if self._pause_event is None:
+            return self.is_cancelled()
+        
+        while not self._pause_event.is_set():
+            if self.is_cancelled():
+                return True
+            try:
+                await asyncio.wait_for(self._pause_event.wait(), timeout=0.5)
+            except asyncio.TimeoutError:
+                continue
+        return self.is_cancelled()
     
     def _emit_progress(self, status: str, story_id: str = None, data: Dict[str, Any] = None):
         """Emit progress update."""
@@ -84,7 +109,14 @@ class ThumbnailGeneratorWorker:
                     story_statuses[s['story_generation_id']] = s['id']
             
             for i, story in enumerate(stories):
-                if self._cancelled:
+                # Check cancellation before each item
+                if self.is_cancelled():
+                    logger.info(f"Thumbnail generation cancelled after {completed} items")
+                    break
+                
+                # Wait if paused
+                if await self.wait_if_paused():
+                    logger.info(f"Thumbnail generation cancelled during pause after {completed} items")
                     break
                 
                 generation_id = str(story['id'])

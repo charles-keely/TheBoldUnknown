@@ -396,7 +396,7 @@
         <div class="flex items-center justify-between">
           <!-- Back button + Title -->
           <div class="flex items-center gap-4">
-            <a href="/" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <a href="../" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
               <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
               </svg>
@@ -523,7 +523,7 @@
           </svg>
           <h3 class="text-lg font-semibold text-red-800 mb-2">Error Loading Story</h3>
           <p class="text-red-600 mb-4" x-text="error"></p>
-          <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+          <a href="../" class="btn btn-secondary">Back to Dashboard</a>
         </div>
       </div>
       
@@ -1134,7 +1134,7 @@
         // Load story data
         async loadStory() {
           try {
-            const response = await fetch(`/api/stories/${this.storyGenerationId}`);
+            const response = await fetch(`../api/stories/${this.storyGenerationId}`);
             if (!response.ok) {
               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -1170,7 +1170,7 @@
           this.story.is_enabled = next;
 
           try {
-            const response = await fetch(`/api/story-generations/${this.storyGenerationId}`, {
+            const response = await fetch(`../api/story-generations/${this.storyGenerationId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ is_enabled: next })
@@ -1203,7 +1203,7 @@
           if (!ok) return;
 
           try {
-            const resp = await fetch(`/api/story-generations/${this.storyGenerationId}`, { method: 'DELETE' });
+            const resp = await fetch(`../api/story-generations/${this.storyGenerationId}`, { method: 'DELETE' });
             if (!resp.ok) {
               throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
             }
@@ -1240,7 +1240,7 @@
           this.story.approved_for_assembly = next;
 
           try {
-            const response = await fetch(`/api/story-generations/${this.storyGenerationId}`, {
+            const response = await fetch(`../api/story-generations/${this.storyGenerationId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ approved_for_assembly: next })
@@ -1276,7 +1276,7 @@
             // Compute next story *before* approving so "next" is deterministic.
             let nextId = null;
             try {
-              const r = await fetch(`/api/stories/${this.storyGenerationId}/next?only_unapproved=true`);
+              const r = await fetch(`../api/stories/${this.storyGenerationId}/next?only_unapproved=true`);
               if (r.ok) {
                 const data = await r.json();
                 nextId = data?.next_story_generation_id || null;
@@ -1284,7 +1284,7 @@
             } catch (e) {}
 
             // Persist approval
-            const response = await fetch(`/api/story-generations/${this.storyGenerationId}`, {
+            const response = await fetch(`../api/story-generations/${this.storyGenerationId}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ approved_for_assembly: true })
@@ -1313,7 +1313,7 @@
         // Load or generate assembly
         async loadAssembly() {
           try {
-            const response = await fetch(`/api/stories/${this.storyGenerationId}/assembly`);
+            const response = await fetch(`../api/stories/${this.storyGenerationId}/assembly`);
             if (!response.ok) {
               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -1551,7 +1551,9 @@
           const templateType = slide.template || this.getDefaultTemplate(slide.type);
           
           // Create iframe URL
-          const iframeSrc = `/api/render/${templateType}?slide_id=${slide.id}&slide_type=${slide.type}`;
+          // When mounted under /assembler, absolute /api/... would hit the pipeline root.
+          // Use a relative path that resolves to /assembler/api/render/... from /assembler/editor/{id}.
+          const iframeSrc = `../api/render/${templateType}?slide_id=${slide.id}&slide_type=${slide.type}`;
           
           // Create iframe element
           const iframe = document.createElement('iframe');
@@ -1998,7 +2000,7 @@
               metadata
             };
             
-            const response = await fetch(`/api/stories/${this.storyGenerationId}/assembly`, {
+            const response = await fetch(`../api/stories/${this.storyGenerationId}/assembly`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

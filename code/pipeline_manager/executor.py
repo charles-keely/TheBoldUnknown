@@ -61,26 +61,59 @@ class PipelineExecutor:
         self.run_config = run_config or {}
         self._cancelled = False
         self._paused = False
+        self._pause_event = asyncio.Event()
+        self._pause_event.set()  # Not paused by default
+        self._task: Optional[asyncio.Task] = None
+        self._active_workers: List[Any] = []  # Track workers for cancellation propagation
         self.retry_config = RetryConfig(
             max_retries=config.max_retries,
             base_delay=config.retry_base_delay,
             max_delay=config.retry_max_delay
         )
     
+    def set_task(self, task: asyncio.Task):
+        """Store reference to the asyncio Task running this executor."""
+        self._task = task
+    
     def cancel(self):
-        """Signal cancellation of this run."""
+        """Signal cancellation of this run and cancel the running task."""
         self._cancelled = True
         logger.info(f"Pipeline run {self.run_id} marked for cancellation")
+        
+        # Cancel all active workers
+        for worker in self._active_workers:
+            if hasattr(worker, 'cancel'):
+                worker.cancel()
+        
+        # Cancel the asyncio task itself (raises CancelledError)
+        if self._task and not self._task.done():
+            self._task.cancel()
+            logger.info(f"Pipeline run {self.run_id} task cancelled")
     
     def pause(self):
-        """Pause execution after current operation completes."""
+        """Pause execution - workers will block at next checkpoint."""
         self._paused = True
-        logger.info(f"Pipeline run {self.run_id} marked for pause")
+        self._pause_event.clear()  # Block waiters
+        logger.info(f"Pipeline run {self.run_id} PAUSED - pause_event cleared, workers will block")
     
     def resume(self):
         """Resume paused execution."""
+        was_paused = self._paused
         self._paused = False
-        logger.info(f"Pipeline run {self.run_id} resumed")
+        self._pause_event.set()  # Unblock waiters
+        logger.info(f"Pipeline run {self.run_id} RESUMED - pause_event set (was_paused={was_paused})")
+    
+    async def wait_if_paused(self):
+        """Block until resumed if currently paused. Returns True if cancelled."""
+        while not self._pause_event.is_set():
+            # Check for cancellation while paused
+            if self._cancelled:
+                return True
+            try:
+                await asyncio.wait_for(self._pause_event.wait(), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
+        return self._cancelled
     
     async def check_cancelled(self) -> bool:
         """Check if this run has been cancelled."""
@@ -103,9 +136,19 @@ class PipelineExecutor:
         run = get_pipeline_run(self.run_id)
         if run and run.get('status') == 'paused':
             self._paused = True
+            self._pause_event.clear()
             return True
         
         return False
+    
+    def register_worker(self, worker):
+        """Register a worker so we can cancel it on pipeline cancellation."""
+        self._active_workers.append(worker)
+    
+    def unregister_worker(self, worker):
+        """Unregister a worker when it completes."""
+        if worker in self._active_workers:
+            self._active_workers.remove(worker)
     
     def _emit_progress(self, data: Dict[str, Any]):
         """Emit progress update via callback."""
@@ -190,25 +233,25 @@ class PipelineExecutor:
             # Phase 1: Lead Generation + Curation
             await self._run_phase_1_leads()
             
-            if await self.check_cancelled():
+            if await self.check_cancelled() or await self.wait_if_paused():
                 raise CancellationError("Pipeline cancelled")
             
             # Phase 2: Story Research
             await self._run_phase_2_research()
             
-            if await self.check_cancelled():
+            if await self.check_cancelled() or await self.wait_if_paused():
                 raise CancellationError("Pipeline cancelled")
             
             # Phase 3: Text Generation
             await self._run_phase_3_text()
             
-            if await self.check_cancelled():
+            if await self.check_cancelled() or await self.wait_if_paused():
                 raise CancellationError("Pipeline cancelled")
             
             # Phase 4: Photo Research
             await self._run_phase_4_photos()
             
-            if await self.check_cancelled():
+            if await self.check_cancelled() or await self.wait_if_paused():
                 raise CancellationError("Pipeline cancelled")
             
             # Phase 5: Thumbnail Generation
@@ -229,8 +272,15 @@ class PipelineExecutor:
             
             return {"success": True, "status": "completed"}
             
+        except asyncio.CancelledError:
+            # Asyncio task was cancelled - this is a hard stop
+            logger.info(f"Pipeline run {self.run_id} task was cancelled")
+            update_pipeline_run(self.run_id, status='cancelled', completed_at=datetime.utcnow())
+            return {"success": False, "status": "cancelled"}
+            
         except CancellationError:
             logger.info(f"Pipeline run {self.run_id} was cancelled")
+            update_pipeline_run(self.run_id, status='cancelled', completed_at=datetime.utcnow())
             return {"success": False, "status": "cancelled"}
             
         except Exception as e:
@@ -302,9 +352,21 @@ class PipelineExecutor:
         update_phase_status(self.run_id, 'lead_generation', 'running', started_at=datetime.utcnow())
         
         # Step 1a: Lead Generation
-        lead_worker = LeadGeneratorWorker(progress_callback=self._worker_progress_callback)
+        lead_worker = LeadGeneratorWorker(
+            progress_callback=self._worker_progress_callback,
+            cancellation_check=lambda: self._cancelled,
+            pause_event=self._pause_event
+        )
+        self.register_worker(lead_worker)
         source = self.run_config.get("source", "all")
-        lead_result = await lead_worker.run(self.run_id, source=source)
+        
+        try:
+            lead_result = await lead_worker.run(self.run_id, source=source)
+        finally:
+            self.unregister_worker(lead_worker)
+        
+        if self._cancelled:
+            raise CancellationError("Pipeline cancelled during lead generation")
         
         if not lead_result.get('success'):
             update_phase_status(self.run_id, 'lead_generation', 'failed', 
@@ -315,15 +377,27 @@ class PipelineExecutor:
         leads = lead_result.get('leads', [])
         
         # Step 1b: Curation (select best stories)
-        if leads:
-            curator_worker = CuratorWorker(progress_callback=self._worker_progress_callback)
+        if leads and not self._cancelled:
+            curator_worker = CuratorWorker(
+                progress_callback=self._worker_progress_callback,
+                cancellation_check=lambda: self._cancelled,
+                pause_event=self._pause_event
+            )
+            self.register_worker(curator_worker)
             # Use story_count from run config, fallback to global config
             target_count = self.run_config.get('story_count', config.curation_story_count)
-            curation_result = await curator_worker.run(self.run_id, leads, target_count=target_count)
+            
+            try:
+                curation_result = await curator_worker.run(self.run_id, leads, target_count=target_count)
+            finally:
+                self.unregister_worker(curator_worker)
             
             leads_approved = curation_result.get('selected_count', 0)
         else:
             leads_approved = 0
+        
+        if self._cancelled:
+            raise CancellationError("Pipeline cancelled during curation")
         
         # Update stats
         update_pipeline_stats(self.run_id, {
@@ -371,8 +445,21 @@ class PipelineExecutor:
                               total_items=0, completed_items=0)
             return {"phase": "story_research", "success": True, "completed": 0}
         
-        research_worker = StoryResearcherWorker(progress_callback=self._worker_progress_callback)
-        result = await research_worker.run(self.run_id, curated_leads)
+        research_worker = StoryResearcherWorker(
+            progress_callback=self._worker_progress_callback,
+            cancellation_check=lambda: self._cancelled,
+            pause_event=self._pause_event
+        )
+        self.register_worker(research_worker)
+        
+        try:
+            result = await research_worker.run(self.run_id, curated_leads)
+        finally:
+            self.unregister_worker(research_worker)
+        
+        # Check if we were cancelled mid-phase
+        if self._cancelled:
+            raise CancellationError("Pipeline cancelled during story research")
         
         if not result.get('success') and result.get('completed', 0) == 0:
             update_phase_status(self.run_id, 'story_research', 'failed',
@@ -418,8 +505,20 @@ class PipelineExecutor:
                               total_items=0, completed_items=0)
             return {"phase": "text_generation", "success": True, "completed": 0}
         
-        text_worker = TextGeneratorWorker(progress_callback=self._worker_progress_callback)
-        result = await text_worker.run(self.run_id, completed_research)
+        text_worker = TextGeneratorWorker(
+            progress_callback=self._worker_progress_callback,
+            cancellation_check=lambda: self._cancelled,
+            pause_event=self._pause_event
+        )
+        self.register_worker(text_worker)
+        
+        try:
+            result = await text_worker.run(self.run_id, completed_research)
+        finally:
+            self.unregister_worker(text_worker)
+        
+        if self._cancelled:
+            raise CancellationError("Pipeline cancelled during text generation")
         
         if not result.get('success') and result.get('completed', 0) == 0:
             update_phase_status(self.run_id, 'text_generation', 'failed',
@@ -464,8 +563,20 @@ class PipelineExecutor:
                               total_items=0, completed_items=0)
             return {"phase": "photo_research", "success": True, "completed": 0}
         
-        photo_worker = PhotoResearcherWorker(progress_callback=self._worker_progress_callback)
-        result = await photo_worker.run(self.run_id, generations)
+        photo_worker = PhotoResearcherWorker(
+            progress_callback=self._worker_progress_callback,
+            cancellation_check=lambda: self._cancelled,
+            pause_event=self._pause_event
+        )
+        self.register_worker(photo_worker)
+        
+        try:
+            result = await photo_worker.run(self.run_id, generations)
+        finally:
+            self.unregister_worker(photo_worker)
+        
+        if self._cancelled:
+            raise CancellationError("Pipeline cancelled during photo research")
         
         photos_found = result.get('photos_found', 0)
         photos_approved = result.get('photos_approved', 0)
@@ -515,8 +626,20 @@ class PipelineExecutor:
                               total_items=0, completed_items=0)
             return {"phase": "thumbnail_generation", "success": True, "completed": 0}
         
-        thumb_worker = ThumbnailGeneratorWorker(progress_callback=self._worker_progress_callback)
-        result = await thumb_worker.run(self.run_id, generations)
+        thumb_worker = ThumbnailGeneratorWorker(
+            progress_callback=self._worker_progress_callback,
+            cancellation_check=lambda: self._cancelled,
+            pause_event=self._pause_event
+        )
+        self.register_worker(thumb_worker)
+        
+        try:
+            result = await thumb_worker.run(self.run_id, generations)
+        finally:
+            self.unregister_worker(thumb_worker)
+        
+        if self._cancelled:
+            raise CancellationError("Pipeline cancelled during thumbnail generation")
         
         thumbnails_generated = result.get('thumbnails_generated', 0)
         completed = result.get('completed', 0)
@@ -554,6 +677,7 @@ class PipelineExecutor:
 
 # Global executor registry for managing active runs
 _active_executors: Dict[str, PipelineExecutor] = {}
+_active_tasks: Dict[str, asyncio.Task] = {}
 
 
 def get_executor(run_id: str) -> Optional[PipelineExecutor]:
@@ -561,14 +685,23 @@ def get_executor(run_id: str) -> Optional[PipelineExecutor]:
     return _active_executors.get(run_id)
 
 
-def register_executor(run_id: str, executor: PipelineExecutor):
-    """Register an executor for a run."""
+def get_task(run_id: str) -> Optional[asyncio.Task]:
+    """Get the asyncio Task for a run if it exists."""
+    return _active_tasks.get(run_id)
+
+
+def register_executor(run_id: str, executor: PipelineExecutor, task: asyncio.Task = None):
+    """Register an executor and optionally its task for a run."""
     _active_executors[run_id] = executor
+    if task:
+        _active_tasks[run_id] = task
+        executor.set_task(task)
 
 
 def unregister_executor(run_id: str):
-    """Unregister an executor for a run."""
+    """Unregister an executor and its task for a run."""
     _active_executors.pop(run_id, None)
+    _active_tasks.pop(run_id, None)
 
 
 async def start_pipeline(run_id: str, mode: PipelineMode, progress_callback: Callable = None) -> Dict[str, Any]:
@@ -591,7 +724,10 @@ async def start_pipeline(run_id: str, mode: PipelineMode, progress_callback: Cal
         run_config = json.loads(run_config)
     
     executor = PipelineExecutor(run_id, progress_callback=progress_callback, run_config=run_config)
-    register_executor(run_id, executor)
+    
+    # Get the current task so we can store it
+    current_task = asyncio.current_task()
+    register_executor(run_id, executor, current_task)
     
     try:
         if mode == PipelineMode.AUTO:
@@ -602,6 +738,10 @@ async def start_pipeline(run_id: str, mode: PipelineMode, progress_callback: Cal
             result = {"success": True, "status": "paused", "message": "Ready for step-by-step execution"}
         
         return result
+    except asyncio.CancelledError:
+        logger.info(f"Pipeline run {run_id} task was cancelled externally")
+        update_pipeline_run(run_id, status='cancelled', completed_at=datetime.utcnow())
+        return {"success": False, "status": "cancelled"}
     finally:
         unregister_executor(run_id)
 
@@ -622,18 +762,62 @@ async def run_phase(run_id: str, phase: str, progress_callback: Callable = None)
     
     if not executor:
         executor = PipelineExecutor(run_id, progress_callback=progress_callback)
-        register_executor(run_id, executor)
+        current_task = asyncio.current_task()
+        register_executor(run_id, executor, current_task)
     
     try:
         return await executor.run_step_mode_phase(phase)
+    except asyncio.CancelledError:
+        logger.info(f"Phase {phase} was cancelled for run {run_id}")
+        return {"success": False, "status": "cancelled"}
     except Exception as e:
         logger.error(f"Phase {phase} failed: {e}")
         return {"success": False, "error": str(e)}
 
 
-def cancel_pipeline(run_id: str):
-    """Cancel a running pipeline."""
+def cancel_pipeline(run_id: str) -> bool:
+    """
+    Cancel a running pipeline. Returns True if cancellation was initiated.
+    
+    This does two things:
+    1. Sets the cancelled flag on the executor (graceful stop at next checkpoint)
+    2. Cancels the asyncio Task itself (immediate interruption)
+    """
     executor = get_executor(run_id)
     if executor:
         executor.cancel()
+        return True
+    
+    # Even without an executor, try to cancel the task
+    task = get_task(run_id)
+    if task and not task.done():
+        task.cancel()
+        return True
+    
+    return False
+
+
+async def wait_for_cancellation(run_id: str, timeout: float = 10.0) -> bool:
+    """
+    Wait for a pipeline to fully stop after cancellation.
+    
+    Returns True if the pipeline stopped within the timeout, False otherwise.
+    """
+    task = get_task(run_id)
+    if not task:
+        return True  # No task means nothing to wait for
+    
+    if task.done():
+        return True
+    
+    try:
+        await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
+        return True
+    except asyncio.TimeoutError:
+        logger.warning(f"Pipeline {run_id} did not stop within {timeout}s timeout")
+        return False
+    except asyncio.CancelledError:
+        return True
+    except Exception:
+        return True  # Task finished (possibly with error)
 

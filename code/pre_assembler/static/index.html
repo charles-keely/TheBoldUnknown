@@ -157,6 +157,8 @@
     }
 
     @keyframes apple-spin { to { transform: rotate(360deg); } }
+    /* Keep translate so centered pseudo-elements don't "walk" diagonally while rotating */
+    @keyframes apple-spin-centered { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
     .thumbnail-preview::before {
       content: '';
@@ -175,7 +177,7 @@
         );
       -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
       mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
-      animation: apple-spin 0.9s linear infinite;
+      animation: apple-spin-centered 0.9s linear infinite;
       opacity: 0.85;
       pointer-events: none;
       transition: opacity 0.2s ease;
@@ -338,7 +340,7 @@
           <!-- Navigation Pills -->
           <nav class="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm">
             <a 
-              href="http://localhost:8001" 
+              href="/" 
               class="nav-pill"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -347,7 +349,7 @@
               Pipeline
             </a>
             <a 
-              href="/" 
+              href="./" 
               class="nav-pill active"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -356,7 +358,7 @@
               Assembler
             </a>
             <a 
-              href="/schedule" 
+              href="./schedule" 
               class="nav-pill"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -415,7 +417,7 @@
     <div x-show="!loading && stories.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <template x-for="story in stories" :key="story.story_generation_id">
         <a
-          :href="'/editor/' + story.story_generation_id"
+          :href="'editor/' + story.story_generation_id"
           class="card p-5 block cursor-pointer"
           :class="{ 'disabled': story.is_enabled === false }"
         >
@@ -553,7 +555,7 @@
           this.error = null;
           
           try {
-            const response = await fetch('/api/stories');
+            const response = await fetch('api/stories');
             if (!response.ok) {
               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -577,7 +579,7 @@
           story.is_enabled = next;
 
           try {
-            const response = await fetch(`/api/story-generations/${story.story_generation_id}`, {
+            const response = await fetch(`api/story-generations/${story.story_generation_id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ is_enabled: next })
@@ -601,7 +603,7 @@
           story.approved_for_assembly = next;
 
           try {
-            const response = await fetch(`/api/story-generations/${story.story_generation_id}`, {
+            const response = await fetch(`api/story-generations/${story.story_generation_id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ approved_for_assembly: next })
@@ -627,7 +629,7 @@
           this.stories = this.stories.filter(s => s.story_generation_id !== story.story_generation_id);
 
           try {
-            const resp = await fetch(`/api/story-generations/${story.story_generation_id}`, {
+            const resp = await fetch(`api/story-generations/${story.story_generation_id}`, {
               method: 'DELETE'
             });
             if (!resp.ok) {

@@ -22,6 +22,12 @@ uvicorn scheduler.api:app --host 0.0.0.0 --port 8001 --reload
 
 Then visit: http://localhost:8001
 
+**Note:** `pipeline_manager` also commonly runs on port 8001. If you're running both on the same machine, use a different port for one of them, e.g.:
+
+```bash
+SCHEDULER_PORT=8002 uvicorn scheduler.api:app --host 0.0.0.0 --reload
+```
+
 ### 2. CLI Publisher
 
 The original CLI tool for manual posting and testing.

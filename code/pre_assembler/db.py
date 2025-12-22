@@ -217,8 +217,25 @@ def get_stories_ready_for_assembly():
             
             # Post-process: Override title/subtitle/domain_tag from assembly cover slide if available
             for row in rows:
+                # Preserve raw counts from DB (text slides + approved photos) for fallback logic
+                raw_text_slide_count = int(row.get("slide_count") or 0)
+                raw_approved_photo_count = int(row.get("photo_count") or 0)
+
                 ad = row.get('assembly_data')
                 if ad and isinstance(ad, dict) and 'slides' in ad:
+                    # Dashboard counts should reflect the assembled output, not just raw story tables.
+                    # Use visible slides from the saved assembly JSON when available.
+                    slides = ad.get("slides") or []
+                    if isinstance(slides, list) and slides:
+                        visible_slides = [
+                            s for s in slides
+                            if isinstance(s, dict) and bool(s.get("visible", True))
+                        ]
+                        row["slide_count"] = len(visible_slides)
+                        row["photo_count"] = sum(
+                            1 for s in visible_slides if str(s.get("type")) == "photo"
+                        )
+
                     # Find cover slide
                     for slide in ad['slides']:
                         if isinstance(slide, dict) and slide.get('type') == 'cover':
@@ -230,6 +247,11 @@ def get_stories_ready_for_assembly():
                             if content.get('domain_tag'):
                                 row['domain_tag'] = content['domain_tag']
                             break
+                else:
+                    # No saved assembly yet: estimate the *visible* default assembly output.
+                    # Default assembly always includes cover + closing, and if photos exist it enables 1 hero photo.
+                    row["slide_count"] = raw_text_slide_count + 2 + (1 if raw_approved_photo_count > 0 else 0)
+                    row["photo_count"] = 1 if raw_approved_photo_count > 0 else 0
                 # Clean up to avoid sending heavy JSON downstream if not needed (though main.py filters fields)
                 if 'assembly_data' in row:
                     del row['assembly_data']

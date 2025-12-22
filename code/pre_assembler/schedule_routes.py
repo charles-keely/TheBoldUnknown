@@ -230,7 +230,51 @@ class SeedTokenResponse(BaseModel):
 router = APIRouter(prefix="/api/schedule", tags=["schedule"])
 
 
-def _row_to_summary(row: dict) -> ScheduledPostSummary:
+def _root_prefix(request: Request) -> str:
+    rp = (request.scope.get("root_path") or "").rstrip("/")
+    return rp
+
+
+def _with_root(request: Request, path: str) -> str:
+    if not path:
+        return path
+    if path.startswith("data:") or path.startswith("http://") or path.startswith("https://"):
+        return path
+    if not path.startswith("/"):
+        path = "/" + path
+    rp = _root_prefix(request)
+    return f"{rp}{path}" if rp else path
+
+
+def _maybe_prefix_api_url(request: Request, url: str | None) -> str | None:
+    if not url or not isinstance(url, str):
+        return url
+    if url.startswith("/api/"):
+        return _with_root(request, url)
+    return url
+
+
+def _normalize_story_thumb_urls(request: Request, story_data: dict | None) -> None:
+    """
+    Ensure story_data thumbnails contain mount-aware image_url values before hydration/render.
+    """
+    if not story_data or not isinstance(story_data, dict):
+        return
+    thumbs = story_data.get("thumbnails") or []
+    if not isinstance(thumbs, list):
+        return
+    for t in thumbs:
+        if not isinstance(t, dict):
+            continue
+        img = t.get("image_url")
+        tid = t.get("id")
+        if isinstance(img, str) and img.startswith("/api/"):
+            t["image_url"] = _with_root(request, img)
+        elif tid and not img:
+            t["image_url"] = _with_root(request, f"/api/thumbnails/{tid}/image")
+
+
+def _row_to_summary(row: dict, *, request: Request) -> ScheduledPostSummary:
     """Convert a DB row to a ScheduledPostSummary."""
     return ScheduledPostSummary(
         id=str(row["id"]),
@@ -239,7 +283,7 @@ def _row_to_summary(row: dict) -> ScheduledPostSummary:
         hook_title=row.get("hook_title", "Untitled"),
         subtitle=row.get("subtitle"),
         domain_tag=row.get("domain_tag"),
-        thumbnail_url=row.get("thumbnail_url"),
+        thumbnail_url=_maybe_prefix_api_url(request, row.get("thumbnail_url")),
         scheduled_at=row["scheduled_at"],
         position=row["position"],
         status=ScheduleStatus(row["status"]),
@@ -255,6 +299,7 @@ def _row_to_summary(row: dict) -> ScheduledPostSummary:
 
 @router.get("", response_model=ScheduleResponse)
 async def list_schedule(
+    request: Request,
     include_published: bool = Query(True),
     include_failed: bool = Query(True),
     limit: int = Query(100),
@@ -266,7 +311,7 @@ async def list_schedule(
         limit=limit,
     )
     counts = get_schedule_counts()
-    posts = [_row_to_summary(row) for row in rows]
+    posts = [_row_to_summary(row, request=request) for row in rows]
     
     return ScheduleResponse(
         posts=posts,
@@ -279,7 +324,7 @@ async def list_schedule(
 
 
 @router.post("/sync", response_model=SyncScheduleResponse)
-async def sync_schedule():
+async def sync_schedule(request: Request):
     """Find newly approved stories and add them to the schedule."""
     new_stories = get_approved_stories_not_scheduled()
     
@@ -300,7 +345,7 @@ async def sync_schedule():
             logger.error(f"Failed to schedule story {story['story_generation_id']}: {e}")
     
     rows = get_scheduled_posts()
-    posts = [_row_to_summary(row) for row in rows]
+    posts = [_row_to_summary(row, request=request) for row in rows]
     
     return SyncScheduleResponse(
         added=added,
@@ -310,7 +355,7 @@ async def sync_schedule():
 
 
 @router.patch("/{post_id}")
-async def update_post(post_id: str, request: UpdateScheduledPostRequest):
+async def update_post(post_id: str, request: UpdateScheduledPostRequest, http_request: Request):
     """Update a scheduled post's time or position."""
     updated = update_scheduled_post(
         post_id,
@@ -319,7 +364,7 @@ async def update_post(post_id: str, request: UpdateScheduledPostRequest):
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Post not found")
-    return _row_to_summary(updated)
+    return _row_to_summary(updated, request=http_request)
 
 
 @router.delete("/{post_id}")
@@ -332,18 +377,18 @@ async def remove_post(post_id: str):
 
 
 @router.post("/{post_id}/move")
-async def move_post(post_id: str, request: MovePostRequest):
+async def move_post(post_id: str, request: MovePostRequest, http_request: Request):
     """Reorder a post in the schedule."""
     try:
         rows = reorder_schedule(post_id, request.new_position)
-        posts = [_row_to_summary(row) for row in rows]
+        posts = [_row_to_summary(row, request=http_request) for row in rows]
         return {"schedule": posts}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/{post_id}/retry")
-async def retry_post(post_id: str):
+async def retry_post(post_id: str, http_request: Request):
     """Retry a failed post by resetting its status to 'approved'."""
     post = get_scheduled_post(post_id)
     if not post:
@@ -351,7 +396,7 @@ async def retry_post(post_id: str):
     if post["status"] != "failed":
         raise HTTPException(status_code=400, detail="Post is not in failed status")
     updated = update_scheduled_post(post_id, status="approved")
-    return _row_to_summary(updated)
+    return _row_to_summary(updated, request=http_request)
 
 
 @router.post("/approve", response_model=ApproveScheduleResponse)
@@ -427,7 +472,7 @@ async def render_post(post_id: str):
 
 
 @router.get("/{post_id}/preview")
-async def get_post_preview(post_id: str):
+async def get_post_preview(post_id: str, request: Request):
     """Get preview data for a scheduled post."""
     post = get_scheduled_post(post_id)
     if not post:
@@ -443,6 +488,7 @@ async def get_post_preview(post_id: str):
     # Hydrate preview from canonical story tables so edits always show up.
     story_data = get_story_full_data(story_id)
     if story_data:
+        _normalize_story_thumb_urls(request, story_data)
         hydrated, _changed = hydrate_assembly_from_story(assembly_data, story_data, force=False)
         assembly_data = hydrated
 
@@ -461,7 +507,7 @@ async def get_post_preview(post_id: str):
                     "index": int(s.get("index") or 0),
                     "type": "rendered",
                     "template": "",
-                    "thumbnail_url": s.get("public_url"),
+                        "thumbnail_url": s.get("public_url"),
                     "text_preview": None,
                     "title": None,
                     "filename": s.get("filename"),
@@ -494,7 +540,9 @@ async def get_post_preview(post_id: str):
                         "index": i,
                         "type": slide.get("type", "text"),
                         "template": slide.get("template", ""),
-                        "thumbnail_url": content.get("thumbnail_url") or content.get("image_url"),
+                        "thumbnail_url": _maybe_prefix_api_url(
+                            request, (content.get("thumbnail_url") or content.get("image_url"))
+                        ),
                         "text_preview": (content.get("text", "")[:140] + "...") if content.get("text") else None,
                         "title": content.get("title"),
                     }

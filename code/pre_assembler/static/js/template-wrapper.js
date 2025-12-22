@@ -17,6 +17,17 @@
   // Slide ID set by parent when loading the iframe
   window.__slideId = window.__slideId || null;
   window.__slideType = window.__slideType || null;
+  // When mounted under /assembler, pre_assembler injects root_path here.
+  window.__rootPath = window.__rootPath || '';
+
+  function withRoot(path) {
+    const rp = String(window.__rootPath || '').replace(/\/+$/, '');
+    const p = String(path || '');
+    if (!rp) return p;
+    if (!p.startsWith('/')) return p; // only prefix absolute paths
+    if (p.startsWith(rp + '/')) return p; // already prefixed
+    return rp + p;
+  }
   
   // Listen for messages from parent (editor)
   window.addEventListener('message', function(event) {
@@ -87,13 +98,13 @@
     const s = String(url);
     // Already local / cached / inlined
     if (s.startsWith('data:')) return s;
-    if (s.startsWith('/api/thumbnails/')) return s;
-    if (s.startsWith('/api/images/proxy')) return s;
-    if (s.startsWith('/template-assets/')) return s;
-    if (s.startsWith('/static/')) return s;
+    if (s.startsWith('/api/thumbnails/')) return withRoot(s);
+    if (s.startsWith('/api/images/proxy')) return withRoot(s);
+    if (s.startsWith('/template-assets/')) return withRoot(s);
+    if (s.startsWith('/static/')) return withRoot(s);
     // Proxy remote http(s) images through our cache endpoint
     if (s.startsWith('http://') || s.startsWith('https://')) {
-      return `/api/images/proxy?url=${encodeURIComponent(s)}`;
+      return withRoot(`/api/images/proxy?url=${encodeURIComponent(s)}`);
     }
     return s;
   }

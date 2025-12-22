@@ -113,6 +113,78 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# =============================================================================
+# URL Helpers (support running standalone or mounted under /assembler)
+# =============================================================================
+
+def _root_prefix(request: Request) -> str:
+    """
+    When this app is mounted (e.g. pipeline_manager mounts it at /assembler),
+    Starlette sets request.scope['root_path'] = '/assembler'.
+    Use it to build mount-aware URLs for images/routes returned to the frontend.
+    """
+    rp = (request.scope.get("root_path") or "").rstrip("/")
+    return rp
+
+
+def _with_root(request: Request, path: str) -> str:
+    """
+    Prefix a root-relative path (e.g. '/api/thumbnails/...') with the mount root_path.
+    """
+    rp = _root_prefix(request)
+    if not path.startswith("/"):
+        path = "/" + path
+    return f"{rp}{path}" if rp else path
+
+
+def _normalize_story_urls(request: Request, story_data: dict) -> dict:
+    """
+    Ensure thumbnail image URLs work both when running standalone and when mounted.
+    Mutates and returns story_data.
+    """
+    if not story_data or not isinstance(story_data, dict):
+        return story_data
+
+    thumbs = story_data.get("thumbnails") or []
+    if isinstance(thumbs, list):
+        for t in thumbs:
+            if not isinstance(t, dict):
+                continue
+            # If DB layer filled image_url as '/api/thumbnails/{id}/image', make it mount-aware.
+            img = t.get("image_url")
+            tid = t.get("id")
+            if isinstance(img, str) and img.startswith("/api/"):
+                t["image_url"] = _with_root(request, img)
+            elif tid and not img:
+                t["image_url"] = _with_root(request, f"/api/thumbnails/{tid}/image")
+    story_data["thumbnails"] = thumbs
+    return story_data
+
+
+def _normalize_assembly_urls(request: Request, assembly_data: dict) -> dict:
+    """
+    Normalize any API-rooted URLs inside assembly JSON so the UI works when this app
+    is mounted (e.g. /assembler). We do this at response time (no DB writes).
+    """
+    if not assembly_data or not isinstance(assembly_data, dict):
+        return assembly_data
+
+    slides = assembly_data.get("slides") or []
+    if isinstance(slides, list):
+        for s in slides:
+            if not isinstance(s, dict):
+                continue
+            content = s.get("content")
+            if not isinstance(content, dict):
+                continue
+            for key in ("thumbnail_url", "image_url"):
+                val = content.get(key)
+                if isinstance(val, str) and val.startswith("/api/"):
+                    content[key] = _with_root(request, val)
+            s["content"] = content
+    assembly_data["slides"] = slides
+    return assembly_data
+
 # CORS (allow all for local development)
 app.add_middleware(
     CORSMiddleware,
@@ -192,7 +264,7 @@ async def editor(story_generation_id: str):
 # =============================================================================
 
 @app.get("/api/stories", response_model=StoriesResponse)
-async def list_stories():
+async def list_stories(request: Request):
     """
     Get all stories ready for assembly.
     
@@ -209,7 +281,7 @@ async def list_stories():
         # Construct thumbnail URL from thumbnail_id
         thumbnail_url = None
         if row.get('thumbnail_id'):
-            thumbnail_url = f"/api/thumbnails/{row['thumbnail_id']}/image"
+            thumbnail_url = _with_root(request, f"/api/thumbnails/{row['thumbnail_id']}/image")
         
         stories.append(StorySummary(
             story_generation_id=str(row['story_generation_id']),
@@ -234,7 +306,7 @@ async def list_stories():
 
 
 @app.get("/api/stories/{story_generation_id}")
-async def get_story(story_generation_id: str):
+async def get_story(story_generation_id: str, request: Request):
     """
     Get full story data for the assembly editor.
     
@@ -244,6 +316,8 @@ async def get_story(story_generation_id: str):
     
     if not data:
         raise HTTPException(status_code=404, detail="Story not found")
+
+    _normalize_story_urls(request, data)
     
     return {
         "story": data['story'],
@@ -520,6 +594,7 @@ def hydrate_assembly_from_story(
 @app.get("/api/stories/{story_generation_id}/assembly")
 async def get_or_create_assembly(
     story_generation_id: str,
+    request: Request,
     force_hydrate: bool = Query(False, description="Force re-hydrating slide content from DB story sources"),
 ):
     """
@@ -540,11 +615,14 @@ async def get_or_create_assembly(
         if not story_data:
             raise HTTPException(status_code=404, detail="Story not found")
 
+        _normalize_story_urls(request, story_data)
+
         hydrated_data, changed = hydrate_assembly_from_story(
             existing["assembly_data"] or {},
             story_data,
             force=force_hydrate,
         )
+        hydrated_data = _normalize_assembly_urls(request, hydrated_data)
 
         return {
             "assembly": {
@@ -563,8 +641,11 @@ async def get_or_create_assembly(
     story_data = get_story_full_data(story_generation_id)
     if not story_data:
         raise HTTPException(status_code=404, detail="Story not found")
+
+    _normalize_story_urls(request, story_data)
     
     default_assembly = generate_default_assembly(story_data)
+    default_assembly = _normalize_assembly_urls(request, default_assembly)
     # Mark as hydrated so subsequent loads don't overwrite manual edits.
     default_assembly.setdefault("metadata", {})
     default_assembly["metadata"]["hydrated_from_story"] = True
@@ -628,8 +709,9 @@ async def save_story_assembly(story_generation_id: str, request: SaveAssemblyReq
 @app.get("/api/render/{template_type}")
 async def render_template(
     template_type: str,
+    request: Request,
     slide_id: str = Query(..., description="Slide ID for postMessage identification"),
-    slide_type: str = Query("text", description="Slide type: cover, text, photo")
+    slide_type: str = Query("text", description="Slide type: cover, text, photo"),
 ):
     """
     Serve a template with the wrapper script injected.
@@ -661,9 +743,31 @@ async def render_template(
         html = f.read()
     
     # Fix image paths to use our served assets
-    # Original: ../img/... → /template-assets/img/...
-    html = html.replace('src="../img/', 'src="/template-assets/img/')
-    html = html.replace("src='../img/", "src='/template-assets/img/")
+    # Original: ../img/... → {root_path}/template-assets/img/...
+    rp = _root_prefix(request)
+    html = html.replace('src="../img/', f'src="{rp}/template-assets/img/')
+    html = html.replace("src='../img/", f"src='{rp}/template-assets/img/")
+
+    # Also rewrite any absolute asset paths inside templates so they work when mounted.
+    # (Many templates reference /template-assets/... directly.)
+    if rp:
+        html = html.replace('src="/template-assets/', f'src="{rp}/template-assets/')
+        html = html.replace("src='/template-assets/", f"src='{rp}/template-assets/")
+        html = html.replace('href="/template-assets/', f'href="{rp}/template-assets/')
+        html = html.replace("href='/template-assets/", f"href='{rp}/template-assets/")
+        html = html.replace('url(/template-assets/', f'url({rp}/template-assets/')
+
+        html = html.replace('src="/static/', f'src="{rp}/static/')
+        html = html.replace("src='/static/", f"src='{rp}/static/")
+        html = html.replace('href="/static/', f'href="{rp}/static/')
+        html = html.replace("href='/static/", f"href='{rp}/static/")
+        html = html.replace('url(/static/', f'url({rp}/static/')
+
+        html = html.replace('src="/templates/', f'src="{rp}/templates/')
+        html = html.replace("src='/templates/", f"src='{rp}/templates/")
+        html = html.replace('href="/templates/', f'href="{rp}/templates/')
+        html = html.replace("href='/templates/", f"href='{rp}/templates/")
+        html = html.replace('url(/templates/', f'url({rp}/templates/')
     
     # Cache-bust the wrapper script so UI changes apply immediately in iframes.
     wrapper_path = os.path.join(config.STATIC_DIR, "js", "template-wrapper.js")
@@ -673,7 +777,7 @@ async def render_template(
     except Exception:
         wrapper_v = str(int(datetime.now().timestamp()))
 
-    wrapper_src = f"/static/js/template-wrapper.js?v={wrapper_v}"
+    wrapper_src = _with_root(request, f"/static/js/template-wrapper.js?v={wrapper_v}")
 
     # Create the initialization script with slide metadata
     init_script = f'''
@@ -681,6 +785,7 @@ async def render_template(
   // Set slide metadata before wrapper script runs
   window.__slideId = "{slide_id}";
   window.__slideType = "{slide_type}";
+  window.__rootPath = "{rp}";
 </script>
 <script src="{wrapper_src}"></script>
 '''

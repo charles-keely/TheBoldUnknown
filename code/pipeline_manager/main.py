@@ -2,11 +2,14 @@
 Pipeline Manager - FastAPI Application
 
 Unified web UI to orchestrate the entire content pipeline.
+Includes pre_assembler and scheduler as mounted sub-applications.
 """
 
 import asyncio
 import json
 import logging
+import sys
+import os
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from contextlib import asynccontextmanager
@@ -18,6 +21,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from .config import config
+
+# Add parent directory to path for importing sibling packages
+_parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
 from .models import (
     PipelineMode, PipelineStatus, StartPipelineRequest, CancelRunRequest,
     PipelineRunSummary, PipelineRunDetail, PipelineStats, PhaseProgress,
@@ -90,6 +98,25 @@ app.add_middleware(
 
 # Mount static files
 app.mount("/static", StaticFiles(directory=str(config.static_dir)), name="static")
+
+
+# =============================================================================
+# Mount Sub-Applications (Pre-Assembler and Scheduler)
+# =============================================================================
+
+try:
+    from pre_assembler.main import app as pre_assembler_app
+    app.mount("/assembler", pre_assembler_app)
+    logger.info("Mounted pre_assembler at /assembler")
+except ImportError as e:
+    logger.warning(f"Could not import pre_assembler: {e}")
+
+try:
+    from scheduler.api import app as scheduler_app
+    app.mount("/scheduler", scheduler_app)
+    logger.info("Mounted scheduler at /scheduler")
+except ImportError as e:
+    logger.warning(f"Could not import scheduler: {e}")
 
 
 # =============================================================================
@@ -288,11 +315,20 @@ async def pause_run(run_id: str):
         raise HTTPException(status_code=400, detail="Can only pause running pipelines")
     
     executor = get_executor(run_id)
-    if executor:
-        executor.pause()
+    if not executor:
+        # No executor means the server restarted or the task finished
+        # We can't pause something that isn't running in this process
+        logger.warning(f"No executor found for run {run_id} - task may have completed or server restarted")
+        raise HTTPException(
+            status_code=409, 
+            detail="Cannot pause: pipeline task not found. The server may have restarted."
+        )
     
+    # Signal the executor to pause - workers will block at next checkpoint
+    executor.pause()
     update_pipeline_run(run_id, status='paused')
     
+    logger.info(f"Pipeline {run_id} paused - workers will block at next checkpoint")
     return {"success": True, "status": "paused"}
 
 
@@ -307,28 +343,45 @@ async def resume_run(run_id: str, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=400, detail="Can only resume paused pipelines")
     
     executor = get_executor(run_id)
+    
     if executor:
+        # The original task is still alive and blocked - just unblock it
         executor.resume()
+        update_pipeline_run(run_id, status='running')
+        logger.info(f"Pipeline {run_id} resumed - unblocking existing task")
+        return {"success": True, "status": "running", "method": "unblocked_existing"}
     
-    # For auto mode, restart execution
-    if run['mode'] == 'auto':
-        def progress_callback(event: Dict[str, Any]):
-            _broadcast_event(run_id, event)
-        
-        background_tasks.add_task(start_pipeline, run_id, PipelineMode.AUTO, progress_callback)
+    # No executor - server restarted while paused, need to restart pipeline
+    # This is a "cold resume" - we start fresh but skip completed phases
+    logger.info(f"Pipeline {run_id} cold resume - starting new task (server had restarted)")
     
-    return {"success": True, "status": "running"}
+    def progress_callback(event: Dict[str, Any]):
+        _broadcast_event(run_id, event)
+    
+    update_pipeline_run(run_id, status='running')
+    background_tasks.add_task(start_pipeline, run_id, PipelineMode(run['mode']), progress_callback)
+    
+    return {"success": True, "status": "running", "method": "cold_restart"}
 
 
 @app.post("/api/pipeline/runs/{run_id}/cancel")
 async def cancel_run(run_id: str, delete_data: bool = Query(True)):
     """Cancel a pipeline run, optionally deleting all created data."""
+    from .executor import wait_for_cancellation
+    
     run = get_pipeline_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     
-    # Signal cancellation to executor
-    cancel_pipeline(run_id)
+    # Signal cancellation to executor (this cancels the asyncio task)
+    cancelled = cancel_pipeline(run_id)
+    
+    if cancelled:
+        # Wait for the task to actually stop before touching data
+        # This prevents FK violations from workers still running
+        stopped = await wait_for_cancellation(run_id, timeout=15.0)
+        if not stopped:
+            logger.warning(f"Pipeline {run_id} did not stop within timeout, proceeding with cleanup anyway")
     
     if delete_data:
         # Run cleanup in a worker thread so we don't block the event loop / SSE

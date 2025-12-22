@@ -25,7 +25,7 @@ _load_env()
 class Config:
     # Web Server
     HOST: str = os.getenv("SCHEDULER_HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("SCHEDULER_PORT", "8001"))
+    PORT: int = int(os.getenv("SCHEDULER_PORT", "8000"))
     DEBUG: bool = os.getenv("SCHEDULER_DEBUG", "true").strip().lower() in ("1", "true", "yes")
     
     # Static files

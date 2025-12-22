@@ -26,13 +26,47 @@ logger = logging.getLogger(__name__)
 class StoryResearcherWorker:
     """Worker adapter for story research phase."""
     
-    def __init__(self, progress_callback: Optional[Callable] = None):
+    def __init__(
+        self,
+        progress_callback: Optional[Callable] = None,
+        cancellation_check: Optional[Callable[[], bool]] = None,
+        pause_event: Optional[asyncio.Event] = None
+    ):
         self.progress_callback = progress_callback
         self._cancelled = False
+        self._cancellation_check = cancellation_check or (lambda: False)
+        self._pause_event = pause_event
     
     def cancel(self):
         """Signal cancellation."""
         self._cancelled = True
+    
+    def is_cancelled(self) -> bool:
+        """Check if we should stop."""
+        return self._cancelled or self._cancellation_check()
+    
+    async def wait_if_paused(self):
+        """Block if paused, return True if cancelled during pause."""
+        if self._pause_event is None:
+            return self.is_cancelled()
+        
+        if not self._pause_event.is_set():
+            logger.info("StoryResearcherWorker: pause detected, blocking...")
+        
+        while not self._pause_event.is_set():
+            if self.is_cancelled():
+                logger.info("StoryResearcherWorker: cancelled while paused")
+                return True
+            try:
+                await asyncio.wait_for(self._pause_event.wait(), timeout=0.5)
+            except asyncio.TimeoutError:
+                continue
+        
+        if self.is_cancelled():
+            return True
+        
+        logger.info("StoryResearcherWorker: resumed, continuing")
+        return False
     
     def _emit_progress(self, status: str, story_id: str = None, data: Dict[str, Any] = None):
         """Emit progress update."""
@@ -82,7 +116,14 @@ class StoryResearcherWorker:
             story_statuses = {str(s['lead_id']): s['id'] for s in get_stories_for_run(run_id) if s.get('lead_id')}
             
             for i, lead in enumerate(leads):
-                if self._cancelled:
+                # Check cancellation before each item
+                if self.is_cancelled():
+                    logger.info(f"Story research cancelled after {completed} items")
+                    break
+                
+                # Wait if paused
+                if await self.wait_if_paused():
+                    logger.info(f"Story research cancelled during pause after {completed} items")
                     break
                 
                 lead_id = str(lead['id'])
@@ -102,7 +143,16 @@ class StoryResearcherWorker:
                         "summary": lead.get("summary")
                     }
                     
+                    # Check cancellation before the expensive operation
+                    if self.is_cancelled():
+                        break
+                    
                     result = await asyncio.to_thread(researcher.research_story, story_data)
+                    
+                    # Check cancellation after the expensive operation - don't write if cancelled
+                    if self.is_cancelled():
+                        logger.info(f"Cancelled after researching '{title}' - skipping DB write")
+                        break
                     
                     # Create research entry in database
                     with get_db_cursor() as cur:
@@ -128,6 +178,10 @@ class StoryResearcherWorker:
                     research_ids.append(research_id)
                     completed += 1
                     
+                except asyncio.CancelledError:
+                    logger.info(f"Story research task cancelled during '{title}'")
+                    raise  # Re-raise to stop the worker
+                    
                 except Exception as e:
                     logger.error(f"Research failed for {title}: {e}")
                     errors.append({"lead_id": lead_id, "title": title, "error": str(e)})
@@ -143,11 +197,16 @@ class StoryResearcherWorker:
             })
             
             return {
-                "success": len(errors) == 0,
+                "success": len(errors) == 0 and not self.is_cancelled(),
                 "research_ids": research_ids,
                 "completed": completed,
-                "errors": errors
+                "errors": errors,
+                "cancelled": self.is_cancelled()
             }
+            
+        except asyncio.CancelledError:
+            logger.info(f"Story research worker cancelled")
+            raise  # Must re-raise CancelledError
             
         except Exception as e:
             logger.error(f"Story research phase failed: {e}")
