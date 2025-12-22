@@ -15,10 +15,10 @@ class Config:
     # OpenAI
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
     # Using GPT-5.1 as requested for intelligent query generation and vision
-    QUERY_GENERATOR_MODEL = "gpt-5.1"
-    VISION_MODEL = "gpt-5.1" 
+    QUERY_GENERATOR_MODEL = "gpt-5.2"
+    VISION_MODEL = "gpt-5.2" 
     # Placement model (choose best photo + where it should be inserted among slides)
-    PLACER_MODEL = "gpt-5.1"
+    PLACER_MODEL = "gpt-5.2"
 
     # Google Custom Search
     GOOGLE_CUSTOM_SEARCH_KEY = os.getenv('GOOGLE_CUSTOM_SEARCH_KEY')

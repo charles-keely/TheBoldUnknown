@@ -1,3 +1,4 @@
+import os
 import psycopg2
 from psycopg2.extras import RealDictCursor, Json
 import json
@@ -7,12 +8,16 @@ from .config import config
 
 class Database:
     def __init__(self):
+        # Ensure schema init / migrations don't get killed by low server defaults.
+        # Other modules use POSTGRES_STATEMENT_TIMEOUT_MS; mirror that here.
+        statement_timeout_ms = int(os.getenv("POSTGRES_STATEMENT_TIMEOUT_MS", "120000"))
         self.conn = psycopg2.connect(
             host=config.POSTGRES_HOST,
             port=config.POSTGRES_PORT,
             dbname=config.POSTGRES_DB,
             user=config.POSTGRES_USER,
-            password=config.POSTGRES_PASSWORD
+            password=config.POSTGRES_PASSWORD,
+            options=f"-c statement_timeout={statement_timeout_ms}",
         )
         self.conn.autocommit = True
         self._init_tables()
@@ -45,11 +50,33 @@ class Database:
 
             # Ensure newer columns exist even if the table was created by an older version.
             # This is safe on Postgres and prevents silent "caption/source not persisted" issues.
-            cur.execute("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS caption text;")
-            cur.execute("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS source_attribution text;")
-            cur.execute("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS concept_tag text;")
-            cur.execute("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS text_generated_at timestamp with time zone;")
-            cur.execute("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS pipeline_run_id uuid;")
+            #
+            # NOTE: On some hosted Postgres setups (or during concurrent access), these ALTERs can
+            # briefly block on locks and hit a low statement_timeout. Since they're defensive
+            # (and in production the columns should already exist), treat timeouts as warnings.
+            def _safe_alter(sql: str) -> None:
+                try:
+                    # Fail fast on DDL lock contention; these are best-effort backfills.
+                    # With autocommit=True, SET LOCAL won't apply, so we SET then RESET.
+                    cur.execute("SET lock_timeout = '2s';")
+                    cur.execute("SET statement_timeout = '2000ms';")
+                    cur.execute(sql)
+                except psycopg2.errors.QueryCanceled as e:
+                    print(f"[warn] schema alter timed out; continuing: {sql} ({e})")
+                except psycopg2.errors.LockNotAvailable as e:
+                    print(f"[warn] schema alter lock timeout; continuing: {sql} ({e})")
+                finally:
+                    try:
+                        cur.execute("RESET lock_timeout;")
+                        cur.execute("RESET statement_timeout;")
+                    except Exception:
+                        pass
+
+            _safe_alter("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS caption text;")
+            _safe_alter("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS source_attribution text;")
+            _safe_alter("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS concept_tag text;")
+            _safe_alter("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS text_generated_at timestamp with time zone;")
+            _safe_alter("ALTER TABLE story_photos ADD COLUMN IF NOT EXISTS pipeline_run_id uuid;")
 
     def _normalize_caption(self, text: str) -> str:
         t = re.sub(r"\s+", " ", (text or "").strip())

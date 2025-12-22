@@ -412,13 +412,25 @@ def get_research_for_run(run_id: str) -> List[Dict[str, Any]]:
 
 
 def get_generations_for_run(run_id: str) -> List[Dict[str, Any]]:
-    """Get all story generations for a pipeline run."""
+    """Get all story generations for a pipeline run.
+    
+    Includes research_data and slides so downstream workers (photo_researcher)
+    have the context needed to generate relevant queries.
+    """
     with get_db_cursor() as cur:
         cur.execute("""
             SELECT sg.*, 
                    l.title as lead_title,
+                   sr.research_data,
                    (SELECT COUNT(*) FROM story_slides ss WHERE ss.story_generation_id = sg.id) as slide_count,
-                   (SELECT SUM(LENGTH(text_content)) FROM story_slides ss WHERE ss.story_generation_id = sg.id) as char_count
+                   (SELECT SUM(LENGTH(text_content)) FROM story_slides ss WHERE ss.story_generation_id = sg.id) as char_count,
+                   (SELECT json_agg(
+                       json_build_object(
+                           'id', ss.id,
+                           'slide_order', ss.slide_order,
+                           'text_content', ss.text_content
+                       ) ORDER BY ss.slide_order
+                   ) FROM story_slides ss WHERE ss.story_generation_id = sg.id) as slides
             FROM story_generations sg
             JOIN story_research sr ON sg.story_research_id = sr.id
             JOIN leads l ON sr.lead_id = l.id
