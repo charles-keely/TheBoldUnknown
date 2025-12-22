@@ -4,6 +4,7 @@ Lead Generator Worker Adapter.
 Wraps the lead_generator module for pipeline integration.
 """
 
+import asyncio
 import sys
 import logging
 from pathlib import Path
@@ -73,8 +74,8 @@ class LeadGeneratorWorker:
             
             self._emit_progress("running", {"message": "Scanning RSS feeds and discovery..."})
             
-            # Run the workflow
-            workflow.run(source=source)
+            # Run the workflow in a thread pool to avoid blocking the event loop
+            await asyncio.to_thread(workflow.run, source=source)
             
             # Find newly created leads
             all_leads = lead_db.fetch_all("SELECT id, title, url, summary, brand_score, virality_score, source_origin, published_at, status FROM leads")

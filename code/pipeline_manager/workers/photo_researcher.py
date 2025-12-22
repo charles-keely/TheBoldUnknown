@@ -4,6 +4,7 @@ Photo Researcher Worker Adapter.
 Wraps the photo_researcher module for pipeline integration.
 """
 
+import asyncio
 import sys
 import logging
 from pathlib import Path
@@ -110,98 +111,90 @@ class PhotoResearcherWorker:
                 })
                 
                 try:
-                    # Step 1: Generate search queries
-                    queries = generator.generate_queries(story)
-                    
-                    self._emit_progress("running", story_id=generation_id, data={
-                        "step": "search",
-                        "queries": len(queries)
-                    })
-                    
-                    # Step 2: Search and validate
-                    valid_candidates = []
-                    seen_urls = set()
-                    
-                    for query in queries:
-                        results = searcher.search(query, num_results=5)
+                    # Define sync function for thread pool
+                    def process_story_photos():
+                        # Step 1: Generate search queries
+                        queries = generator.generate_queries(story)
                         
-                        for res in results:
-                            url = res.get('image_url')
-                            if url and url not in seen_urls:
-                                seen_urls.add(url)
-                                if validator.check_url(url):
-                                    res['search_query'] = query
-                                    valid_candidates.append(res)
+                        # Step 2: Search and validate
+                        valid_candidates = []
+                        seen_urls = set()
+                        
+                        for query in queries:
+                            results = searcher.search(query, num_results=5)
+                            
+                            for res in results:
+                                url = res.get('image_url')
+                                if url and url not in seen_urls:
+                                    seen_urls.add(url)
+                                    if validator.check_url(url):
+                                        res['search_query'] = query
+                                        valid_candidates.append(res)
+                        
+                        # Step 3: Analyze and save candidates
+                        ground_truth = story.get('research_data', {}).get('ground_truth', '')
+                        story_photos_found = 0
+                        story_photos_approved = 0
+                        
+                        for candidate in valid_candidates:
+                            # Scrape source context
+                            source_url = candidate.get('source_page_url')
+                            source_context = {}
+                            if source_url:
+                                source_context = scraper.scrape_context(source_url)
+                            
+                            # Analyze with vision AI
+                            analysis = analyzer.analyze(candidate['image_url'], ground_truth, source_context)
+                            candidate.update(analysis)
+                            
+                            # Store source context
+                            if 'metadata' not in candidate:
+                                candidate['metadata'] = {}
+                            candidate['metadata']['source_context'] = {
+                                'title': source_context.get('page_title'),
+                                'description': source_context.get('page_description')
+                            }
+                            
+                            # Save to database
+                            photo_id = photo_db.save_photo_candidate(research_id, candidate)
+                            story_photos_found += 1
+                            
+                            if candidate.get('status') == 'approved':
+                                story_photos_approved += 1
+                            
+                            # Tag with pipeline run
+                            with get_db_cursor() as cur:
+                                cur.execute("""
+                                    UPDATE story_photos SET pipeline_run_id = %s WHERE id = %s
+                                """, (run_id, photo_id))
+                        
+                        # Step 4: Photo placement
+                        try:
+                            approved = photo_db.fetch_approved_photos(research_id)
+                            slides = story.get('slides', [])
+                            
+                            if approved and slides:
+                                placement = placer.place_photos(
+                                    story_title=title,
+                                    slides=list(slides),
+                                    photos=[dict(p) for p in approved]
+                                )
+                                
+                                if placement:
+                                    photo_db.apply_photo_placements(
+                                        story_generation_id=generation_id,
+                                        placements=placement.get('placements', [])
+                                    )
+                        except Exception as e:
+                            logger.warning(f"Photo placement failed for {title}: {e}")
+                        
+                        return story_photos_found, story_photos_approved
                     
-                    self._emit_progress("running", story_id=generation_id, data={
-                        "step": "analyze",
-                        "candidates": len(valid_candidates)
-                    })
-                    
-                    # Step 3: Analyze and save candidates
-                    ground_truth = story.get('research_data', {}).get('ground_truth', '')
-                    story_photos_found = 0
-                    story_photos_approved = 0
-                    
-                    for candidate in valid_candidates:
-                        # Scrape source context
-                        source_url = candidate.get('source_page_url')
-                        source_context = {}
-                        if source_url:
-                            source_context = scraper.scrape_context(source_url)
-                        
-                        # Analyze with vision AI
-                        analysis = analyzer.analyze(candidate['image_url'], ground_truth, source_context)
-                        candidate.update(analysis)
-                        
-                        # Store source context
-                        if 'metadata' not in candidate:
-                            candidate['metadata'] = {}
-                        candidate['metadata']['source_context'] = {
-                            'title': source_context.get('page_title'),
-                            'description': source_context.get('page_description')
-                        }
-                        
-                        # Save to database
-                        photo_id = photo_db.save_photo_candidate(research_id, candidate)
-                        story_photos_found += 1
-                        
-                        if candidate.get('status') == 'approved':
-                            story_photos_approved += 1
-                        
-                        # Tag with pipeline run
-                        with get_db_cursor() as cur:
-                            cur.execute("""
-                                UPDATE story_photos SET pipeline_run_id = %s WHERE id = %s
-                            """, (run_id, photo_id))
+                    # Run in thread pool to avoid blocking
+                    story_photos_found, story_photos_approved = await asyncio.to_thread(process_story_photos)
                     
                     photos_found += story_photos_found
                     photos_approved += story_photos_approved
-                    
-                    # Step 4: Photo placement
-                    self._emit_progress("running", story_id=generation_id, data={
-                        "step": "placement"
-                    })
-                    
-                    try:
-                        approved = photo_db.fetch_approved_photos(research_id)
-                        slides = story.get('slides', [])
-                        
-                        if approved and slides:
-                            placement = placer.place_photos(
-                                story_title=title,
-                                slides=list(slides),
-                                photos=[dict(p) for p in approved]
-                            )
-                            
-                            if placement:
-                                # Apply placements
-                                photo_db.apply_photo_placements(
-                                    story_generation_id=generation_id,
-                                    placements=placement.get('placements', [])
-                                )
-                    except Exception as e:
-                        logger.warning(f"Photo placement failed for {title}: {e}")
                     
                     # Update story status
                     status_id = story_statuses.get(generation_id)

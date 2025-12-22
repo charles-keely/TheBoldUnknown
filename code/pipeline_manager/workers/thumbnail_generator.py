@@ -4,6 +4,7 @@ Thumbnail Generator Worker Adapter.
 Wraps the thumbnail_generator module for pipeline integration.
 """
 
+import asyncio
 import sys
 import logging
 from pathlib import Path
@@ -110,12 +111,13 @@ class ThumbnailGeneratorWorker:
                         "step": "generating"
                     })
                     
-                    # Generate thumbnails (3 concepts)
-                    result = process_story(
+                    # Generate thumbnails (3 concepts) in thread pool
+                    result = await asyncio.to_thread(
+                        process_story,
                         story_data, 
-                        use_pro=False,  # Use standard model
-                        simple_prompt=False,
-                        skip_db=False
+                        False,  # use_pro
+                        False,  # simple_prompt
+                        False   # skip_db
                     )
                     
                     thumbnail_ids = result.get('thumbnail_ids', [])

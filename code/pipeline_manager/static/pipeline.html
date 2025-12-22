@@ -12,12 +12,14 @@
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
     
     :root {
+      /* Apple-ish light palette (matches pre_assembler UI) */
       --bg-primary: #FFFFFF;
       --bg-secondary: #F5F5F7;
       --bg-tertiary: #E8E8ED;
+      --bg-card: #FFFFFF;
       --text-primary: #1D1D1F;
       --text-secondary: #6E6E73;
       --text-tertiary: #86868B;
@@ -26,13 +28,22 @@
       --success: #34C759;
       --warning: #FF9500;
       --danger: #FF3B30;
-      --border: rgba(0, 0, 0, 0.1);
+      --success-bg: rgba(52, 199, 89, 0.14);
+      --warning-bg: rgba(255, 149, 0, 0.14);
+      --danger-bg: rgba(255, 59, 48, 0.14);
+      --border: rgba(0, 0, 0, 0.10);
+      --border-light: rgba(0, 0, 0, 0.14);
       --shadow: rgba(0, 0, 0, 0.08);
+      --shadow-strong: rgba(0, 0, 0, 0.12);
     }
     
     * {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text',
                    'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+    
+    code, .font-mono {
+      font-family: 'JetBrains Mono', 'SF Mono', monospace;
     }
     
     body {
@@ -42,362 +53,410 @@
       -moz-osx-font-smoothing: grayscale;
     }
     
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.16); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.24); }
+    
     .card {
-      background: var(--bg-primary);
+      background: var(--bg-card);
+      border: 1px solid var(--border);
       border-radius: 16px;
-      box-shadow: 0 4px 20px var(--shadow);
+      box-shadow: 0 2px 12px var(--shadow);
     }
     
-    .status-badge {
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    /* Status badges */
+    .badge {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.02em;
-    }
-    
-    .status-running { background: #D4EDDA; color: #155724; }
-    .status-paused { background: #FFF3CD; color: #856404; }
-    .status-pending_approval { background: #FFF3CD; color: #856404; }
-    .status-completed { background: #D1ECF1; color: #0C5460; }
-    .status-failed { background: #F8D7DA; color: #721C24; }
-    .status-cancelled { background: var(--bg-tertiary); color: var(--text-secondary); }
-    
-    .mode-badge {
-      display: inline-block;
       padding: 4px 10px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-    }
-    
-    .mode-auto { background: #E5F0FF; color: #2B6CB0; }
-    .mode-step { background: #FFF5E5; color: #C05621; }
-    
-    .phase-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 10px;
-      border-radius: 8px;
+      border-radius: 999px;
       font-size: 11px;
       font-weight: 600;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
     }
     
-    .phase-pending { background: var(--bg-tertiary); color: var(--text-secondary); }
-    .phase-running { background: #D4EDDA; color: #155724; }
-    .phase-completed { background: #D1ECF1; color: #0C5460; }
-    .phase-failed { background: #F8D7DA; color: #721C24; }
-    .phase-skipped { background: var(--bg-tertiary); color: var(--text-tertiary); }
+    .badge-pending { background: rgba(0,0,0,0.04); color: var(--text-secondary); border-color: rgba(0,0,0,0.06); }
+    .badge-running { background: var(--accent); color: white; }
+    .badge-completed { background: var(--success-bg); color: var(--success); border-color: rgba(52, 199, 89, 0.35); }
+    .badge-failed { background: var(--danger-bg); color: var(--danger); border-color: rgba(255, 59, 48, 0.35); }
+    .badge-paused { background: var(--warning-bg); color: #7A4A00; border-color: rgba(255, 149, 0, 0.35); }
+    .badge-approved { background: var(--success-bg); color: var(--success); }
+    .badge-rejected { background: var(--danger-bg); color: var(--danger); }
     
-    /* Apple-like spinner */
-    .apple-spinner {
-      width: 18px;
-      height: 18px;
-      border-radius: 999px;
-      background:
-        conic-gradient(from 0deg,
-          rgba(0, 122, 255, 0.0),
-          rgba(0, 122, 255, 0.22),
-          rgba(0, 122, 255, 0.90)
-        );
-      -webkit-mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
-      mask: radial-gradient(farthest-side, transparent 62%, #000 63%);
-      animation: apple-spin 0.9s linear infinite;
-      opacity: 0.85;
-    }
+    /* Mode badges */
+    .mode-auto { background: linear-gradient(135deg, #007AFF, #5AC8FA); color: white; }
+    .mode-step { background: linear-gradient(135deg, #FF9500, #FFCC00); color: #1D1D1F; }
     
-    .apple-spinner-small {
-      width: 14px;
-      height: 14px;
-    }
-    
-    @keyframes apple-spin { to { transform: rotate(360deg); } }
-    
+    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 10px 18px;
-      border-radius: 10px;
-      font-weight: 500;
-      font-size: 14px;
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-    
-    .btn-sm {
-      padding: 8px 14px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-weight: 600;
       font-size: 13px;
+      transition: all 0.18s ease;
+      cursor: pointer;
+      border: 1px solid transparent;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
     }
     
-    .btn-primary {
-      background: var(--accent);
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: rgba(255,255,255,0.9); color: var(--text-primary); border-color: var(--border); }
+    .btn-secondary:hover { background: rgba(255,255,255,1); border-color: var(--border-light); box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(0,122,255,0.25), 0 1px 2px rgba(0,0,0,0.06); }
+    
+    /* Phase navigation */
+    .phase-nav {
+      display: flex;
+      gap: 4px;
+      background: rgba(255,255,255,0.75);
+      padding: 4px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 12px var(--shadow);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    
+    .phase-tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 16px;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      min-width: 100px;
+      border: 1px solid transparent;
+    }
+    
+    .phase-tab:hover { background: rgba(0,0,0,0.04); }
+    .phase-tab.active { background: var(--bg-card); border-color: var(--border-light); box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+    .phase-tab.completed .phase-icon { background: var(--success); }
+    .phase-tab.running .phase-icon { background: var(--accent); animation: pulse 2s infinite; }
+    .phase-tab.failed .phase-icon { background: var(--danger); }
+    
+    .phase-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    
+    .phase-tab.completed .phase-icon,
+    .phase-tab.running .phase-icon {
       color: white;
     }
     
-    .btn-primary:hover {
-      background: var(--accent-hover);
+    .phase-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
     }
     
-    .btn-success {
-      background: var(--success);
-      color: white;
+    .phase-tab.active .phase-name { color: var(--text-primary); }
+    
+    .phase-count {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      font-family: 'JetBrains Mono', monospace;
     }
     
-    .btn-success:hover {
-      background: #2DA94C;
-    }
-    
-    .btn-secondary {
-      background: var(--bg-tertiary);
-      color: var(--text-primary);
-    }
-    
-    .btn-secondary:hover {
-      background: #D8D8DC;
-    }
-    
-    .btn-danger {
-      background: var(--danger);
-      color: white;
-    }
-    
-    .btn-danger:hover {
-      background: #E6352B;
-    }
-    
-    .btn-warning {
-      background: var(--warning);
-      color: white;
-    }
-    
-    .btn-warning:hover {
-      background: #E68800;
-    }
-    
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
     }
     
     /* Progress bar */
     .progress-bar {
-      height: 8px;
+      height: 6px;
       background: var(--bg-tertiary);
-      border-radius: 4px;
+      border-radius: 3px;
       overflow: hidden;
     }
     
-    .progress-bar-fill {
+    .progress-fill {
       height: 100%;
-      background: var(--accent);
-      border-radius: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+      border-radius: 3px;
       transition: width 0.5s ease;
     }
     
-    .progress-bar-fill.success {
-      background: var(--success);
+    .progress-fill.success {
+      background: linear-gradient(90deg, var(--success), #7DFA9B);
     }
     
-    /* Phase step indicators */
-    .phase-step {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px;
-      border-radius: 12px;
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-    
-    .phase-step:hover {
-      background: var(--bg-secondary);
-    }
-    
-    .phase-step.active {
-      background: var(--bg-secondary);
-      border: 2px solid var(--accent);
-    }
-    
-    .phase-step.completed {
-      background: rgba(52, 199, 89, 0.08);
-    }
-    
-    .phase-indicator {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 14px;
-      flex-shrink: 0;
-    }
-    
-    .phase-indicator.pending {
+    /* Score bars */
+    .score-bar {
+      height: 4px;
       background: var(--bg-tertiary);
-      color: var(--text-secondary);
+      border-radius: 2px;
+      overflow: hidden;
+      flex: 1;
     }
     
-    .phase-indicator.running {
-      background: var(--accent);
-      color: white;
+    .score-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s ease;
     }
     
-    .phase-indicator.completed {
-      background: var(--success);
-      color: white;
+    .score-high { background: var(--success); }
+    .score-medium { background: var(--warning); }
+    .score-low { background: var(--danger); }
+    
+    /* Funnel diagram */
+    .funnel-step {
+      display: flex;
+      align-items: center;
+      padding: 10px 0;
+      border-left: 2px solid var(--border);
+      margin-left: 12px;
+      padding-left: 20px;
+      position: relative;
     }
     
-    .phase-indicator.failed {
-      background: var(--danger);
-      color: white;
+    .funnel-step::before {
+      content: '';
+      position: absolute;
+      left: -6px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--bg-tertiary);
+      border: 2px solid var(--border-light);
     }
     
-    /* Story card */
+    .funnel-step.passed::before { background: var(--success); border-color: var(--success); }
+    .funnel-step.filtered::before { background: var(--danger); border-color: var(--danger); }
+    
+    /* Story cards */
     .story-card {
-      background: var(--bg-primary);
-      border-radius: 12px;
+      background: var(--bg-card);
       border: 1px solid var(--border);
+      border-radius: 16px;
       padding: 16px;
-      transition: all 0.2s ease;
+      transition: all 0.18s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
     }
     
     .story-card:hover {
-      box-shadow: 0 4px 12px var(--shadow);
+      border-color: var(--border-light);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.10);
+      transform: translateY(-1px);
     }
     
-    .story-status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
+    /* Photo grid */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 8px;
     }
     
-    .story-status-dot.pending { background: var(--bg-tertiary); }
-    .story-status-dot.processing { background: var(--accent); animation: pulse 1.5s infinite; }
-    .story-status-dot.completed { background: var(--success); }
-    .story-status-dot.failed { background: var(--danger); }
-    
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
+    .photo-thumb {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: all 0.15s ease;
+      cursor: pointer;
+      position: relative;
     }
     
-    /* Log viewer */
-    .log-viewer {
-      background: #1D1D1F;
-      border-radius: 12px;
-      padding: 16px;
-      font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
-      font-size: 12px;
-      line-height: 1.6;
-      color: #E5E5E7;
-      max-height: 300px;
+    .photo-thumb:hover { border-color: var(--accent); transform: scale(1.02); }
+    .photo-thumb.approved { border-color: var(--success); }
+    .photo-thumb.rejected { border-color: var(--danger); opacity: 0.6; }
+    .photo-thumb.hero { border-color: var(--warning); }
+    
+    .photo-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .photo-score {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(0,0,0,0.8);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    
+    /* Thumbnail gallery */
+    .thumb-gallery {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    
+    .thumb-concept {
+      aspect-ratio: 4/5;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 2px solid var(--border);
+      transition: all 0.15s ease;
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .thumb-concept:hover { border-color: var(--accent); }
+    .thumb-concept.selected { border-color: var(--success); border-width: 3px; }
+    
+    .thumb-concept img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .thumb-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.9));
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    /* Expandable content */
+    .expandable {
+      max-height: 120px;
+      overflow: hidden;
+      position: relative;
+      transition: max-height 0.3s ease;
+    }
+    
+    .expandable.expanded { max-height: none; }
+    
+    .expandable-fade {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(transparent, var(--bg-card));
+      pointer-events: none;
+    }
+    
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .modal-content {
+      background: rgba(255,255,255,0.92);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
       overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.25);
     }
     
-    .log-entry {
-      padding: 4px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    /* Slide preview */
+    .slide-row {
+      display: grid;
+      grid-template-columns: 40px 100px 40px 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
     }
     
-    .log-entry:last-child {
-      border-bottom: none;
+    .slide-row:last-child { border-bottom: none; }
+    
+    .slide-tag {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
     
-    .log-time {
-      color: #6E6E73;
-      margin-right: 12px;
-    }
-    
-    .log-info { color: #007AFF; }
-    .log-success { color: #34C759; }
-    .log-warning { color: #FF9500; }
-    .log-error { color: #FF3B30; }
-    
-    /* Toast notification */
+    /* Toast */
     .toast {
       position: fixed;
       bottom: 24px;
       right: 24px;
-      padding: 14px 20px;
-      border-radius: 12px;
-      background: var(--text-primary);
-      color: white;
+      padding: 12px 20px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.92);
+      border: 1px solid var(--border);
       font-weight: 500;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
       transform: translateY(100px);
       opacity: 0;
       transition: all 0.3s ease;
       z-index: 1000;
+      box-shadow: 0 12px 34px rgba(0,0,0,0.16);
     }
     
-    .toast.show {
-      transform: translateY(0);
-      opacity: 1;
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: rgba(52, 199, 89, 0.14); border-color: rgba(52, 199, 89, 0.35); color: var(--success); }
+    .toast.error { background: rgba(255, 59, 48, 0.14); border-color: rgba(255, 59, 48, 0.35); color: var(--danger); }
+    
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-tertiary);
     }
     
-    .toast.success { background: var(--success); }
-    .toast.error { background: var(--danger); }
+    .empty-state svg { margin: 0 auto 16px; opacity: 0.5; }
     
     /* Loading skeleton */
     .skeleton {
       background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
+      border-radius: 6px;
     }
     
     @keyframes shimmer {
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
-    
-    /* Navigation Pills */
-    .nav-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--text-secondary);
-      transition: all 0.2s ease;
-      text-decoration: none;
-    }
-    
-    .nav-pill:hover {
-      color: var(--text-primary);
-      background: var(--bg-secondary);
-    }
-    
-    .nav-pill.active {
-      color: var(--accent);
-      background: rgba(0, 122, 255, 0.1);
-    }
   </style>
-  
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            'apple-blue': '#007AFF',
-            'apple-gray': '#F5F5F7',
-          }
-        }
-      }
-    }
-  </script>
 </head>
 
 <body class="min-h-screen">
@@ -405,96 +464,58 @@
   <div x-data="pipelineView()" x-init="init()" class="min-h-screen flex flex-col">
     
     <!-- Header -->
-    <header class="bg-white/80 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-50">
+    <header class="bg-[rgba(245,245,247,0.78)] backdrop-blur-xl border-b border-[var(--border)] sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-6 py-4">
         <div class="flex items-center justify-between">
           <!-- Back + Title -->
           <div class="flex items-center gap-4">
-            <a href="/" class="p-2 rounded-lg hover:bg-gray-100 transition-colors">
-              <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="/" class="p-2 rounded-xl hover:bg-[rgba(0,0,0,0.04)] transition-colors">
+              <svg class="w-5 h-5 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
               </svg>
             </a>
             <div>
               <div class="flex items-center gap-3">
-                <h1 class="text-lg font-semibold text-gray-900">Pipeline Run</h1>
-                <span class="mode-badge" :class="'mode-' + (run?.mode || 'auto')" x-text="run?.mode === 'auto' ? 'Auto' : 'Step'"></span>
+                <h1 class="text-lg font-semibold">Pipeline Run</h1>
+                <span class="badge" :class="'mode-' + (run?.mode || 'auto')" x-text="run?.mode === 'auto' ? '⚡ Auto' : '🔧 Step'"></span>
               </div>
-              <p class="text-sm text-gray-500" x-text="run?.id ? 'ID: ' + run.id.substring(0, 8) : 'Loading...'"></p>
+              <p class="text-sm text-[var(--text-tertiary)] font-mono" x-text="run?.id ? run.id.substring(0, 8) + '...' : 'Loading...'"></p>
             </div>
-            
-            <!-- Navigation Pills -->
-            <nav class="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-sm ml-4">
-              <a href="/" class="nav-pill active">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                </svg>
-                Pipeline
-              </a>
-              <a href="http://localhost:8000" class="nav-pill">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
-                </svg>
-                Assembler
-              </a>
-              <a href="http://localhost:8000/schedule" class="nav-pill">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                Schedule
-              </a>
-            </nav>
           </div>
           
           <!-- Status + Actions -->
-          <div class="flex items-center gap-4">
-            <span 
-              class="status-badge"
-              :class="'status-' + (run?.status || 'running')"
-            >
+          <div class="flex items-center gap-3">
+            <span class="badge" :class="'badge-' + (run?.status || 'pending')">
               <template x-if="run?.status === 'running'">
-                <div class="apple-spinner apple-spinner-small"></div>
+                <span class="inline-block w-2 h-2 rounded-full bg-white animate-pulse mr-1"></span>
               </template>
               <span x-text="formatStatus(run?.status)"></span>
             </span>
             
-            <!-- Pause/Resume -->
             <template x-if="run?.status === 'running'">
-              <button class="btn btn-warning btn-sm" @click="pausePipeline()" :disabled="actionInProgress">
+              <button class="btn btn-warning" @click="pausePipeline()" :disabled="actionInProgress">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6"></path>
                 </svg>
-                <span>Pause</span>
+                Pause
               </button>
             </template>
             
             <template x-if="run?.status === 'paused'">
-              <button class="btn btn-success btn-sm" @click="resumePipeline()" :disabled="actionInProgress">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              <button class="btn btn-success" @click="resumePipeline()" :disabled="actionInProgress">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"></path>
                 </svg>
-                <span>Resume</span>
+                Resume
               </button>
             </template>
             
-            <!-- Approve (Step Mode) -->
-            <template x-if="run?.status === 'pending_approval'">
-              <button class="btn btn-success btn-sm" @click="approvePhase()" :disabled="actionInProgress">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-                <span>Approve & Continue</span>
-              </button>
-            </template>
-            
-            <!-- Cancel -->
-            <template x-if="['running', 'paused', 'pending_approval'].includes(run?.status)">
-              <button class="btn btn-danger btn-sm" @click="cancelPipeline()" :disabled="actionInProgress">
+            <template x-if="['running', 'paused'].includes(run?.status)">
+              <button class="btn btn-danger" @click="cancelPipeline()" :disabled="actionInProgress">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
-                <span>Cancel</span>
+                Cancel
               </button>
             </template>
           </div>
@@ -503,150 +524,432 @@
     </header>
     
     <!-- Main Content -->
-    <main class="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
+    <main class="flex-1 max-w-7xl mx-auto w-full px-6 py-6">
       
       <!-- Loading State -->
       <div x-show="loading" class="space-y-6">
         <div class="card p-6">
-          <div class="skeleton h-6 w-48 rounded mb-4"></div>
-          <div class="skeleton h-4 w-full rounded mb-2"></div>
-          <div class="skeleton h-4 w-3/4 rounded"></div>
+          <div class="skeleton h-6 w-48 mb-4"></div>
+          <div class="skeleton h-4 w-full mb-2"></div>
+          <div class="skeleton h-4 w-3/4"></div>
         </div>
       </div>
       
       <!-- Error State -->
-      <div x-show="error && !loading" class="card p-8 text-center">
-        <svg class="w-12 h-12 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div x-show="error && !loading" class="card p-12 text-center">
+        <svg class="w-16 h-16 text-[var(--danger)] mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
         </svg>
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">Error Loading Pipeline</h3>
-        <p class="text-gray-500 mb-4" x-text="error"></p>
-        <a href="/" class="btn btn-secondary">Back to Dashboard</a>
+        <h3 class="text-lg font-semibold mb-2">Error Loading Pipeline</h3>
+        <p class="text-[var(--text-secondary)] mb-6" x-text="error"></p>
+        <a href="/" class="btn btn-secondary">← Back to Dashboard</a>
       </div>
       
       <!-- Pipeline Content -->
       <div x-show="!loading && !error && run" class="space-y-6">
         
         <!-- Overall Progress -->
-        <div class="card p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-gray-900">Overall Progress</h2>
-            <span class="text-sm text-gray-500" x-text="calculateProgress() + '%'"></span>
+        <div class="card p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-4">
+              <span class="text-sm text-[var(--text-secondary)]">Overall Progress</span>
+              <span class="text-sm font-mono text-[var(--text-primary)]" x-text="calculateProgress() + '%'"></span>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-[var(--text-tertiary)]">
+              <span x-show="run?.started_at">Started <span x-text="formatDate(run?.started_at)"></span></span>
+              <span x-show="run?.completed_at">• Completed <span x-text="formatDate(run?.completed_at)"></span></span>
+            </div>
           </div>
           <div class="progress-bar">
-            <div 
-              class="progress-bar-fill"
-              :class="{ 'success': run?.status === 'completed' }"
-              :style="'width: ' + calculateProgress() + '%'"
-            ></div>
-          </div>
-          <div class="mt-4 flex items-center justify-between text-sm">
-            <span class="text-gray-500">
-              Started <span x-text="formatDate(run?.created_at)"></span>
-            </span>
-            <span class="text-gray-500" x-show="run?.completed_at">
-              Completed <span x-text="formatDate(run?.completed_at)"></span>
-            </span>
+            <div class="progress-fill" :class="{ 'success': run?.status === 'completed' }" :style="'width: ' + calculateProgress() + '%'"></div>
           </div>
         </div>
         
-        <!-- Phases -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Phase Navigation -->
+        <div class="phase-nav">
+          <template x-for="(phase, index) in phases" :key="phase.id">
+            <div 
+              class="phase-tab"
+              :class="{ 
+                'active': selectedPhase === phase.id,
+                'completed': getPhaseStatus(phase.id) === 'completed',
+                'running': getPhaseStatus(phase.id) === 'running',
+                'failed': getPhaseStatus(phase.id) === 'failed'
+              }"
+              @click="selectPhase(phase.id)"
+            >
+              <div class="phase-icon">
+                <template x-if="getPhaseStatus(phase.id) === 'completed'">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </template>
+                <template x-if="getPhaseStatus(phase.id) === 'running'">
+                  <span class="inline-block w-2 h-2 rounded-full bg-white"></span>
+                </template>
+                <template x-if="getPhaseStatus(phase.id) === 'failed'">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </template>
+                <template x-if="getPhaseStatus(phase.id) === 'pending'">
+                  <span x-text="index + 1"></span>
+                </template>
+              </div>
+              <span class="phase-name" x-text="phase.short"></span>
+              <span class="phase-count" x-text="getPhaseCount(phase.id)"></span>
+            </div>
+          </template>
+        </div>
+        
+        <!-- Phase Content -->
+        <div class="card overflow-hidden">
           
-          <!-- Phase Navigator -->
-          <div class="card p-4">
-            <h3 class="text-sm font-semibold text-gray-900 px-4 py-2 mb-2">Phases</h3>
-            <div class="space-y-1">
-              <template x-for="(phase, index) in phases" :key="phase.name">
-                <div 
-                  class="phase-step"
-                  :class="{ 
-                    'active': selectedPhase === phase.name,
-                    'completed': getPhaseStatus(phase.name) === 'completed'
-                  }"
-                  @click="selectedPhase = phase.name"
-                >
-                  <div 
-                    class="phase-indicator"
-                    :class="getPhaseStatus(phase.name)"
-                  >
-                    <template x-if="getPhaseStatus(phase.name) === 'completed'">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                    </template>
-                    <template x-if="getPhaseStatus(phase.name) === 'running'">
-                      <div class="apple-spinner apple-spinner-small" style="background: conic-gradient(from 0deg, rgba(255,255,255,0), rgba(255,255,255,0.22), rgba(255,255,255,0.9));"></div>
-                    </template>
-                    <template x-if="getPhaseStatus(phase.name) === 'failed'">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                      </svg>
-                    </template>
-                    <template x-if="getPhaseStatus(phase.name) === 'pending'">
-                      <span x-text="index + 1"></span>
-                    </template>
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="font-medium text-gray-900 text-sm" x-text="phase.label"></p>
-                    <p class="text-xs text-gray-500 truncate" x-text="phase.description"></p>
-                  </div>
+          <!-- Phase 1: Lead Generation -->
+          <div x-show="selectedPhase === 'lead_generation'" x-cloak>
+            <div class="card-header flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold">Lead Generation & Curation</h2>
+                <p class="text-sm text-[var(--text-secondary)]">Discovery funnel and selected leads</p>
+              </div>
+              <span class="badge" :class="'badge-' + getPhaseStatus('lead_generation')" x-text="getPhaseStatus('lead_generation')"></span>
+            </div>
+            
+            <div class="p-5 space-y-6" x-show="phaseData.lead_generation">
+              
+              <!-- Funnel Stats Summary -->
+              <div class="grid grid-cols-4 gap-4">
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--text-primary)]" x-text="phaseData.lead_generation?.total_leads || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Total Found</div>
                 </div>
-              </template>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--success)]" x-text="phaseData.lead_generation?.approved_leads || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Approved</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--accent)]" x-text="Math.round(phaseData.lead_generation?.score_distributions?.virality?.mean || 0)"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Avg Virality</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--accent)]" x-text="Math.round(phaseData.lead_generation?.score_distributions?.brand?.mean || 0)"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Avg Brand</div>
+                </div>
+              </div>
+              
+              <!-- Source Breakdown -->
+              <div class="flex items-center gap-4 text-sm">
+                <span class="text-[var(--text-tertiary)]">Sources:</span>
+                <span class="badge badge-pending">RSS: <span x-text="phaseData.lead_generation?.source_breakdown?.rss || 0"></span></span>
+                <span class="badge badge-pending">Perplexity: <span x-text="phaseData.lead_generation?.source_breakdown?.perplexity || 0"></span></span>
+              </div>
+              
+              <!-- Leads List -->
+              <div>
+                <h3 class="text-sm font-semibold text-[var(--text-secondary)] mb-3">Selected Leads</h3>
+                <div class="space-y-3">
+                  <template x-for="lead in (phaseData.lead_generation?.leads || []).filter(l => l.status === 'approved')" :key="lead.id">
+                    <div class="story-card">
+                      <div class="flex items-start justify-between gap-4">
+                        <div class="flex-1 min-w-0">
+                          <h4 class="font-medium text-[var(--text-primary)] mb-1 truncate" x-text="lead.title"></h4>
+                          <p class="text-sm text-[var(--text-secondary)] line-clamp-2 mb-2" x-text="lead.summary"></p>
+                          <div class="flex items-center gap-3 text-xs">
+                            <span class="text-[var(--text-tertiary)]" x-text="lead.source_origin"></span>
+                            <span class="badge" :class="lead.domain_tag === 'UNKNOWN' ? 'badge-pending' : 'badge-completed'" x-text="lead.domain_tag"></span>
+                          </div>
+                        </div>
+                        <div class="flex flex-col items-end gap-2">
+                          <div class="flex items-center gap-2">
+                            <span class="text-xs text-[var(--text-tertiary)]">Viral</span>
+                            <div class="w-12 score-bar"><div class="score-fill" :class="lead.virality_score >= 85 ? 'score-high' : lead.virality_score >= 70 ? 'score-medium' : 'score-low'" :style="'width: ' + (lead.virality_score || 0) + '%'"></div></div>
+                            <span class="text-xs font-mono w-6 text-right" x-text="lead.virality_score"></span>
+                          </div>
+                          <div class="flex items-center gap-2">
+                            <span class="text-xs text-[var(--text-tertiary)]">Brand</span>
+                            <div class="w-12 score-bar"><div class="score-fill" :class="lead.brand_score >= 80 ? 'score-high' : lead.brand_score >= 65 ? 'score-medium' : 'score-low'" :style="'width: ' + (lead.brand_score || 0) + '%'"></div></div>
+                            <span class="text-xs font-mono w-6 text-right" x-text="lead.brand_score"></span>
+                          </div>
+                        </div>
+                      </div>
+                      <template x-if="lead.curator_reasoning">
+                        <div class="mt-3 p-3 bg-[var(--bg-tertiary)] rounded-lg">
+                          <div class="text-xs text-[var(--text-tertiary)] mb-1">Curator Reasoning</div>
+                          <p class="text-sm text-[var(--text-secondary)] italic" x-text="lead.curator_reasoning"></p>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+            
+            <div class="empty-state" x-show="!phaseData.lead_generation && getPhaseStatus('lead_generation') === 'pending'">
+              <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <p>Waiting for lead generation to start...</p>
             </div>
           </div>
           
-          <!-- Phase Details -->
-          <div class="lg:col-span-2 space-y-6">
-            
-            <!-- Phase Header -->
-            <div class="card p-6">
-              <div class="flex items-center justify-between mb-4">
-                <div>
-                  <h3 class="text-lg font-semibold text-gray-900" x-text="getPhaseLabel(selectedPhase)"></h3>
-                  <p class="text-sm text-gray-500" x-text="getPhaseDescription(selectedPhase)"></p>
-                </div>
-                <span 
-                  class="phase-badge"
-                  :class="'phase-' + getPhaseStatus(selectedPhase)"
-                  x-text="getPhaseStatus(selectedPhase)"
-                ></span>
+          <!-- Phase 2: Story Research -->
+          <div x-show="selectedPhase === 'story_research'" x-cloak>
+            <div class="card-header flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold">Story Research</h2>
+                <p class="text-sm text-[var(--text-secondary)]">Ground truth research and hook identification</p>
               </div>
-              
-              <!-- Phase Progress -->
-              <template x-if="getPhaseStatus(selectedPhase) === 'running' || getPhaseStatus(selectedPhase) === 'completed'">
-                <div>
-                  <div class="flex items-center justify-between text-sm mb-2">
-                    <span class="text-gray-500">Progress</span>
-                    <span class="text-gray-900 font-medium" x-text="getPhaseProgress(selectedPhase) + '%'"></span>
-                  </div>
-                  <div class="progress-bar">
-                    <div 
-                      class="progress-bar-fill"
-                      :class="{ 'success': getPhaseStatus(selectedPhase) === 'completed' }"
-                      :style="'width: ' + getPhaseProgress(selectedPhase) + '%'"
-                    ></div>
-                  </div>
-                </div>
-              </template>
+              <span class="badge" :class="'badge-' + getPhaseStatus('story_research')" x-text="getPhaseStatus('story_research')"></span>
             </div>
             
-            <!-- Stories in Phase -->
-            <div class="card p-6" x-show="stories.length > 0">
-              <h4 class="text-sm font-semibold text-gray-900 mb-4">Stories</h4>
-              <div class="space-y-3">
-                <template x-for="story in getStoriesForPhase(selectedPhase)" :key="story.id">
+            <div class="p-5 space-y-4" x-show="phaseData.story_research">
+              
+              <!-- Summary Stats -->
+              <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--success)]" x-text="phaseData.story_research?.summary?.completed || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Completed</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--accent)]" x-text="phaseData.story_research?.summary?.in_progress || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">In Progress</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--text-secondary)]" x-text="phaseData.story_research?.summary?.queued || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Queued</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--text-primary)]" x-text="formatNumber(phaseData.story_research?.total_ground_truth_chars || 0)"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Total Chars</div>
+                </div>
+              </div>
+              
+              <!-- Research Items -->
+              <div class="space-y-4">
+                <template x-for="item in (phaseData.story_research?.research || [])" :key="item.id">
                   <div class="story-card">
-                    <div class="flex items-center justify-between">
-                      <div class="flex items-center gap-3">
-                        <div class="story-status-dot" :class="story.status || 'pending'"></div>
-                        <div>
-                          <p class="font-medium text-gray-900 text-sm" x-text="story.title || story.lead_url || 'Story #' + story.id.substring(0, 8)"></p>
-                          <p class="text-xs text-gray-500" x-text="story.status_message || formatStatus(story.status)"></p>
+                    <div class="flex items-center justify-between mb-3">
+                      <h4 class="font-medium" x-text="item.title"></h4>
+                      <span class="badge" :class="'badge-' + item.status" x-text="item.status"></span>
+                    </div>
+                    
+                    <template x-if="item.ground_truth">
+                      <div class="mb-3">
+                        <div class="text-xs text-[var(--text-tertiary)] mb-2 flex items-center justify-between">
+                          <span>Ground Truth</span>
+                          <span class="font-mono" x-text="item.ground_truth_char_count + ' chars'"></span>
+                        </div>
+                        <div class="expandable text-sm text-[var(--text-secondary)] bg-[var(--bg-tertiary)] rounded-lg p-3" :class="{ 'expanded': expandedItems.includes(item.id) }">
+                          <p x-text="item.ground_truth"></p>
+                          <div class="expandable-fade" x-show="!expandedItems.includes(item.id)"></div>
+                        </div>
+                        <button class="text-xs text-[var(--accent)] mt-2" @click="toggleExpand(item.id)" x-text="expandedItems.includes(item.id) ? 'Show less' : 'Show more'"></button>
+                      </div>
+                    </template>
+                    
+                    <template x-if="item.hook?.answer">
+                      <div class="bg-[var(--accent)]/10 border border-[var(--accent)]/30 rounded-lg p-3 mb-3">
+                        <div class="text-xs text-[var(--accent)] mb-1 font-semibold">THE HOOK</div>
+                        <p class="text-sm text-[var(--text-primary)]" x-text="item.hook.answer"></p>
+                      </div>
+                    </template>
+                    
+                    <template x-if="item.primary_sources?.length">
+                      <div>
+                        <div class="text-xs text-[var(--text-tertiary)] mb-2">Primary Sources</div>
+                        <div class="flex flex-wrap gap-2">
+                          <template x-for="(source, idx) in item.primary_sources" :key="idx">
+                            <a :href="item.primary_source_urls?.[idx] || '#'" target="_blank" class="text-xs bg-[var(--bg-tertiary)] px-2 py-1 rounded hover:bg-[var(--border-light)] transition-colors" x-text="source.substring(0, 40) + (source.length > 40 ? '...' : '')"></a>
+                          </template>
                         </div>
                       </div>
-                      <template x-if="story.error">
-                        <span class="text-xs text-red-600 max-w-xs truncate" x-text="story.error"></span>
+                    </template>
+                    
+                    <template x-if="item.research_time_seconds">
+                      <div class="mt-3 text-xs text-[var(--text-tertiary)]">
+                        Research time: <span x-text="formatDuration(item.research_time_seconds)"></span>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </div>
+            
+            <div class="empty-state" x-show="!phaseData.story_research && getPhaseStatus('story_research') === 'pending'">
+              <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+              </svg>
+              <p>Waiting for story research to start...</p>
+            </div>
+          </div>
+          
+          <!-- Phase 3: Text Generation -->
+          <div x-show="selectedPhase === 'text_generation'" x-cloak>
+            <div class="card-header flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold">Text Generation</h2>
+                <p class="text-sm text-[var(--text-secondary)]">Story slides, cover options, and captions</p>
+              </div>
+              <span class="badge" :class="'badge-' + getPhaseStatus('text_generation')" x-text="getPhaseStatus('text_generation')"></span>
+            </div>
+            
+            <div class="p-5 space-y-4" x-show="phaseData.text_generation">
+              
+              <!-- Summary Stats -->
+              <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--success)]" x-text="phaseData.text_generation?.summary?.completed || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Stories</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--accent)]" x-text="phaseData.text_generation?.summary?.total_slides || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Total Slides</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--text-primary)]" x-text="formatNumber(phaseData.text_generation?.summary?.total_characters || 0)"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Total Chars</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--text-secondary)]" x-text="phaseData.text_generation?.summary?.average_slides_per_story || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Avg Slides</div>
+                </div>
+              </div>
+              
+              <!-- Generations -->
+              <div class="space-y-4">
+                <template x-for="gen in (phaseData.text_generation?.generations || [])" :key="gen.id">
+                  <div class="story-card">
+                    <div class="flex items-start justify-between gap-4 mb-4">
+                      <div>
+                        <div class="text-xs text-[var(--text-tertiary)] mb-1" x-text="gen.lead_title"></div>
+                        <h4 class="font-semibold text-lg" x-text="gen.hook_title"></h4>
+                        <p class="text-sm text-[var(--text-secondary)]" x-text="gen.subtitle"></p>
+                      </div>
+                      <span class="badge badge-completed" x-text="gen.domain_tag"></span>
+                    </div>
+                    
+                    <!-- Slides Preview -->
+                    <div class="mb-4">
+                      <div class="text-xs text-[var(--text-tertiary)] mb-2 flex items-center justify-between">
+                        <span>Slides (<span x-text="gen.total_slides"></span>)</span>
+                        <span class="font-mono" x-text="gen.total_characters + ' chars'"></span>
+                      </div>
+                      <div class="bg-[var(--bg-secondary)] rounded-lg p-3 max-h-48 overflow-y-auto">
+                        <template x-for="slide in gen.slides" :key="slide.order">
+                          <div class="slide-row">
+                            <span class="text-xs font-mono text-[var(--text-tertiary)]" x-text="slide.order"></span>
+                            <span class="slide-tag" x-text="slide.tag"></span>
+                            <span class="text-xs text-[var(--text-tertiary)]" x-text="'¶' + slide.paragraph_count"></span>
+                            <p class="text-sm text-[var(--text-secondary)] truncate" x-text="slide.text.substring(0, 80) + '...'"></p>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+                    
+                    <!-- Caption & Hashtags -->
+                    <template x-if="gen.caption">
+                      <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-[var(--bg-tertiary)] rounded-lg p-3">
+                          <div class="text-xs text-[var(--text-tertiary)] mb-1">Caption (<span x-text="gen.caption_char_count"></span> chars)</div>
+                          <p class="text-sm text-[var(--text-secondary)]" x-text="gen.caption"></p>
+                        </div>
+                        <div class="bg-[var(--bg-tertiary)] rounded-lg p-3">
+                          <div class="text-xs text-[var(--text-tertiary)] mb-1">Hashtags (<span x-text="gen.hashtags?.length || 0"></span>)</div>
+                          <p class="text-sm text-[var(--accent)]" x-text="(gen.hashtags || []).join(' ')"></p>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </div>
+            
+            <div class="empty-state" x-show="!phaseData.text_generation && getPhaseStatus('text_generation') === 'pending'">
+              <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+              </svg>
+              <p>Waiting for text generation to start...</p>
+            </div>
+          </div>
+          
+          <!-- Phase 4: Photo Research -->
+          <div x-show="selectedPhase === 'photo_research'" x-cloak>
+            <div class="card-header flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold">Photo Research</h2>
+                <p class="text-sm text-[var(--text-secondary)]">Image discovery, verification, and placement</p>
+              </div>
+              <span class="badge" :class="'badge-' + getPhaseStatus('photo_research')" x-text="getPhaseStatus('photo_research')"></span>
+            </div>
+            
+            <div class="p-5 space-y-4" x-show="phaseData.photo_research">
+              
+              <!-- Summary Stats -->
+              <div class="grid grid-cols-5 gap-4 mb-6">
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--text-primary)]" x-text="phaseData.photo_research?.summary?.total_photos_found || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Found</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--success)]" x-text="phaseData.photo_research?.summary?.approved || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Approved</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--danger)]" x-text="phaseData.photo_research?.summary?.rejected || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Rejected</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--warning)]" x-text="phaseData.photo_research?.summary?.ai_detected || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">AI Detected</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--accent)]" x-text="(phaseData.photo_research?.score_averages?.relevance || 0).toFixed(1)"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Avg Relevance</div>
+                </div>
+              </div>
+              
+              <!-- Photos by Story -->
+              <div class="space-y-4">
+                <template x-for="story in (phaseData.photo_research?.photos_by_story || [])" :key="story.story_research_id">
+                  <div class="story-card">
+                    <div class="flex items-center justify-between mb-3">
+                      <h4 class="font-medium" x-text="story.story_title"></h4>
+                      <div class="flex items-center gap-2">
+                        <span class="badge badge-approved" x-text="story.approved_count + ' approved'"></span>
+                        <span class="badge badge-rejected" x-text="story.rejected_count + ' rejected'"></span>
+                      </div>
+                    </div>
+                    
+                    <!-- Search Queries -->
+                    <template x-if="story.queries_used?.length">
+                      <div class="mb-3">
+                        <div class="text-xs text-[var(--text-tertiary)] mb-1">Search Queries</div>
+                        <div class="flex flex-wrap gap-2">
+                          <template x-for="query in story.queries_used" :key="query">
+                            <span class="text-xs bg-[var(--bg-tertiary)] px-2 py-1 rounded font-mono" x-text="query"></span>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+                    
+                    <!-- Photo Grid -->
+                    <div class="photo-grid">
+                      <template x-for="photo in story.photos" :key="photo.id">
+                        <div 
+                          class="photo-thumb" 
+                          :class="{ 
+                            'approved': photo.status === 'approved', 
+                            'rejected': photo.status === 'rejected',
+                            'hero': photo.is_hero 
+                          }"
+                          @click="openPhotoModal(photo)"
+                        >
+                          <img :src="photo.image_url" :alt="photo.ai_analysis?.description || 'Photo'" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a26%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2250%22 text-anchor=%22middle%22 fill=%22%236e6e7a%22 font-size=%2210%22>No Image</text></svg>'">
+                          <div class="photo-score" x-text="photo.scores?.relevance + '/10'"></div>
+                          <template x-if="photo.is_hero">
+                            <div class="absolute top-1 left-1 text-xs">⭐</div>
+                          </template>
+                        </div>
                       </template>
                     </div>
                   </div>
@@ -654,59 +957,176 @@
               </div>
             </div>
             
-            <!-- Activity Log -->
-            <div class="card p-6">
-              <div class="flex items-center justify-between mb-4">
-                <h4 class="text-sm font-semibold text-gray-900">Activity Log</h4>
-                <button 
-                  class="text-xs text-gray-500 hover:text-gray-700"
-                  @click="logs = []"
-                >
-                  Clear
-                </button>
+            <div class="empty-state" x-show="!phaseData.photo_research && getPhaseStatus('photo_research') === 'pending'">
+              <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+              <p>Waiting for photo research to start...</p>
+            </div>
+          </div>
+          
+          <!-- Phase 5: Thumbnail Generation -->
+          <div x-show="selectedPhase === 'thumbnail_generation'" x-cloak>
+            <div class="card-header flex items-center justify-between">
+              <div>
+                <h2 class="text-lg font-semibold">Thumbnail Generation</h2>
+                <p class="text-sm text-[var(--text-secondary)]">AI-generated cover images (3 concepts per story)</p>
               </div>
-              <div class="log-viewer" x-ref="logViewer">
-                <template x-if="logs.length === 0">
-                  <div class="text-gray-500 text-center py-8">No activity yet</div>
-                </template>
-                <template x-for="log in logs" :key="log.id">
-                  <div class="log-entry">
-                    <span class="log-time" x-text="formatLogTime(log.timestamp)"></span>
-                    <span :class="'log-' + log.level" x-text="log.message"></span>
+              <span class="badge" :class="'badge-' + getPhaseStatus('thumbnail_generation')" x-text="getPhaseStatus('thumbnail_generation')"></span>
+            </div>
+            
+            <div class="p-5 space-y-4" x-show="phaseData.thumbnail_generation">
+              
+              <!-- Summary Stats -->
+              <div class="grid grid-cols-4 gap-4 mb-6">
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--success)]" x-text="phaseData.thumbnail_generation?.summary?.stories_processed || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Stories</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--accent)]" x-text="phaseData.thumbnail_generation?.summary?.total_thumbnails || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Thumbnails</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--text-primary)]" x-text="phaseData.thumbnail_generation?.summary?.selected || 0"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Selected</div>
+                </div>
+                <div class="bg-[var(--bg-secondary)] rounded-lg p-4 text-center">
+                  <div class="text-2xl font-bold text-[var(--text-secondary)]" x-text="(phaseData.thumbnail_generation?.summary?.average_generation_time_seconds || 0) + 's'"></div>
+                  <div class="text-xs text-[var(--text-tertiary)]">Avg Gen Time</div>
+                </div>
+              </div>
+              
+              <!-- Concept Breakdown -->
+              <div class="flex items-center gap-4 text-sm mb-4">
+                <span class="text-[var(--text-tertiary)]">Concept Types:</span>
+                <span class="badge badge-pending">Literal: <span x-text="phaseData.thumbnail_generation?.concept_type_breakdown?.literal || 0"></span></span>
+                <span class="badge badge-pending">Symbolic: <span x-text="phaseData.thumbnail_generation?.concept_type_breakdown?.symbolic || 0"></span></span>
+                <span class="badge badge-pending">Atmospheric: <span x-text="phaseData.thumbnail_generation?.concept_type_breakdown?.atmospheric || 0"></span></span>
+              </div>
+              
+              <!-- Thumbnails by Story -->
+              <div class="space-y-4">
+                <template x-for="story in (phaseData.thumbnail_generation?.thumbnails_by_story || [])" :key="story.story_generation_id">
+                  <div class="story-card">
+                    <div class="mb-3">
+                      <h4 class="font-semibold" x-text="story.hook_title"></h4>
+                      <p class="text-sm text-[var(--text-secondary)]" x-text="story.subtitle"></p>
+                    </div>
+                    
+                    <!-- Thumbnail Gallery -->
+                    <div class="thumb-gallery">
+                      <template x-for="thumb in story.thumbnails" :key="thumb.id">
+                        <div 
+                          class="thumb-concept" 
+                          :class="{ 'selected': thumb.is_selected }"
+                          @click="openThumbnailModal(thumb, story)"
+                        >
+                          <img :src="thumb.image_url" :alt="thumb.concept_type" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 80 100%22><rect fill=%22%231a1a26%22 width=%22100%22 height=%22100%22/><text x=%2240%22 y=%2250%22 text-anchor=%22middle%22 fill=%22%236e6e7a%22 font-size=%228%22>Generating...</text></svg>'">
+                          <div class="thumb-label">
+                            <span x-text="thumb.concept_type"></span>
+                            <template x-if="thumb.is_selected">
+                              <span class="ml-1">✓</span>
+                            </template>
+                          </div>
+                        </div>
+                      </template>
+                    </div>
                   </div>
                 </template>
               </div>
             </div>
             
+            <div class="empty-state" x-show="!phaseData.thumbnail_generation && getPhaseStatus('thumbnail_generation') === 'pending'">
+              <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.39m3.421 3.415a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.764m3.42 3.417a6.776 6.776 0 00-3.42-3.417"></path>
+              </svg>
+              <p>Waiting for thumbnail generation to start...</p>
+            </div>
           </div>
+          
         </div>
         
         <!-- Completion Actions -->
         <div x-show="run?.status === 'completed'" class="card p-6">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-lg font-semibold text-gray-900">Pipeline Complete!</h3>
-              <p class="text-sm text-gray-500">Stories are ready for review in the Pre-Assembler.</p>
+              <h3 class="text-lg font-semibold text-[var(--success)]">✓ Pipeline Complete!</h3>
+              <p class="text-sm text-[var(--text-secondary)]">Stories are ready for review in the Pre-Assembler.</p>
             </div>
             <a href="http://localhost:8000" class="btn btn-primary">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
-              <span>Go to Pre-Assembler</span>
+              Open Pre-Assembler
             </a>
           </div>
         </div>
         
       </div>
-      
     </main>
     
+    <!-- Photo Modal -->
+    <div x-show="photoModal.open" x-cloak class="modal-backdrop" @click.self="photoModal.open = false">
+      <div class="modal-content max-w-2xl">
+        <div class="p-5">
+          <div class="flex items-start justify-between mb-4">
+            <h3 class="text-lg font-semibold">Photo Details</h3>
+            <button class="text-[var(--text-tertiary)] hover:text-[var(--text-primary)]" @click="photoModal.open = false">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <img :src="photoModal.photo?.image_url" class="w-full rounded-lg" alt="Photo">
+            </div>
+            <div class="space-y-4">
+              <div>
+                <span class="badge" :class="'badge-' + photoModal.photo?.status" x-text="photoModal.photo?.status"></span>
+                <template x-if="photoModal.photo?.is_hero">
+                  <span class="badge badge-approved ml-2">⭐ Hero</span>
+                </template>
+              </div>
+              
+              <div class="space-y-2">
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-[var(--text-tertiary)]">Relevance</span>
+                  <span class="font-mono" x-text="(photoModal.photo?.scores?.relevance || 0) + '/10'"></span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-[var(--text-tertiary)]">Verifiability</span>
+                  <span class="font-mono" x-text="(photoModal.photo?.scores?.verifiability || 0) + '/10'"></span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-[var(--text-tertiary)]">Usability</span>
+                  <span class="font-mono" x-text="(photoModal.photo?.scores?.usability || 0) + '/10'"></span>
+                </div>
+              </div>
+              
+              <template x-if="photoModal.photo?.ai_analysis?.description">
+                <div>
+                  <div class="text-xs text-[var(--text-tertiary)] mb-1">AI Description</div>
+                  <p class="text-sm text-[var(--text-secondary)]" x-text="photoModal.photo.ai_analysis.description"></p>
+                </div>
+              </template>
+              
+              <template x-if="photoModal.photo?.source?.page_url">
+                <div>
+                  <div class="text-xs text-[var(--text-tertiary)] mb-1">Source</div>
+                  <a :href="photoModal.photo.source.page_url" target="_blank" class="text-sm text-[var(--accent)] hover:underline" x-text="photoModal.photo.source.page_url.substring(0, 50) + '...'"></a>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <!-- Toast -->
-    <div 
-      class="toast"
-      :class="{ 'show': toast.show, 'success': toast.type === 'success', 'error': toast.type === 'error' }"
-      x-text="toast.message"
-    ></div>
+    <div class="toast" :class="{ 'show': toast.show, 'success': toast.type === 'success', 'error': toast.type === 'error' }" x-text="toast.message"></div>
     
   </div>
   
@@ -715,26 +1135,34 @@
       return {
         runId: null,
         run: null,
-        stories: [],
-        logs: [],
         loading: true,
         error: null,
         actionInProgress: false,
         selectedPhase: 'lead_generation',
         eventSource: null,
+        expandedItems: [],
         
+        phaseData: {
+          lead_generation: null,
+          story_research: null,
+          text_generation: null,
+          photo_research: null,
+          thumbnail_generation: null
+        },
+        
+        photoModal: { open: false, photo: null },
+        thumbnailModal: { open: false, thumb: null, story: null },
         toast: { show: false, message: '', type: 'success' },
         
         phases: [
-          { name: 'lead_generation', label: 'Lead Generation', description: 'Discover and curate story leads' },
-          { name: 'story_research', label: 'Story Research', description: 'Deep dive research on selected stories' },
-          { name: 'text_generation', label: 'Text Generation', description: 'Generate carousel slides and captions' },
-          { name: 'photo_research', label: 'Photo Research', description: 'Find and validate images' },
-          { name: 'thumbnail_generation', label: 'Thumbnails', description: 'Create cover thumbnails' }
+          { id: 'lead_generation', name: 'Lead Generation', short: 'Leads' },
+          { id: 'story_research', name: 'Story Research', short: 'Research' },
+          { id: 'text_generation', name: 'Text Generation', short: 'Text' },
+          { id: 'photo_research', name: 'Photo Research', short: 'Photos' },
+          { id: 'thumbnail_generation', name: 'Thumbnail Generation', short: 'Thumbs' }
         ],
         
         async init() {
-          // Get run ID from URL
           const path = window.location.pathname;
           const match = path.match(/\/pipeline\/([^\/]+)/);
           if (!match) {
@@ -746,23 +1174,25 @@
           this.runId = match[1];
           await this.loadRun();
           this.connectSSE();
+          
+          // Cleanup on page unload
+          window.addEventListener('beforeunload', () => this.closeSSE());
         },
         
         async loadRun() {
           try {
             const response = await fetch(`/api/pipeline/runs/${this.runId}`);
-            if (!response.ok) {
-              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
-            const data = await response.json();
-            this.run = data.run;
-            this.stories = data.stories || [];
+            this.run = await response.json();
             
-            // Set selected phase to current phase
+            // Set selected phase to current or first completed
             if (this.run?.current_phase) {
               this.selectedPhase = this.run.current_phase;
             }
+            
+            // Load phase data
+            await this.loadAllPhaseData();
             
           } catch (err) {
             console.error('Failed to load run:', err);
@@ -772,88 +1202,177 @@
           }
         },
         
+        async loadAllPhaseData() {
+          const phaseEndpoints = {
+            lead_generation: '/phases/1/leads',
+            story_research: '/phases/2/research',
+            text_generation: '/phases/3/text',
+            photo_research: '/phases/4/photos',
+            thumbnail_generation: '/phases/5/thumbnails'
+          };
+          
+          for (const [phase, endpoint] of Object.entries(phaseEndpoints)) {
+            if (this.getPhaseStatus(phase) !== 'pending') {
+              try {
+                const resp = await fetch(`/api/pipeline/runs/${this.runId}${endpoint}`);
+                if (resp.ok) {
+                  this.phaseData[phase] = await resp.json();
+                }
+              } catch (err) {
+                console.warn(`Failed to load ${phase} data:`, err);
+              }
+            }
+          }
+        },
+        
+        async selectPhase(phaseId) {
+          this.selectedPhase = phaseId;
+          
+          // Load phase data if not loaded
+          if (!this.phaseData[phaseId] && this.getPhaseStatus(phaseId) !== 'pending') {
+            const endpoints = {
+              lead_generation: '/phases/1/leads',
+              story_research: '/phases/2/research',
+              text_generation: '/phases/3/text',
+              photo_research: '/phases/4/photos',
+              thumbnail_generation: '/phases/5/thumbnails'
+            };
+            
+            try {
+              const resp = await fetch(`/api/pipeline/runs/${this.runId}${endpoints[phaseId]}`);
+              if (resp.ok) {
+                this.phaseData[phaseId] = await resp.json();
+              }
+            } catch (err) {
+              console.warn(`Failed to load ${phaseId} data:`, err);
+            }
+          }
+        },
+        
         connectSSE() {
+          // Close existing connection if any
           if (this.eventSource) {
             this.eventSource.close();
+            this.eventSource = null;
           }
           
-          this.eventSource = new EventSource(`/api/pipeline/runs/${this.runId}/stream`);
+          // Only connect for active runs
+          if (!['running', 'paused'].includes(this.run?.status)) {
+            return;
+          }
           
-          this.eventSource.onmessage = (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              this.handleSSEMessage(data);
-            } catch (err) {
-              console.error('Failed to parse SSE message:', err);
-            }
-          };
-          
-          this.eventSource.onerror = (err) => {
-            console.error('SSE error:', err);
-            // Reconnect after delay
-            setTimeout(() => {
-              if (['running', 'paused', 'pending_approval'].includes(this.run?.status)) {
-                this.connectSSE();
+          try {
+            this.eventSource = new EventSource(`/api/pipeline/runs/${this.runId}/stream`);
+            
+            this.eventSource.addEventListener('state', (event) => {
+              try {
+                const data = JSON.parse(event.data);
+                if (data) this.run = data;
+              } catch (err) {
+                console.warn('Failed to parse state:', err);
               }
-            }, 5000);
-          };
+            });
+            
+            this.eventSource.addEventListener('phase_complete', (event) => {
+              try {
+                const data = JSON.parse(event.data);
+                if (data.data) {
+                  this.phaseData[data.phase] = data.data;
+                }
+                // Reload run to get updated status (non-blocking)
+                this.loadRun().catch(console.warn);
+              } catch (err) {
+                console.warn('Failed to handle phase_complete:', err);
+              }
+            });
+            
+            this.eventSource.addEventListener('phase_update', (event) => {
+              try {
+                const data = JSON.parse(event.data);
+                if (data.phase && this.run) {
+                  this.run.current_phase = data.phase;
+                }
+              } catch (err) {
+                console.warn('Failed to handle phase_update:', err);
+              }
+            });
+            
+            this.eventSource.addEventListener('done', () => {
+              this.closeSSE();
+              this.loadRun().catch(console.warn);
+            });
+            
+            this.eventSource.onerror = (err) => {
+              // Only reconnect if run is still active
+              if (this.eventSource?.readyState === EventSource.CLOSED) {
+                this.eventSource = null;
+                setTimeout(() => {
+                  if (['running', 'paused'].includes(this.run?.status)) {
+                    this.connectSSE();
+                  }
+                }, 5000);
+              }
+            };
+          } catch (err) {
+            console.warn('Failed to connect SSE:', err);
+          }
         },
         
-        handleSSEMessage(data) {
-          switch (data.type) {
-            case 'status_update':
-              this.run = { ...this.run, ...data.run };
-              if (data.run.current_phase) {
-                this.selectedPhase = data.run.current_phase;
-              }
-              break;
-              
-            case 'phase_update':
-              // Update phase status in run
-              if (!this.run.phases) this.run.phases = {};
-              this.run.phases[data.phase] = data.status;
-              break;
-              
-            case 'story_update':
-              const storyIndex = this.stories.findIndex(s => s.id === data.story.id);
-              if (storyIndex >= 0) {
-                this.stories[storyIndex] = { ...this.stories[storyIndex], ...data.story };
-              } else {
-                this.stories.push(data.story);
-              }
-              break;
-              
-            case 'log':
-              this.addLog(data.level, data.message);
-              break;
-              
-            case 'progress':
-              if (!this.run.progress) this.run.progress = {};
-              this.run.progress[data.phase] = data.percent;
-              break;
+        closeSSE() {
+          if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
           }
         },
         
-        addLog(level, message) {
-          this.logs.push({
-            id: Date.now() + Math.random(),
-            timestamp: new Date(),
-            level: level,
-            message: message
-          });
+        getPhaseStatus(phaseId) {
+          if (!this.run?.phases) return 'pending';
           
-          // Keep only last 100 logs
-          if (this.logs.length > 100) {
-            this.logs = this.logs.slice(-100);
+          const phases = Array.isArray(this.run.phases) ? this.run.phases : [];
+          const phase = phases.find(p => p.phase === phaseId);
+          return phase?.status || 'pending';
+        },
+        
+        getPhaseCount(phaseId) {
+          const data = this.phaseData[phaseId];
+          if (!data) return '—';
+          
+          switch (phaseId) {
+            case 'lead_generation': return `${data.approved_leads || 0}`;
+            case 'story_research': return `${data.summary?.completed || 0}/${data.summary?.total || 0}`;
+            case 'text_generation': return `${data.summary?.completed || 0}`;
+            case 'photo_research': return `${data.summary?.approved || 0}`;
+            case 'thumbnail_generation': return `${data.summary?.total_thumbnails || 0}`;
+            default: return '—';
           }
+        },
+        
+        calculateProgress() {
+          if (!this.run) return 0;
+          if (this.run.status === 'completed') return 100;
           
-          // Scroll to bottom
-          this.$nextTick(() => {
-            const viewer = this.$refs.logViewer;
-            if (viewer) {
-              viewer.scrollTop = viewer.scrollHeight;
-            }
-          });
+          const phaseOrder = this.phases.map(p => p.id);
+          const currentIndex = phaseOrder.indexOf(this.run.current_phase);
+          
+          if (currentIndex < 0) return 0;
+          return Math.round(((currentIndex + 0.5) / phaseOrder.length) * 100);
+        },
+        
+        toggleExpand(itemId) {
+          const idx = this.expandedItems.indexOf(itemId);
+          if (idx >= 0) {
+            this.expandedItems.splice(idx, 1);
+          } else {
+            this.expandedItems.push(itemId);
+          }
+        },
+        
+        openPhotoModal(photo) {
+          this.photoModal = { open: true, photo };
+        },
+        
+        openThumbnailModal(thumb, story) {
+          this.thumbnailModal = { open: true, thumb, story };
         },
         
         async pausePipeline() {
@@ -864,132 +1383,61 @@
           await this.performAction('resume', `/api/pipeline/runs/${this.runId}/resume`);
         },
         
-        async approvePhase() {
-          await this.performAction('approve', `/api/pipeline/runs/${this.runId}/phase/approve`);
-        },
-        
         async cancelPipeline() {
-          if (!confirm('Are you sure you want to cancel this pipeline? All data created in this run will be deleted.')) {
-            return;
-          }
+          if (!confirm('Cancel this pipeline run? All data created will be deleted.')) return;
           await this.performAction('cancel', `/api/pipeline/runs/${this.runId}/cancel`);
         },
         
         async performAction(action, url) {
           this.actionInProgress = true;
-          
           try {
             const response = await fetch(url, { method: 'POST' });
             if (!response.ok) {
               const data = await response.json();
               throw new Error(data.detail || `HTTP ${response.status}`);
             }
-            
-            const data = await response.json();
-            this.run = data.run;
+            await this.loadRun();
             this.showToast(`Pipeline ${action}d`, 'success');
-            
           } catch (err) {
-            console.error(`Failed to ${action} pipeline:`, err);
             this.showToast(err.message, 'error');
           } finally {
             this.actionInProgress = false;
           }
         },
         
-        getPhaseStatus(phaseName) {
-          if (!this.run) return 'pending';
-          
-          const phases = this.run.phases || {};
-          if (phases[phaseName]) {
-            return phases[phaseName];
-          }
-          
-          // Infer from current phase
-          const phaseOrder = this.phases.map(p => p.name);
-          const currentIndex = phaseOrder.indexOf(this.run.current_phase);
-          const phaseIndex = phaseOrder.indexOf(phaseName);
-          
-          if (phaseIndex < currentIndex) return 'completed';
-          if (phaseIndex === currentIndex && this.run.status === 'running') return 'running';
-          return 'pending';
-        },
-        
-        getPhaseProgress(phaseName) {
-          if (!this.run?.progress) return 0;
-          return this.run.progress[phaseName] || 0;
-        },
-        
-        getPhaseLabel(phaseName) {
-          const phase = this.phases.find(p => p.name === phaseName);
-          return phase?.label || phaseName;
-        },
-        
-        getPhaseDescription(phaseName) {
-          const phase = this.phases.find(p => p.name === phaseName);
-          return phase?.description || '';
-        },
-        
-        getStoriesForPhase(phaseName) {
-          // Return all stories for now, could filter by phase status
-          return this.stories;
-        },
-        
-        calculateProgress() {
-          if (!this.run) return 0;
-          if (this.run.status === 'completed') return 100;
-          
-          const phaseOrder = this.phases.map(p => p.name);
-          const currentIndex = phaseOrder.indexOf(this.run.current_phase);
-          
-          if (currentIndex < 0) return 0;
-          
-          const phaseProgress = this.getPhaseProgress(this.run.current_phase);
-          const baseProgress = (currentIndex / phaseOrder.length) * 100;
-          const phaseContribution = (1 / phaseOrder.length) * phaseProgress;
-          
-          return Math.round(baseProgress + phaseContribution);
-        },
-        
         formatStatus(status) {
           const labels = {
             'running': 'Running',
             'paused': 'Paused',
-            'pending_approval': 'Awaiting Approval',
             'completed': 'Completed',
             'failed': 'Failed',
             'cancelled': 'Cancelled',
-            'pending': 'Pending',
-            'processing': 'Processing'
+            'pending': 'Pending'
           };
           return labels[status] || status || 'Unknown';
         },
         
         formatDate(dateString) {
           if (!dateString) return '';
-          const date = new Date(dateString);
-          return date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit'
+          return new Date(dateString).toLocaleString('en-US', { 
+            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
           });
         },
         
-        formatLogTime(date) {
-          if (!date) return '';
-          return date.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-          });
+        formatDuration(seconds) {
+          if (!seconds) return '0s';
+          if (seconds < 60) return `${seconds}s`;
+          return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+        },
+        
+        formatNumber(num) {
+          if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+          return num.toString();
         },
         
         showToast(message, type = 'success') {
           this.toast = { show: true, message, type };
-          setTimeout(() => {
-            this.toast.show = false;
-          }, 3000);
+          setTimeout(() => { this.toast.show = false; }, 3000);
         }
       }
     }

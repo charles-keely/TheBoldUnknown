@@ -26,9 +26,11 @@ from .models import (
 from .db import (
     init_schema, create_pipeline_run, get_pipeline_run, get_active_pipeline_run,
     list_pipeline_runs, update_pipeline_run, get_cleanup_preview,
-    cancel_and_cleanup_run, cancel_run_keep_data,
+    cancel_and_cleanup_run, cancel_run_keep_data, delete_run_and_cleanup,
     get_leads_for_run, get_research_for_run, get_generations_for_run,
-    get_photos_for_run, get_thumbnails_for_run, get_stories_for_run
+    get_photos_for_run, get_thumbnails_for_run, get_stories_for_run,
+    get_phase1_data, get_phase2_data, get_phase3_data, get_phase4_data, get_phase5_data,
+    get_slides_for_generation
 )
 from .executor import start_pipeline, run_phase, cancel_pipeline, get_executor
 
@@ -100,6 +102,10 @@ def _format_run_summary(run: Dict[str, Any]) -> PipelineRunSummary:
     if isinstance(stats, str):
         stats = json.loads(stats)
     
+    config = run.get('config', {})
+    if isinstance(config, str):
+        config = json.loads(config) if config else {}
+    
     return PipelineRunSummary(
         id=str(run['id']),
         mode=PipelineMode(run['mode']),
@@ -110,7 +116,8 @@ def _format_run_summary(run: Dict[str, Any]) -> PipelineRunSummary:
         started_at=run.get('started_at'),
         completed_at=run.get('completed_at'),
         created_at=run.get('created_at'),
-        stats=PipelineStats(**stats) if stats else PipelineStats()
+        stats=PipelineStats(**stats) if stats else PipelineStats(),
+        config=config
     )
 
 
@@ -324,9 +331,10 @@ async def cancel_run(run_id: str, delete_data: bool = Query(True)):
     cancel_pipeline(run_id)
     
     if delete_data:
-        result = cancel_and_cleanup_run(run_id)
+        # Run cleanup in a worker thread so we don't block the event loop / SSE
+        result = await asyncio.to_thread(cancel_and_cleanup_run, run_id)
     else:
-        result = cancel_run_keep_data(run_id)
+        result = await asyncio.to_thread(cancel_run_keep_data, run_id)
     
     _broadcast_event(run_id, {"event": "pipeline_cancelled", "run_id": run_id})
     
@@ -354,8 +362,10 @@ async def delete_run(run_id: str):
     if run['status'] in ('running', 'paused'):
         raise HTTPException(status_code=400, detail="Cannot delete active pipeline runs")
     
-    # Delete the run and all associated data
-    result = cancel_and_cleanup_run(run_id)
+    # Hard-delete the run record and all associated data
+    result = await asyncio.to_thread(delete_run_and_cleanup, run_id)
+    if not result.get("success"):
+        raise HTTPException(status_code=500, detail=result.get("error", "Failed to delete run"))
     return result
 
 
@@ -492,82 +502,52 @@ async def get_phases_summary(run_id: str):
 
 @app.get("/api/pipeline/runs/{run_id}/phases/1/leads")
 async def get_lead_results(run_id: str):
-    """Get Phase 1 (Lead Generation) results."""
+    """Get Phase 1 (Lead Generation) comprehensive results with funnel data."""
     run = get_pipeline_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     
-    leads = get_leads_for_run(run_id)
-    return {
-        "phase": "lead_generation",
-        "total": len(leads),
-        "leads": leads
-    }
+    return get_phase1_data(run_id)
 
 
 @app.get("/api/pipeline/runs/{run_id}/phases/2/research")
 async def get_research_results(run_id: str):
-    """Get Phase 2 (Story Research) results."""
+    """Get Phase 2 (Story Research) comprehensive results with full research data."""
     run = get_pipeline_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     
-    research = get_research_for_run(run_id)
-    return {
-        "phase": "story_research",
-        "total": len(research),
-        "research": research
-    }
+    return get_phase2_data(run_id)
 
 
 @app.get("/api/pipeline/runs/{run_id}/phases/3/text")
 async def get_text_results(run_id: str):
-    """Get Phase 3 (Text Generation) results."""
+    """Get Phase 3 (Text Generation) comprehensive results with slides and cover options."""
     run = get_pipeline_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     
-    generations = get_generations_for_run(run_id)
-    return {
-        "phase": "text_generation",
-        "total": len(generations),
-        "generations": generations
-    }
+    return get_phase3_data(run_id)
 
 
 @app.get("/api/pipeline/runs/{run_id}/phases/4/photos")
 async def get_photo_results(run_id: str):
-    """Get Phase 4 (Photo Research) results."""
+    """Get Phase 4 (Photo Research) comprehensive results grouped by story."""
     run = get_pipeline_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     
-    photos = get_photos_for_run(run_id)
-    approved = [p for p in photos if p.get('status') == 'approved']
-    rejected = [p for p in photos if p.get('status') == 'rejected']
-    
-    return {
-        "phase": "photo_research",
-        "total": len(photos),
-        "approved": len(approved),
-        "rejected": len(rejected),
-        "photos": photos
-    }
+    return get_phase4_data(run_id)
 
 
 @app.get("/api/pipeline/runs/{run_id}/phases/5/thumbnails")
 async def get_thumbnail_results(run_id: str):
-    """Get Phase 5 (Thumbnail Generation) results."""
+    """Get Phase 5 (Thumbnail Generation) comprehensive results with concepts."""
     run = get_pipeline_run(run_id)
     if not run:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     
-    thumbnails = get_thumbnails_for_run(run_id)
-    return {
-        "phase": "thumbnail_generation",
-        "total": len(thumbnails),
-        "thumbnails": thumbnails
-    }
+    return get_phase5_data(run_id)
 
 
 @app.get("/api/pipeline/runs/{run_id}/stories")
@@ -581,6 +561,21 @@ async def get_stories_status(run_id: str):
     return {
         "total": len(stories),
         "stories": stories
+    }
+
+
+@app.get("/api/pipeline/runs/{run_id}/generations/{generation_id}/slides")
+async def get_generation_slides(run_id: str, generation_id: str):
+    """Get all slides for a specific generation."""
+    run = get_pipeline_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+    
+    slides = get_slides_for_generation(generation_id)
+    return {
+        "generation_id": generation_id,
+        "total": len(slides),
+        "slides": slides
     }
 
 

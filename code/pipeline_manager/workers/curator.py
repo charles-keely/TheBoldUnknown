@@ -4,6 +4,7 @@ Curator Worker Adapter.
 Wraps the curator module for pipeline integration.
 """
 
+import asyncio
 import sys
 import logging
 from pathlib import Path
@@ -72,8 +73,8 @@ class CuratorWorker:
             
             self._emit_progress("running", {"message": "AI curator selecting stories..."})
             
-            # Run curation (honor requested target_count)
-            result = curator.curate_stories(candidates, target_count=target_count)
+            # Run curation in thread pool to avoid blocking event loop
+            result = await asyncio.to_thread(curator.curate_stories, candidates, target_count=target_count)
             
             selected_ids = []
             selected_stories = []

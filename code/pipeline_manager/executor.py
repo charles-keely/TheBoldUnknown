@@ -17,7 +17,8 @@ from .models import (
 from .db import (
     get_pipeline_run, update_pipeline_run, update_pipeline_stats, update_phase_status,
     get_leads_for_run, get_research_for_run, get_generations_for_run,
-    get_stories_for_run, get_pending_leads_for_curation, get_curated_leads_for_research
+    get_stories_for_run, get_pending_leads_for_curation, get_curated_leads_for_research,
+    get_phase1_data, get_phase2_data, get_phase3_data, get_phase4_data, get_phase5_data
 )
 from .workers import (
     LeadGeneratorWorker,
@@ -119,19 +120,54 @@ class PipelineExecutor:
         phase = update.get('phase')
         status = update.get('status')
         data = update.get('data', {})
+        event_type = update.get('event_type', 'phase_update')
         
         # Update phase status in database
         if status in ('started', 'running', 'completed', 'failed'):
             db_status = 'running' if status in ('started', 'running') else status
             update_phase_status(self.run_id, phase, db_status, **data)
         
-        # Emit to UI
+        # Emit to UI with specific event type
         self._emit_progress({
-            "event": "phase_update",
+            "event": event_type,
             "run_id": self.run_id,
             "phase": phase,
             "status": status,
             "data": data
+        })
+    
+    def _emit_story_event(self, phase: str, story_id: str, title: str, status: str, data: Dict[str, Any] = None):
+        """Emit a story-specific event."""
+        self._emit_progress({
+            "event": "story_update",
+            "run_id": self.run_id,
+            "phase": phase,
+            "story_id": story_id,
+            "title": title,
+            "status": status,
+            "data": data or {}
+        })
+    
+    def _emit_phase_progress(self, phase: str, step: str, progress: int, message: str, stats: Dict[str, Any] = None):
+        """Emit phase progress update with sub-step details."""
+        self._emit_progress({
+            "event": "phase_progress",
+            "run_id": self.run_id,
+            "phase": phase,
+            "step": step,
+            "progress": progress,
+            "message": message,
+            "stats": stats or {}
+        })
+    
+    def _emit_item_event(self, event_type: str, phase: str, story_id: str, item_data: Dict[str, Any]):
+        """Emit an item-level event (photo found, thumbnail generated, etc.)."""
+        self._emit_progress({
+            "event": event_type,
+            "run_id": self.run_id,
+            "phase": phase,
+            "story_id": story_id,
+            **item_data
         })
     
     async def run_auto_mode(self) -> Dict[str, Any]:
@@ -300,6 +336,8 @@ class PipelineExecutor:
                           total_items=leads_discovered,
                           completed_items=leads_approved)
         
+        # Emit phase complete with full phase data
+        phase_data = get_phase1_data(self.run_id)
         self._emit_progress({
             "event": "phase_complete",
             "run_id": self.run_id,
@@ -307,7 +345,8 @@ class PipelineExecutor:
             "stats": {
                 "leads_discovered": leads_discovered,
                 "leads_approved": leads_approved
-            }
+            },
+            "data": phase_data
         })
         
         return {
@@ -348,11 +387,14 @@ class PipelineExecutor:
                           total_items=len(curated_leads),
                           completed_items=research_completed)
         
+        # Emit phase complete with full phase data
+        phase_data = get_phase2_data(self.run_id)
         self._emit_progress({
             "event": "phase_complete",
             "run_id": self.run_id,
             "phase": "story_research",
-            "stats": {"research_completed": research_completed}
+            "stats": {"research_completed": research_completed},
+            "data": phase_data
         })
         
         return {
@@ -392,11 +434,14 @@ class PipelineExecutor:
                           total_items=len(completed_research),
                           completed_items=generations_completed)
         
+        # Emit phase complete with full phase data
+        phase_data = get_phase3_data(self.run_id)
         self._emit_progress({
             "event": "phase_complete",
             "run_id": self.run_id,
             "phase": "text_generation",
-            "stats": {"generations_completed": generations_completed}
+            "stats": {"generations_completed": generations_completed},
+            "data": phase_data
         })
         
         return {
@@ -435,6 +480,8 @@ class PipelineExecutor:
                           total_items=len(generations),
                           completed_items=completed)
         
+        # Emit phase complete with full phase data
+        phase_data = get_phase4_data(self.run_id)
         self._emit_progress({
             "event": "phase_complete",
             "run_id": self.run_id,
@@ -442,7 +489,8 @@ class PipelineExecutor:
             "stats": {
                 "photos_found": photos_found,
                 "photos_approved": photos_approved
-            }
+            },
+            "data": phase_data
         })
         
         return {
@@ -486,11 +534,14 @@ class PipelineExecutor:
                           total_items=len(generations),
                           completed_items=completed)
         
+        # Emit phase complete with full phase data
+        phase_data = get_phase5_data(self.run_id)
         self._emit_progress({
             "event": "phase_complete",
             "run_id": self.run_id,
             "phase": "thumbnail_generation",
-            "stats": {"thumbnails_generated": thumbnails_generated}
+            "stats": {"thumbnails_generated": thumbnails_generated},
+            "data": phase_data
         })
         
         return {

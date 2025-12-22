@@ -4,6 +4,7 @@ Text Generator Worker Adapter.
 Wraps the text_generator module for pipeline integration.
 """
 
+import asyncio
 import sys
 import logging
 from pathlib import Path
@@ -113,8 +114,8 @@ class TextGeneratorWorker:
                     if follow_up and follow_up.get('answer'):
                         research_text += f"\n\nFollow-up Research:\n{follow_up['answer']}"
                     
-                    # Step 1: Generate slides
-                    slides_result = generate_story_slides(research_text)
+                    # Step 1: Generate slides (run in thread pool)
+                    slides_result = await asyncio.to_thread(generate_story_slides, research_text)
                     slides = slides_result.get('slides', [])
                     
                     self._emit_progress("running", story_id=research_id, data={
@@ -123,7 +124,7 @@ class TextGeneratorWorker:
                     })
                     
                     # Step 2: Generate cover options
-                    cover_result = generate_cover_options(research_text, slides)
+                    cover_result = await asyncio.to_thread(generate_cover_options, research_text, slides)
                     options = cover_result.get('options', [])
                     selected_id = cover_result.get('selected_id', 1)
                     
@@ -135,7 +136,7 @@ class TextGeneratorWorker:
                     })
                     
                     # Step 3: Generate caption
-                    caption_result = generate_instagram_caption(slides, selected_option)
+                    caption_result = await asyncio.to_thread(generate_instagram_caption, slides, selected_option)
                     caption = caption_result.get('caption', '')
                     
                     self._emit_progress("running", story_id=research_id, data={
@@ -143,7 +144,7 @@ class TextGeneratorWorker:
                     })
                     
                     # Step 4: Generate hashtags
-                    hashtags_result = generate_hashtags(slides, selected_option)
+                    hashtags_result = await asyncio.to_thread(generate_hashtags, slides, selected_option)
                     hashtags = hashtags_result.get('hashtags', [])
                     
                     # Save to database

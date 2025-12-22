@@ -4,6 +4,7 @@ Story Researcher Worker Adapter.
 Wraps the story_researcher module for pipeline integration.
 """
 
+import asyncio
 import sys
 import logging
 from pathlib import Path
@@ -101,7 +102,7 @@ class StoryResearcherWorker:
                         "summary": lead.get("summary")
                     }
                     
-                    result = researcher.research_story(story_data)
+                    result = await asyncio.to_thread(researcher.research_story, story_data)
                     
                     # Create research entry in database
                     with get_db_cursor() as cur:
