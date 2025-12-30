@@ -110,3 +110,4 @@ async def render_and_store_assets(story_generation_id: str) -> None:
     logger.info(f"[render_job] done story={story_generation_id} slides={len(rendered_slides)}")
 
 
+

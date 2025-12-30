@@ -43,3 +43,4 @@ def upload_bytes_to_supabase(*, data: bytes, content_type: str, object_path: str
     return public_url
 
 
+

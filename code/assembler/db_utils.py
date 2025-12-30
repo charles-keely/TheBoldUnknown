@@ -127,3 +127,4 @@ def mark_assembly_finalized(story_generation_id: str, rendered_files):
         conn.close()
 
 
+
